@@ -1,11 +1,23 @@
-import express from "express";
+/// <reference path="./types/express.d.ts" />
+
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import express from 'express';
+import { env } from './config/env';
+import { errorHandler } from './middleware/errorHandler';
+import authRoutes from './features/auth/routes';
 
 const app = express();
 
+app.use(
+  cors({
+    origin: env.CLIENT_URL,
+    credentials: true,
+  })
+);
+app.use(cookieParser());
 app.use(express.json());
-
-app.get("/", (_req, res) => {
-  res.send("Homelab server is running 🚀");
-});
+app.use('/api/auth', authRoutes);
+app.use(errorHandler);
 
 export default app;

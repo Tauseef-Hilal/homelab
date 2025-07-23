@@ -1,0 +1,21 @@
+import { z } from 'zod';
+
+export const signupSchema = z.object({
+  username: z.string(),
+  email: z.email(),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+export const loginSchema = z.object({
+  email: z.email(),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+export const changePasswordSchema = z.object({
+  oldPassword: z.string().min(8, 'Password must be at least 8 characters'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+export type SignupInput = z.infer<typeof signupSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
