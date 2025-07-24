@@ -26,10 +26,10 @@ export function throwTokenReused() {
   });
 }
 
-export function throwUnauthorized() {
+export function throwUnauthorized(message?: string) {
   throw new HttpError({
     status: 401,
     code: CommonErrorCode.UNAUTHORIZED,
-    message: 'Access token is missing or invalid',
+    message: message ?? 'Access token is missing or invalid',
   });
 }

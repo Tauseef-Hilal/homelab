@@ -9,6 +9,7 @@ const envSchema = z.object({
   CLIENT_URL: z.url(),
   ACCESS_TOKEN_SECRET: z.string().min(1, 'ACCESS_TOKEN_SECRET is required'),
   REFRESH_TOKEN_SECRET: z.string().min(1, 'REFRESH_TOKEN_SECRET is required'),
+  TFA_TOKEN_SECRET: z.string().min(1, 'TFA_TOKEN_SECRET is required'),
   SMTP_HOST: z.string().min(1),
   SMTP_PORT: z.coerce.number(),
   SMTP_USER: z.string().min(1),

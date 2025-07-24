@@ -16,6 +16,12 @@ export const changePasswordSchema = z.object({
   newPassword: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
+export const verifyOtpSchema = z.object({
+  token: z.string(),
+  otp: z.string().min(6),
+});
+
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;

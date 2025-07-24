@@ -22,6 +22,9 @@ import {
 } from '../utils/error.util';
 import { AuthErrorCode } from '../constants/AuthErrorCode';
 import { TokenMeta } from '../types/jwt.types';
+import redis from '@/lib/redis/redis';
+import { RedisKeys } from '@/lib/redis/redisKeys';
+import { authConfig } from '../auth.config';
 
 export async function signup(
   username: string,
@@ -104,18 +107,6 @@ export async function login(email: string, password: string, meta: TokenMeta) {
       message: 'Invalid email or password',
     });
   }
-
-  const payload = buildTokenPayload({
-    id: user.id,
-    email: user.email,
-    role: user.role,
-  });
-  const newAccessToken = generateAccessToken(payload);
-  const newRefreshToken = generateRefreshToken(payload);
-
-  await storeRefreshToken(prisma, newRefreshToken, user.id, meta);
-
-  return { tokens: { access: newAccessToken, refresh: newRefreshToken } };
 }
 
 export async function logout(
@@ -184,6 +175,15 @@ export async function changePassword(
   });
 
   await prisma.refreshToken.deleteMany({ where: { userId } });
+}
+
+export async function allowPasswordChange(userId: string) {
+  await redis.set(
+    RedisKeys.auth.allowPasswordChange(userId),
+    Date.now() + authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS * 1000,
+    'EX',
+    authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS
+  );
 }
 
 export async function refreshTokens(refreshToken: string, meta: TokenMeta) {

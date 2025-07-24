@@ -1,4 +1,7 @@
 import { UserRole } from '@prisma/client';
+import { TfaPurpose } from '../constants/TfaPurpose';
+
+export type TokenMeta = { userAgent?: string; ipAddress?: string };
 
 export type JwtPayload = {
   sub: string;
@@ -6,4 +9,9 @@ export type JwtPayload = {
   role: UserRole;
   iat: number;
 };
-export type TokenMeta = { userAgent?: string; ipAddress?: string };
+
+export type TfaPayload = {
+  userId: string;
+  purpose: TfaPurpose;
+  createdAt: number;
+};
