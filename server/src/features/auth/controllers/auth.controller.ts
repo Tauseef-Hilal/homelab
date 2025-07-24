@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { catchAsync } from '@/lib/catchAsync';
-import { changePasswordSchema, loginSchema, signupSchema } from './schema';
-import * as AuthService from './service';
-import { authConfig } from './config';
+import { changePasswordSchema, loginSchema, signupSchema } from '../schemas/auth.schema';
+import * as AuthService from '../services/auth.service';
+import { authConfig } from '../auth.config';
 import { env } from '@/config/env';
 
 export const signupController = catchAsync(

@@ -5,8 +5,9 @@ import {
   logoutController,
   refreshController,
   signupController,
-} from './controller';
-import { requireAuth, extractClientMeta } from './middlewares';
+} from './controllers/auth.controller';
+import { extractClientMeta } from './middlewares/extractClientMeta.middleware';
+import { requireAuth } from './middlewares/requireAuth.middleware';
 
 const router = Router();
 

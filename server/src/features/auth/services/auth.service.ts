@@ -3,21 +3,25 @@ import { CommonErrorCode } from '@/errors/CommonErrorCode';
 import { HttpError } from '@/errors/HttpError';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, isValidPassword } from '@/lib/bcrypt';
-import { AuthErrorCode } from './enums';
-import { TokenMeta } from './types';
 import {
   buildTokenPayload,
-  generateAccessToken,
-  generateRefreshToken,
   hashTokenSync,
   revokeMatchingTokens,
   storeRefreshToken,
+} from '../utils/token.util';
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyRefreshToken,
+} from '../utils/jwt.util';
+import {
   throwExpiredToken,
   throwInvalidToken,
   throwTokenReused,
   throwUnauthorized,
-  verifyRefreshToken,
-} from './utils';
+} from '../utils/error.util';
+import { AuthErrorCode } from '../constants/AuthErrorCode';
+import { TokenMeta } from '../types/jwt.types';
 
 export async function signup(
   username: string,

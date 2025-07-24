@@ -5,7 +5,7 @@ import cors from 'cors';
 import express from 'express';
 import { env } from './config/env';
 import { errorHandler } from './middleware/errorHandler';
-import authRoutes from './features/auth/routes';
+import authRoutes from './features/auth/auth.routes';
 
 const app = express();
 

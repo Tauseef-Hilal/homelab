@@ -14,6 +14,9 @@ const envSchema = z.object({
   SMTP_USER: z.string().min(1),
   SMTP_PASS: z.string().min(1),
   SMTP_EMAIL_FROM: z.email(),
+  REDIS_HOST: z.string(),
+  REDIS_PORT: z.coerce.number(),
+  REDIS_PASSWORD: z.string(),
 });
 
 const parsed = envSchema.safeParse(process.env);
