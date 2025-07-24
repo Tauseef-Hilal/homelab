@@ -15,7 +15,7 @@ export function extractClientMeta(
   next();
 }
 
-export async function authenticate(
+export async function requireAuth(
   req: Request,
   res: Response,
   next: NextFunction
