@@ -37,10 +37,14 @@ export async function signup(
 
     const user = await prisma.user.create({
       data: { username, email, password: hashedPassword },
-      select: { id: true, email: true, createdAt: true },
+      select: { id: true, email: true, createdAt: true, role: true },
     });
 
-    const payload = buildTokenPayload({ id: user.id, email: user.email }, meta);
+    const payload = buildTokenPayload({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
@@ -78,7 +82,7 @@ export async function login(email: string, password: string, meta: TokenMeta) {
 
   const user = await prisma.user.findUnique({
     where: { email },
-    select: { id: true, email: true, password: true },
+    select: { id: true, email: true, password: true, role: true },
   });
 
   if (!user) {
@@ -97,7 +101,11 @@ export async function login(email: string, password: string, meta: TokenMeta) {
     });
   }
 
-  const payload = buildTokenPayload({ id: user.id, email: user.email }, meta);
+  const payload = buildTokenPayload({
+    id: user.id,
+    email: user.email,
+    role: user.role,
+  });
   const newAccessToken = generateAccessToken(payload);
   const newRefreshToken = generateRefreshToken(payload);
 
@@ -198,7 +206,7 @@ export async function refreshTokens(refreshToken: string, meta: TokenMeta) {
       data: { revokedAt: new Date() },
     });
 
-    const payload = buildTokenPayload(storedToken.user, meta);
+    const payload = buildTokenPayload(storedToken.user);
     const newAccessToken = generateAccessToken(payload);
     const newRefreshToken = generateRefreshToken(payload);
 

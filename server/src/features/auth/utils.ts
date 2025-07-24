@@ -6,27 +6,27 @@ import { createHash } from 'crypto';
 import { CommonErrorCode } from '@/errors/CommonErrorCode';
 import { HttpError } from '@/errors/HttpError';
 import { AuthErrorCode } from './enums';
-import { TokenMeta } from './types';
+import { JwtPayload, TokenMeta, UserPayload } from './types';
 import { authConfig } from './config';
 
-export function generateAccessToken(payload: object): string {
+export function generateAccessToken(payload: JwtPayload): string {
   return jwt.sign(payload, env.ACCESS_TOKEN_SECRET, {
     expiresIn: authConfig.ACCESS_TOKEN_EXPIRY_MS,
   } as jwt.SignOptions);
 }
 
-export function generateRefreshToken(payload: object): string {
+export function generateRefreshToken(payload: JwtPayload): string {
   return jwt.sign(payload, env.REFRESH_TOKEN_SECRET, {
     expiresIn: authConfig.REFRESH_TOKEN_EXPIRY_MS,
   } as jwt.SignOptions);
 }
 
-export function verifyAccessToken<T = any>(token: string): T {
-  return jwt.verify(token, env.ACCESS_TOKEN_SECRET) as T;
+export function verifyAccessToken(token: string): JwtPayload {
+  return jwt.verify(token, env.ACCESS_TOKEN_SECRET) as JwtPayload;
 }
 
-export function verifyRefreshToken<T = any>(token: string): T {
-  return jwt.verify(token, env.REFRESH_TOKEN_SECRET) as T;
+export function verifyRefreshToken(token: string): JwtPayload {
+  return jwt.verify(token, env.REFRESH_TOKEN_SECRET) as JwtPayload;
 }
 
 export function throwInvalidToken() {
@@ -65,15 +65,11 @@ export function hashTokenSync(token: string) {
   return createHash('sha256').update(token).digest('hex');
 }
 
-export function buildTokenPayload(
-  user: { id: string; email: string },
-  meta: TokenMeta
-) {
+export function buildTokenPayload(user: UserPayload): JwtPayload {
   return {
     sub: user.id,
     email: user.email,
-    userAgent: meta.userAgent,
-    ip: meta.ipAddress,
+    role: user.role,
     iat: Math.floor(Date.now() / 1000),
   };
 }

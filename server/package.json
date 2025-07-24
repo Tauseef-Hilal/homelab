@@ -4,9 +4,11 @@
   "description": "Backend code for homelab",
   "main": "index.js",
   "scripts": {
-    "dev": "npx ts-node src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js"
+    "prepare:dev": "cp .env.development .env",
+    "prepare:prod": "cp .env.production .env",
+    "dev": "pnpm run prepare:dev && npx ts-node src/server.ts",
+    "build": "npx tsc",
+    "start": "pnpm run prepare:prod && node dist/server.js"
   },
   "keywords": [],
   "author": "Tauseef Tantary",
@@ -19,6 +21,7 @@
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^7.0.5",
     "pino": "^9.7.0",
     "zod": "^4.0.5"
   },
@@ -29,6 +32,7 @@
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.0.14",
+    "@types/nodemailer": "^6.4.17",
     "prisma": "^6.12.0",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",

@@ -5,10 +5,15 @@ dotenv.config();
 
 const envSchema = z.object({
   PORT: z.string().default('3000'),
-  NODE_ENV: z.enum(['dev', 'production']),
+  NODE_ENV: z.enum(['development', 'production']),
   CLIENT_URL: z.url(),
   ACCESS_TOKEN_SECRET: z.string().min(1, 'ACCESS_TOKEN_SECRET is required'),
   REFRESH_TOKEN_SECRET: z.string().min(1, 'REFRESH_TOKEN_SECRET is required'),
+  SMTP_HOST: z.string().min(1),
+  SMTP_PORT: z.coerce.number(),
+  SMTP_USER: z.string().min(1),
+  SMTP_PASS: z.string().min(1),
+  SMTP_EMAIL_FROM: z.email(),
 });
 
 const parsed = envSchema.safeParse(process.env);

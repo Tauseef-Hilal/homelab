@@ -1,6 +1,8 @@
 node_modules
 dist
-.env
 .prisma
+.env
+.env.development
+.env.production
 
 /src/generated/prisma
