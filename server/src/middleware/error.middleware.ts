@@ -8,8 +8,6 @@ export function errorHandler(
   res: Response,
   next: NextFunction
 ) {
-  console.error(err); // Log the error instead
-
   if (err instanceof HttpError) {
     return res.status(err.status).json({
       status: err.status,
@@ -19,13 +17,22 @@ export function errorHandler(
   }
 
   if (err instanceof ZodError) {
+    req.logger.warn({ details: z.treeifyError(err) }, 'Validation failed');
+
     return res.status(400).json({
       error: 'Validation failed',
       details: z.treeifyError(err),
     });
   }
 
-  // Fallback for unknown errors
+  req.logger.error(
+    {
+      msg: (err as Error)?.message,
+      stack: (err as Error)?.stack,
+    },
+    'Unhandled error occurred'
+  );
+
   return res.status(500).json({
     error: 'Internal Server Error',
   });

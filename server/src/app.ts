@@ -4,8 +4,9 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
 import { env } from './config/env';
-import { errorHandler } from './middleware/errorHandler';
+import { errorHandler } from './middleware/error.middleware';
 import authRoutes from './features/auth/auth.routes';
+import { requestLogger } from './middleware/logging.middleware';
 
 const app = express();
 
@@ -17,6 +18,8 @@ app.use(
 );
 app.use(cookieParser());
 app.use(express.json());
+
+app.use(requestLogger);
 app.use('/api/auth', authRoutes);
 app.use(errorHandler);
 
