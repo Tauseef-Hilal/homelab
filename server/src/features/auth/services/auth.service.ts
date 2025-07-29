@@ -12,6 +12,7 @@ import {
 import {
   generateAccessToken,
   generateRefreshToken,
+  generateTfaToken,
   verifyRefreshToken,
 } from '../utils/jwt.util';
 import {
@@ -25,6 +26,7 @@ import { TokenMeta } from '../types/jwt.types';
 import redis from '@/lib/redis/redis';
 import { RedisKeys } from '@/lib/redis/redisKeys';
 import { authConfig } from '../auth.config';
+import { TfaPurpose } from '../constants/TfaPurpose';
 
 export async function signup(
   username: string,
@@ -107,6 +109,14 @@ export async function login(email: string, password: string, meta: TokenMeta) {
       message: 'Invalid email or password',
     });
   }
+
+  const token = generateTfaToken({
+    userId: user.id,
+    purpose: TfaPurpose.LOGIN,
+    createdAt: Date.now(),
+  });
+
+  return { user, token };
 }
 
 export async function logout(
@@ -117,6 +127,7 @@ export async function logout(
   verifyRefreshToken(token);
   const storedToken = await prisma.refreshToken.findUnique({
     where: { tokenHash: hashTokenSync(token) },
+    select: { id: true, userId: true, revokedAt: true },
   });
 
   if (!storedToken) return throwInvalidToken();
@@ -178,6 +189,8 @@ export async function changePassword(
 }
 
 export async function allowPasswordChange(userId: string) {
+  if (!userId) return throwUnauthorized();
+
   await redis.set(
     RedisKeys.auth.allowPasswordChange(userId),
     Date.now() + authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS * 1000,

@@ -5,7 +5,7 @@ dotenv.config();
 
 const envSchema = z.object({
   PORT: z.string().default('3000'),
-  NODE_ENV: z.enum(['development', 'production']),
+  NODE_ENV: z.enum(['test', 'development', 'production']),
   CLIENT_URL: z.url(),
   ACCESS_TOKEN_SECRET: z.string().min(1, 'ACCESS_TOKEN_SECRET is required'),
   REFRESH_TOKEN_SECRET: z.string().min(1, 'REFRESH_TOKEN_SECRET is required'),
@@ -21,7 +21,6 @@ const envSchema = z.object({
 });
 
 const parsed = envSchema.safeParse(process.env);
-
 if (!parsed.success) {
   console.error('Invalid environment variables:', z.treeifyError(parsed.error));
   process.exit(1);

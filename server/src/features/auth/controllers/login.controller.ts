@@ -1,23 +1,20 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { catchAsync } from '@/lib/catchAsync';
 import { loginSchema } from '../schemas/auth.schema';
 import * as AuthService from '../services/auth.service';
 import * as OtpService from '../services/otp.service';
-import { generateTfaToken } from '../utils/jwt.util';
-import { TfaPurpose } from '../constants/TfaPurpose';
 
 export const loginController = catchAsync(
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, _: NextFunction) => {
     const { email, password } = loginSchema.parse(req.body);
 
-    await AuthService.login(email, password, req.clientMeta ?? {});
-    await OtpService.sendOtp(req.user.id, req.user.email);
+    const { token, user } = await AuthService.login(
+      email,
+      password,
+      req.clientMeta ?? {}
+    );
 
-    const token = generateTfaToken({
-      userId: req.user?.id ?? '',
-      purpose: TfaPurpose.LOGIN,
-      createdAt: Date.now(),
-    });
+    await OtpService.sendOtp(user.id, user.email);
 
     return res
       .status(200)

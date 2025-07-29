@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { catchAsync } from '@/lib/catchAsync';
 import { signupSchema } from '../schemas/auth.schema';
 import * as AuthService from '../services/auth.service';

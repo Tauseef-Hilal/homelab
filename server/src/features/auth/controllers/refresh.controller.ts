@@ -3,10 +3,15 @@ import { catchAsync } from '@/lib/catchAsync';
 import * as AuthService from '../services/auth.service';
 import { authConfig } from '../auth.config';
 import { env } from '@/config/env';
+import { throwUnauthorized } from '../utils/error.util';
 
 export const refreshController = catchAsync(
   async (req: Request, res: Response) => {
     const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) {
+      throw throwUnauthorized('Missing refresh token');
+    }
+
     const { tokens } = await AuthService.refreshTokens(
       refreshToken,
       req.clientMeta ?? {}

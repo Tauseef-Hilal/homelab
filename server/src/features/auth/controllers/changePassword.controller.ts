@@ -31,6 +31,6 @@ export const changePasswordController = catchAsync(
 
     return res
       .status(200)
-      .json({ success: true, message: 'Passoword changed successfully' });
+      .json({ success: true, message: 'Password changed successfully' });
   }
 );

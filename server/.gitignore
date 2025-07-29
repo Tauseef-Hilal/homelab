@@ -4,6 +4,7 @@ dist
 .env
 .env.development
 .env.production
+.env.test
 logs
 
 /src/generated/prisma

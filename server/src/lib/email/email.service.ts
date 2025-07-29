@@ -2,15 +2,22 @@ import nodemailer from 'nodemailer';
 import { env } from '@/config/env';
 import { EmailPayload } from './types';
 
-const transporter = nodemailer.createTransport({
-  host: env.SMTP_HOST,
-  port: env.SMTP_PORT,
-  secure: false,
-  auth: {
-    user: env.SMTP_USER,
-    pass: env.SMTP_PASS,
-  },
-});
+let transporter: nodemailer.Transporter;
+
+function getTransporter() {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      host: env.SMTP_HOST,
+      port: env.SMTP_PORT,
+      secure: false,
+      auth: {
+        user: env.SMTP_USER,
+        pass: env.SMTP_PASS,
+      },
+    });
+  }
+  return transporter;
+}
 
 export async function sendEmail({
   to,
@@ -18,7 +25,7 @@ export async function sendEmail({
   html,
 }: EmailPayload): Promise<void> {
   try {
-    await transporter.sendMail({
+    await getTransporter().sendMail({
       from: env.SMTP_EMAIL_FROM,
       to,
       subject,
