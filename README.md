@@ -19,7 +19,7 @@ A LAN-first, self-hosted platform for secure file storage, user authentication, 
 ## 📌 Status
 
 ✅ Core scaffolding
-⬜ Auth APIs
+✅ Auth APIs
 ⬜ Storage system
 ⬜ Chat module
 ⬜ Admin dashboard
