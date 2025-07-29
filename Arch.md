@@ -15,11 +15,16 @@ This project uses a **Modular Layered Architecture**, combining the benefits of 
 ```
 src/
 ├── features/         # Modular business logic (e.g., auth, chat)
-│   └── auth/         # Vertical slice for 'auth'
-│       ├── auth.routes.ts      → Route definitions
-│       ├── auth.controller.ts  → Input/output handling
-│       ├── auth.service.ts     → Business logic
-│       └── auth.middleware.ts  → Feature-specific guards
+│   └── auth/                   # Auth feature (self-contained slice)
+│       ├── auth.routes.ts      # Route definitions for auth
+│       ├── auth.config.ts      # Auth-specific config (e.g., OTP expiry, secrets)
+│       ├── controllers/        # Request/response handlers
+│       ├── services/           # Core business logic (e.g., token, user services)
+│       ├── constants/          # Static values (e.g., token types, role enums)
+│       ├── schemas/            # Zod validation schemas for input
+│       ├── types/              # Feature-specific TypeScript types
+│       ├── utils/              # Helper functions (e.g., otp generator, jwt signer)
+│       └── middlewares/        # Auth-specific middleware (e.g., role guard)
 ├── lib/              # Shared utilities (prisma, jwt, bcrypt)
 ├── middleware/       # Global middleware (errorHandler, rateLimiter)
 ├── config/           # Env and app-wide config
