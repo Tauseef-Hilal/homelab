@@ -3,11 +3,12 @@ import multer, { FileFilterCallback } from 'multer';
 import allowedMimeTypes from './mimetypes';
 import { HttpError } from '@/errors/HttpError';
 import { CommonErrorCode } from '@/errors/CommonErrorCode';
+import { MAX_FILE_SIZE } from '@/features/storage/constants/limits';
 
 const storage = multer.memoryStorage();
 
 const fileFilter = (
-  req: Request,
+  _: Request,
   file: Express.Multer.File,
   cb: FileFilterCallback
 ) => {
@@ -15,15 +16,15 @@ const fileFilter = (
   else
     cb(
       new HttpError({
-        status: 400,
-        code: CommonErrorCode.BAD_REQUEST,
+        status: 415,
+        code: CommonErrorCode.UNSUPPORTED_MEDIA_TYPE,
         message: 'Unsupported file type',
       })
     );
 };
 
 const limits = {
-  fileSize: 100 * 1024 * 1024, // 100 MB
+  fileSize: MAX_FILE_SIZE,
 };
 
 export const upload = multer({

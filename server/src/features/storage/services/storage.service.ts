@@ -23,7 +23,7 @@ export async function saveFile(
   const ext = getExtension(file.originalname);
   const storagePath = path.join(env.STORAGE_ROOT, userId, `${fileId}.${ext}`);
   const fullPath = await constructFullPath(file.originalname, folderId);
-  
+
   try {
     await fs.mkdir(path.dirname(storagePath), { recursive: true });
     await pipeline(Readable.from(file.buffer), createWriteStream(storagePath));
@@ -59,7 +59,7 @@ export async function ensureQuotaAvailable(userId: string, fileSize: number) {
 
   if (totalUsed + fileSize > MAX_USER_STORAGE_QUOTA) {
     throw new HttpError({
-      status: 200,
+      status: 413,
       code: StorageErrorCode.QUOTA_EXCEEDED,
       message: 'Storage quota exceeded',
     });
@@ -78,9 +78,9 @@ export async function constructFullPath(fileName: string, folderId?: string) {
 
   if (!folder) {
     throw new HttpError({
-      status: 400,
-      code: StorageErrorCode.INVALID_FOLDER_ID,
-      message: 'Invalid folder id',
+      status: 404,
+      code: CommonErrorCode.BAD_REQUEST,
+      message: 'Folder does not exist. Ensure folderId is correct.',
     });
   }
 

@@ -1,4 +1,3 @@
 export const enum StorageErrorCode {
   QUOTA_EXCEEDED = 'STORAGE.QUOTA_EXCEEDED',
-  INVALID_FOLDER_ID = 'STORAGE.INVALID_FOLDER_ID',
 }
