@@ -19,11 +19,13 @@ enum UserRole {
 }
 
 model User {
-  id    String   @id @default(uuid())
-  role  UserRole @default(USER)
-  email String   @unique
+  id            String         @id @default(uuid())
+  role          UserRole       @default(USER)
+  email         String         @unique
   username      String
   password      String
+  files         File[]
+  folders       Folder[]
   createdAt     DateTime       @default(now())
   refreshTokens RefreshToken[]
 }
@@ -38,4 +40,56 @@ model RefreshToken {
   expiresAt DateTime
   createdAt DateTime  @default(now())
   revokedAt DateTime?
+}
+
+model Folder {
+  id       String   @id @default(cuid())
+  name     String
+  parentId String?
+  parent   Folder?  @relation("FolderHierarchy", fields: [parentId], references: [id])
+  children Folder[] @relation("FolderHierarchy")
+  userId   String
+  fullPath String
+  user     User     @relation(fields: [userId], references: [id])
+  files    File[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, fullPath])
+}
+
+model File {
+  id         String     @id @default(cuid())
+  name       String
+  mimeType   String
+  size       Int // in bytes
+  fullPath   String
+  visibility Visibility @default(private)
+  folderId   String?
+  folder     Folder?    @relation(fields: [folderId], references: [id])
+  userId     String
+  user       User       @relation(fields: [userId], references: [id])
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  SharedLink SharedLink[]
+
+  @@unique([userId, fullPath])
+}
+
+enum Visibility {
+  private
+  public
+  shared
+}
+
+model SharedLink {
+  id          String    @id @default(cuid())
+  fileId      String
+  file        File      @relation(fields: [fileId], references: [id])
+  expiresAt   DateTime?
+  accessToken String? // optional access control
+
+  createdAt DateTime @default(now())
 }
