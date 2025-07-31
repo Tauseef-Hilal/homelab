@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { uploadFileSchema } from '../schemas/storage.schema';
 import { HttpError } from '@/errors/HttpError';
 import { CommonErrorCode } from '@/errors/CommonErrorCode';
-import { ensureQuotaAvailable, saveFile } from '../services/storage.service';
+import * as StorageService from '../services/storage.service';
 
 export const uploadFileController = catchAsync(
   async (req: Request, res: Response) => {
@@ -17,8 +17,13 @@ export const uploadFileController = catchAsync(
       });
     }
 
-    await ensureQuotaAvailable(req.user.id, req.file.size);
-    const result = await saveFile(req.user.id, req.file, visibility, folderId);
+    await StorageService.ensureQuotaAvailable(req.user.id, req.file.size);
+    const result = await StorageService.saveFile(
+      req.user.id,
+      req.file,
+      visibility,
+      folderId
+    );
 
     return res.status(201).json({
       success: true,
