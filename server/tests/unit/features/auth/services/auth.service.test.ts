@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as authService from '@/features/auth/services/auth.service';
 import * as bcrypt from '@/lib/bcrypt';
-import * as jwtUtils from '@/features/auth/utils/jwt.util';
+import * as jwtUtils from '@/lib/jwt';
 import * as tokenUtils from '@/features/auth/utils/token.util';
 import { HttpError } from '@/errors/HttpError';
 import { prisma } from '@/lib/prisma';
 import { Prisma, RefreshToken, User } from '@prisma/client';
 import { AuthErrorCode } from '@/features/auth/constants/AuthErrorCode';
 import { CommonErrorCode } from '@/errors/CommonErrorCode';
-import { JwtPayload } from '@/features/auth/types/jwt.types';
+import { JwtPayload } from '@/types/jwt.types';
 import redis from '@/lib/redis/redis';
 import { RedisKeys } from '@/lib/redis/redisKeys';
 import { authConfig } from '@/features/auth/auth.config';

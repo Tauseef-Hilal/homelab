@@ -1,9 +1,9 @@
-import { NextFunction, Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { catchAsync } from '@/lib/catchAsync';
 import { signupSchema } from '../schemas/auth.schema';
 import * as AuthService from '../services/auth.service';
-import { authConfig } from '../auth.config';
 import { env } from '@/config/env';
+import { tokenExpirations } from '@/constants/token.constants';
 
 export const signupController = catchAsync(
   async (req: Request, res: Response) => {
@@ -21,7 +21,7 @@ export const signupController = catchAsync(
         httpOnly: true,
         secure: env.NODE_ENV == 'production',
         sameSite: 'strict',
-        maxAge: authConfig.REFRESH_TOKEN_EXPIRY_MS,
+        maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
         path: '/api/auth/refresh',
       })
       .json({

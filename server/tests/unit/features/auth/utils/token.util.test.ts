@@ -34,7 +34,7 @@ describe('buildTokenPayload', () => {
     const user: UserPayload = {
       id: 'user-123',
       email: 'test@example.com',
-      role:  UserRole.USER,
+      role: UserRole.USER,
     };
 
     const payload = buildTokenPayload(user);

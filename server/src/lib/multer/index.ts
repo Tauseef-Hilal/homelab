@@ -1,6 +1,8 @@
 import { Request } from 'express';
 import multer, { FileFilterCallback } from 'multer';
 import allowedMimeTypes from './mimetypes';
+import { HttpError } from '@/errors/HttpError';
+import { CommonErrorCode } from '@/errors/CommonErrorCode';
 
 const storage = multer.memoryStorage();
 
@@ -10,7 +12,14 @@ const fileFilter = (
   cb: FileFilterCallback
 ) => {
   if (allowedMimeTypes.has(file.mimetype)) cb(null, true);
-  else cb(new Error('Unsupported file type'));
+  else
+    cb(
+      new HttpError({
+        status: 400,
+        code: CommonErrorCode.BAD_REQUEST,
+        message: 'Unsupported file type',
+      })
+    );
 };
 
 const limits = {

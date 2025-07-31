@@ -1,5 +1,5 @@
 import { UserRole } from '@prisma/client';
-import { TfaPurpose } from '../constants/TfaPurpose';
+import { TfaPurpose } from '../features/auth/constants/TfaPurpose';
 
 export type TokenMeta = { userAgent?: string; ipAddress?: string };
 

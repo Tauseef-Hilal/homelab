@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { env } from '@/config/env';
-import { authConfig } from '@/features/auth/auth.config';
 import { errorHandler } from '@/middleware/error.middleware';
 import * as AuthService from '@/features/auth/services/auth.service';
 import { refreshController } from '@/features/auth/controllers/refresh.controller';
+import { tokenExpirations } from '@/constants/token.constants';
 
 describe('refreshController', () => {
   const mockTokens = { access: 'access-token', refresh: 'refresh-token' };
@@ -55,7 +55,7 @@ describe('refreshController', () => {
         httpOnly: true,
         secure: env.NODE_ENV == 'production',
         sameSite: 'strict',
-        maxAge: authConfig.REFRESH_TOKEN_EXPIRY_MS,
+        maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
         path: '/api/auth/refresh',
       }
     );

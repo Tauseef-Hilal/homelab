@@ -1,9 +1,9 @@
 import * as AuthService from '@/features/auth/services/auth.service';
-import { authConfig } from '@/features/auth/auth.config';
 import { env } from '@/config/env';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { User } from '@prisma/client';
 import { signupController } from '@/features/auth/controllers/signup.controller';
+import { tokenExpirations } from '@/constants/token.constants';
 
 describe('signupController', () => {
   const mockUser = { id: '123', email: 'test@example.com' };
@@ -59,7 +59,7 @@ describe('signupController', () => {
         httpOnly: true,
         secure: env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: authConfig.REFRESH_TOKEN_EXPIRY_MS,
+        maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
         path: '/api/auth/refresh',
       }
     );

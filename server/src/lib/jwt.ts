@@ -1,23 +1,23 @@
 import jwt from 'jsonwebtoken';
 import { env } from '@/config/env';
-import { authConfig } from '../auth.config';
 import { JwtPayload, TfaPayload } from '../types/jwt.types';
+import { tokenExpirations } from '@/constants/token.constants';
 
 export function generateAccessToken(payload: JwtPayload): string {
   return jwt.sign(payload, env.ACCESS_TOKEN_SECRET, {
-    expiresIn: authConfig.ACCESS_TOKEN_EXPIRY_MS,
+    expiresIn: tokenExpirations.ACCESS_TOKEN_EXPIRY_MS,
   } as jwt.SignOptions);
 }
 
 export function generateRefreshToken(payload: JwtPayload): string {
   return jwt.sign(payload, env.REFRESH_TOKEN_SECRET, {
-    expiresIn: authConfig.REFRESH_TOKEN_EXPIRY_MS,
+    expiresIn: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
   } as jwt.SignOptions);
 }
 
 export function generateTfaToken(payload: TfaPayload): string {
   return jwt.sign(payload, env.TFA_TOKEN_SECRET, {
-    expiresIn: authConfig.OTP_EXPIRY_SECONDS * 1000,
+    expiresIn: tokenExpirations.OTP_TOKEN_EXPIRY_MS,
   } as jwt.SignOptions);
 }
 

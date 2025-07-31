@@ -6,7 +6,7 @@ import { authConfig } from '@/features/auth/auth.config';
 import { TfaPurpose } from '@/features/auth/constants/TfaPurpose';
 import * as AuthService from '@/features/auth/services/auth.service';
 import * as OtpService from '@/features/auth/services/otp.service';
-import * as jwtUtils from '@/features/auth/utils/jwt.util';
+import * as jwtUtils from '@/lib/jwt';
 import { requestChangePasswordController } from '@/features/auth/controllers/requestChangePassword.controller';
 
 describe('requestChangePasswordController', () => {

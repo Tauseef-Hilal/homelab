@@ -6,8 +6,8 @@ import {
   verifyAccessToken,
   verifyRefreshToken,
   verifyTfaToken,
-} from '@/features/auth/utils/jwt.util';
-import { JwtPayload, TfaPayload } from '@/features/auth/types/jwt.types';
+} from '@/lib/jwt';
+import { JwtPayload, TfaPayload } from '@/types/jwt.types';
 import { UserRole } from '@prisma/client';
 import { TfaPurpose } from '@/features/auth/constants/TfaPurpose';
 

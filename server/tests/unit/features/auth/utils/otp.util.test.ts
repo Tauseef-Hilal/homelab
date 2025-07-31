@@ -1,9 +1,10 @@
 import redis from '@/lib/redis/redis';
-import { describe, it, expect, vi, beforeEach} from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RedisKeys } from '@/lib/redis/redisKeys';
 import { authConfig } from '@/features/auth/auth.config';
 import * as otpUtil from '@/features/auth/utils/otp.util';
 import * as tokenUtil from '@/features/auth/utils/token.util';
+import { tokenExpirations } from '@/constants/token.constants';
 
 vi.mock('@/features/auth/utils/token.util');
 
@@ -33,7 +34,7 @@ describe('setOtp', () => {
       RedisKeys.auth.otp(userId),
       expect.stringContaining(mockHashed),
       'EX',
-      authConfig.OTP_EXPIRY_SECONDS
+      Math.floor(tokenExpirations.OTP_TOKEN_EXPIRY_MS / 1000)
     );
   });
 });

@@ -14,7 +14,7 @@ import {
   generateRefreshToken,
   generateTfaToken,
   verifyRefreshToken,
-} from '../utils/jwt.util';
+} from '../../../lib/jwt';
 import {
   throwExpiredToken,
   throwInvalidToken,
@@ -22,7 +22,7 @@ import {
   throwUnauthorized,
 } from '../utils/error.util';
 import { AuthErrorCode } from '../constants/AuthErrorCode';
-import { TokenMeta } from '../types/jwt.types';
+import { TokenMeta } from '../../../types/jwt.types';
 import redis from '@/lib/redis/redis';
 import { RedisKeys } from '@/lib/redis/redisKeys';
 import { authConfig } from '../auth.config';

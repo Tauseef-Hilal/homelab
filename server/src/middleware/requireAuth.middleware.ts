@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
-import { throwUnauthorized } from '../utils/error.util';
-import { verifyAccessToken } from '../utils/jwt.util';
+import { throwUnauthorized } from '../features/auth/utils/error.util';
+import { verifyAccessToken } from '../lib/jwt';
 
 export async function requireAuth(
   req: Request,

@@ -6,6 +6,7 @@ import * as otpService from '@/features/auth/services/otp.service';
 import * as otpUtil from '@/features/auth/utils/otp.util';
 import * as tokenUtil from '@/features/auth/utils/token.util';
 import * as emailService from '@/lib/email/email.service';
+import { tokenExpirations } from '@/constants/token.constants';
 
 vi.mock('@/features/auth/utils/token.util');
 
@@ -77,7 +78,7 @@ describe('verifyOtp', () => {
       RedisKeys.auth.otp(userId),
       expect.stringContaining('"attempts":2'),
       'EX',
-      authConfig.OTP_EXPIRY_SECONDS
+      Math.floor(tokenExpirations.OTP_TOKEN_EXPIRY_MS / 1000)
     );
   });
 

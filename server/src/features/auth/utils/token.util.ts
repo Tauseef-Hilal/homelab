@@ -1,9 +1,9 @@
 import { createHash } from 'crypto';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { DefaultArgs } from '@prisma/client/runtime/library';
-import { authConfig } from '../auth.config';
 import { UserPayload } from '../types/user.types';
-import { JwtPayload, TokenMeta } from '../types/jwt.types';
+import { JwtPayload, TokenMeta } from '../../../types/jwt.types';
+import { tokenExpirations } from '@/constants/token.constants';
 
 export function hashTokenSync(token: string) {
   return createHash('sha256').update(token).digest('hex');
@@ -53,7 +53,9 @@ export async function storeRefreshToken(
       userId,
       userAgent: meta.userAgent,
       ipAddress: meta.ipAddress,
-      expiresAt: new Date(Date.now() + authConfig.REFRESH_TOKEN_EXPIRY_MS), // 7d
+      expiresAt: new Date(
+        Date.now() + tokenExpirations.REFRESH_TOKEN_EXPIRY_MS
+      ), // 7d
     },
   });
 }

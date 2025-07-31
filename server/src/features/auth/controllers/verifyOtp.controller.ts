@@ -5,7 +5,7 @@ import {
   generateAccessToken,
   generateRefreshToken,
   verifyTfaToken,
-} from '../utils/jwt.util';
+} from '../../../lib/jwt';
 import * as OtpService from '../services/otp.service';
 import * as AuthService from '../services/auth.service';
 import { TfaPurpose } from '../constants/TfaPurpose';
@@ -13,9 +13,9 @@ import { prisma } from '@/lib/prisma';
 import { HttpError } from '@/errors/HttpError';
 import { AuthErrorCode } from '../constants/AuthErrorCode';
 import { buildTokenPayload, storeRefreshToken } from '../utils/token.util';
-import { TokenMeta } from '../types/jwt.types';
+import { TokenMeta } from '../../../types/jwt.types';
 import { env } from '@/config/env';
-import { authConfig } from '../auth.config';
+import { tokenExpirations } from '@/constants/token.constants';
 
 export const verifyOtpController = catchAsync(
   async (req: Request, res: Response) => {
@@ -58,7 +58,7 @@ const handleOtpPurpose = {
         httpOnly: true,
         secure: env.NODE_ENV == 'production',
         sameSite: 'strict',
-        maxAge: authConfig.REFRESH_TOKEN_EXPIRY_MS,
+        maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
         path: '/api/auth/refresh',
       })
       .json({

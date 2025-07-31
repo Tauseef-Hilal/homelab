@@ -5,6 +5,7 @@ import { RedisKeys } from '@/lib/redis/redisKeys';
 import { hashTokenSync } from '../utils/token.util';
 import { sendOtpEmail } from '@/lib/email/email.service';
 import { deleteOtp, generateOtp, getOtp, setOtp } from '../utils/otp.util';
+import { tokenExpirations } from '@/constants/token.constants';
 
 export const sendOtp = async (userId: string, email: string) => {
   const otp = generateOtp();
@@ -35,7 +36,7 @@ export const verifyOtp = async (
       RedisKeys.auth.otp(userId),
       JSON.stringify(data),
       'EX',
-      authConfig.OTP_EXPIRY_SECONDS
+      Math.floor(tokenExpirations.OTP_TOKEN_EXPIRY_MS / 1000)
     );
 
     return throwUnauthorized('Incorrect OTP');

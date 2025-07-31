@@ -1,8 +1,8 @@
 import redis from '@/lib/redis/redis';
 import { OtpPayload } from '../types/otp.types';
-import { authConfig } from '../auth.config';
 import { RedisKeys } from '@/lib/redis/redisKeys';
 import { hashTokenSync } from '../utils/token.util';
+import { tokenExpirations } from '@/constants/token.constants';
 
 export const generateOtp = (): string => {
   const otp = Math.floor(100_000 + Math.random() * 900_000);
@@ -12,7 +12,7 @@ export const generateOtp = (): string => {
 export const setOtp = async (
   userId: string,
   code: string,
-  expiresIn = authConfig.OTP_EXPIRY_SECONDS
+  expiresIn = tokenExpirations.OTP_TOKEN_EXPIRY_MS
 ) => {
   const payload: OtpPayload = {
     code: hashTokenSync(code),
@@ -23,7 +23,7 @@ export const setOtp = async (
     RedisKeys.auth.otp(userId),
     JSON.stringify(payload),
     'EX',
-    expiresIn
+    Math.floor(expiresIn / 1000)
   );
 };
 

@@ -3,7 +3,7 @@ import { catchAsync } from '@/lib/catchAsync';
 import * as OtpService from '../services/otp.service';
 import redis from '@/lib/redis/redis';
 import { RedisKeys } from '@/lib/redis/redisKeys';
-import { generateTfaToken } from '../utils/jwt.util';
+import { generateTfaToken } from '../../../lib/jwt';
 import { TfaPurpose } from '../constants/TfaPurpose';
 import { authConfig } from '../auth.config';
 

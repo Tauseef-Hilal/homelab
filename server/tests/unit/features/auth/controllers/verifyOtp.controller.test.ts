@@ -3,17 +3,17 @@ import logger from '@/lib/logger';
 import { prisma } from '@/lib/prisma';
 import { User } from '@prisma/client';
 import { env } from '@/config/env';
-import { authConfig } from '@/features/auth/auth.config';
 import { HttpError } from '@/errors/HttpError';
 import { CommonErrorCode } from '@/errors/CommonErrorCode';
 import { errorHandler } from '@/middleware/error.middleware';
 import { TfaPurpose } from '@/features/auth/constants/TfaPurpose';
-import { TfaPayload } from '@/features/auth/types/jwt.types';
+import { TfaPayload } from '@/types/jwt.types';
 import * as AuthService from '@/features/auth/services/auth.service';
 import * as OtpService from '@/features/auth/services/otp.service';
-import * as JwtUtils from '@/features/auth/utils/jwt.util';
+import * as JwtUtils from '@/lib/jwt';
 import * as TokenUtils from '@/features/auth/utils/token.util';
 import { verifyOtpController } from '@/features/auth/controllers/verifyOtp.controller';
+import { tokenExpirations } from '@/constants/token.constants';
 
 vi.mock('@/lib/logger');
 vi.mock('@/lib/prisma');
@@ -114,7 +114,7 @@ describe('verifyOtpController', () => {
         httpOnly: true,
         secure: env.NODE_ENV == 'production',
         sameSite: 'strict',
-        maxAge: authConfig.REFRESH_TOKEN_EXPIRY_MS,
+        maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
         path: '/api/auth/refresh',
       }
     );
