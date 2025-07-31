@@ -6,7 +6,7 @@ import { uploadFileController } from './controllers/uploadFile.controller';
 const router = Router();
 
 router.post(
-  '/upload-file',
+  '/file/upload',
   requireAuth,
   upload.single('file'),
   uploadFileController
