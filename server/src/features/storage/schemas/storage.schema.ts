@@ -14,5 +14,19 @@ export const deleteFileSchema = z.object({
   fileId: z.uuidv4(),
 });
 
+export const renameFileSchema = z.object({
+  fileId: z.uuidv4(),
+  newName: z
+    .string()
+    .min(1, 'Name cannot be empty')
+    .max(255, 'Name too long')
+    .refine(
+      (name) =>
+        !name.includes('.') && !name.includes('/') && !name.includes('\\'),
+      'Name cannot include dots or slashes'
+    ),
+});
+
 export type UploadFileInput = z.infer<typeof uploadFileSchema>;
 export type DeleteFileInput = z.infer<typeof deleteFileSchema>;
+export type RenameFileInput = z.infer<typeof renameFileSchema>;
