@@ -230,6 +230,8 @@ export async function copyFile(
     });
   }
 
+  await ensureQuotaAvailable(userId, srcFile.size);
+
   try {
     const newFileId = randomUUID();
     const ext = getFileExtension(srcFile.name);
