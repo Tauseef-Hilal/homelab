@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { Visibility } from '@prisma/client';
 
 export const uploadFileSchema = z.object({
-  folderId: z.optional(z.uuidv4()),
+  folderId: z.nullable(z.uuidv4()),
   visibility: z.enum([
     Visibility.public,
     Visibility.private,
@@ -29,10 +29,16 @@ export const renameFileSchema = z.object({
 
 export const moveFileSchema = z.object({
   fileId: z.uuidv4(),
-  targetFolderId: z.optional(z.uuidv4()),
+  targetFolderId: z.nullable(z.uuidv4()),
+});
+
+export const copyFileSchema = z.object({
+  fileId: z.uuidv4(),
+  targetFolderId: z.nullable(z.uuidv4()),
 });
 
 export type UploadFileInput = z.infer<typeof uploadFileSchema>;
 export type DeleteFileInput = z.infer<typeof deleteFileSchema>;
 export type RenameFileInput = z.infer<typeof renameFileSchema>;
 export type MoveFileInput = z.infer<typeof moveFileSchema>;
+export type CopyFileInput = z.infer<typeof copyFileSchema>;

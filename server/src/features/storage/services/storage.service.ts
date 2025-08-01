@@ -15,6 +15,7 @@ import {
   resolveFileName,
   getFileExtension,
   getFileNameWithoutExtension,
+  copyFileOnDisk,
 } from '../utils/file.util';
 
 export async function saveFile(
@@ -174,6 +175,14 @@ export async function moveFile(
     });
   }
 
+  if (file.userId != userId) {
+    throw new HttpError({
+      status: 403,
+      code: CommonErrorCode.FORBIDDEN,
+      message: 'You do not have the permission to move this file',
+    });
+  }
+
   if (file.folderId == targetFolderId) return;
 
   const { newFileName, newFilePath } = await resolveFileName(
@@ -192,6 +201,68 @@ export async function moveFile(
       status: 500,
       code: CommonErrorCode.INTERNAL_SERVER_ERROR,
       message: 'Failed to move file',
+    });
+  }
+}
+
+export async function copyFile(
+  userId: string,
+  fileId: string,
+  targetFolderId: string | null = null
+) {
+  const srcFile = await prisma.file.findUnique({
+    where: { id: fileId },
+  });
+
+  if (!srcFile) {
+    throw new HttpError({
+      status: 400,
+      code: CommonErrorCode.BAD_REQUEST,
+      message: 'File does not exist. Ensure fileId is correct.',
+    });
+  }
+
+  if (srcFile.userId != userId) {
+    throw new HttpError({
+      status: 403,
+      code: CommonErrorCode.FORBIDDEN,
+      message: 'You do not have the permission to copy this file',
+    });
+  }
+
+  try {
+    const newFileId = randomUUID();
+    const ext = getFileExtension(srcFile.name);
+
+    await copyFileOnDisk(
+      `${userId}/${fileId}.${ext}`,
+      `${userId}/${newFileId}.${ext}`
+    );
+
+    const { newFileName, newFilePath } = await resolveFileName(
+      srcFile,
+      getFileNameWithoutExtension(srcFile.name),
+      targetFolderId,
+      true
+    );
+
+    return await prisma.file.create({
+      data: {
+        id: newFileId,
+        name: newFileName,
+        mimeType: srcFile.mimeType,
+        size: srcFile.size,
+        folderId: targetFolderId,
+        fullPath: newFilePath,
+        visibility: srcFile.visibility,
+        userId,
+      },
+    });
+  } catch (err) {
+    throw new HttpError({
+      status: 500,
+      code: CommonErrorCode.INTERNAL_SERVER_ERROR,
+      message: 'Failed to copy file',
     });
   }
 }

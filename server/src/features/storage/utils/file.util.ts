@@ -1,7 +1,12 @@
+import fs from 'fs/promises';
+import path from 'path';
+import { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
+import { env } from '@/config/env';
 import { CommonErrorCode } from '@/errors/CommonErrorCode';
 import { HttpError } from '@/errors/HttpError';
 import { prisma } from '@/lib/prisma';
-import path from 'path';
+import { createWriteStream } from 'fs';
 
 export function getFileExtension(filename: string): string {
   const ext = path.extname(filename || '').toLowerCase();
@@ -13,6 +18,13 @@ export function getFileNameWithoutExtension(name: string) {
   return idx === -1 ? name : name.slice(0, idx);
 }
 
+export function splitNameAndExtension(name: string) {
+  const idx = name.lastIndexOf('.');
+  return idx === -1
+    ? { base: name, ext: '' }
+    : { base: name.slice(0, idx), ext: name.slice(idx) };
+}
+
 export async function resolveFileName(
   file: {
     id: string;
@@ -20,7 +32,8 @@ export async function resolveFileName(
     userId: string;
   },
   newNameWithoutExtension: string,
-  folderId: string | null
+  folderId: string | null,
+  copy: boolean = false
 ) {
   const existingFiles = await prisma.file.findMany({
     where: { folderId: folderId, userId: file.userId },
@@ -28,7 +41,7 @@ export async function resolveFileName(
   });
 
   const existingFileNames = existingFiles.map((f) =>
-    f.id != file.id ? f.name : ''
+    f.id != file.id || copy ? f.name : ''
   );
 
   const ext = getFileExtension(file.name);
@@ -64,4 +77,14 @@ export async function resolveFileName(
   }
 
   return { newFileName, newFilePath };
+}
+
+export async function copyFileOnDisk(src: string, dest: string) {
+  const srcFilePath = path.join(env.STORAGE_ROOT, src);
+  const destFilePath = path.join(env.STORAGE_ROOT, dest);
+
+  await pipeline(
+    Readable.from((await fs.open(srcFilePath)).createReadStream()),
+    createWriteStream(destFilePath)
+  );
 }
