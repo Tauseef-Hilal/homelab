@@ -1,3 +1,5 @@
+import { CommonErrorCode } from '@/errors/CommonErrorCode';
+import { HttpError } from '@/errors/HttpError';
 import { prisma } from '@/lib/prisma';
 import path from 'path';
 
@@ -16,12 +18,12 @@ export async function resolveFileName(
     id: string;
     name: string;
     userId: string;
-    folderId: string | null;
   },
-  newName: string
+  newNameWithoutExtension: string,
+  folderId: string | null
 ) {
   const existingFiles = await prisma.file.findMany({
-    where: { folderId: file.folderId, userId: file.userId },
+    where: { folderId: folderId, userId: file.userId },
     select: { id: true, name: true },
   });
 
@@ -30,26 +32,35 @@ export async function resolveFileName(
   );
 
   const ext = getFileExtension(file.name);
-  let newFileName = newName;
+  let newFileName = newNameWithoutExtension;
   let newFilePath = '';
 
   let n = 1;
   while (existingFileNames.includes(`${newFileName}.${ext}`)) {
-    newFileName = newName;
+    newFileName = newNameWithoutExtension;
     newFileName = `${newFileName}-${n}`;
     n++;
   }
 
   newFileName = `${newFileName}.${ext}`;
 
-  if (!file.folderId) {
+  if (!folderId) {
     newFilePath = newFileName;
   } else {
     const folder = await prisma.folder.findUnique({
-      where: { id: file.folderId },
+      where: { id: folderId },
       select: { fullPath: true },
     });
-    newFilePath = `${folder!.fullPath}/${newFileName}`;
+
+    if (!folder) {
+      throw new HttpError({
+        status: 400,
+        code: CommonErrorCode.BAD_REQUEST,
+        message: 'Folder does not exist. Ensure folderId is correct',
+      });
+    }
+
+    newFilePath = `${folder.fullPath}/${newFileName}`;
   }
 
   return { newFileName, newFilePath };

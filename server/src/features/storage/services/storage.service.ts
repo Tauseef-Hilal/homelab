@@ -11,7 +11,11 @@ import { randomUUID } from 'crypto';
 import { pipeline } from 'stream/promises';
 import { Readable } from 'stream';
 import { CommonErrorCode } from '@/errors/CommonErrorCode';
-import { resolveFileName, getFileExtension, getFileNameWithoutExtension } from '../utils/file.util';
+import {
+  resolveFileName,
+  getFileExtension,
+  getFileNameWithoutExtension,
+} from '../utils/file.util';
 
 export async function saveFile(
   userId: string,
@@ -26,10 +30,11 @@ export async function saveFile(
   try {
     await fs.mkdir(path.dirname(storagePath), { recursive: true });
     await pipeline(Readable.from(file.buffer), createWriteStream(storagePath));
-    
+
     const { newFileName, newFilePath } = await resolveFileName(
-      { id: fileId, name: file.originalname, userId: userId, folderId },
-      getFileNameWithoutExtension(file.originalname)
+      { id: fileId, name: file.originalname, userId: userId },
+      getFileNameWithoutExtension(file.originalname),
+      folderId
     );
 
     return await prisma.file.create({
@@ -124,7 +129,11 @@ export async function renameFile(
   }
 
   try {
-    const { newFileName, newFilePath } = await resolveFileName(file, newName);
+    const { newFileName, newFilePath } = await resolveFileName(
+      file,
+      newName,
+      file.folderId
+    );
 
     await prisma.file.update({
       where: { id: fileId },
@@ -138,6 +147,51 @@ export async function renameFile(
       status: 500,
       code: CommonErrorCode.INTERNAL_SERVER_ERROR,
       message: 'Failed to rename file',
+    });
+  }
+}
+
+export async function moveFile(
+  userId: string,
+  fileId: string,
+  targetFolderId: string | null = null
+) {
+  const file = await prisma.file.findUnique({
+    where: { id: fileId },
+    select: {
+      id: true,
+      name: true,
+      userId: true,
+      folderId: true,
+    },
+  });
+
+  if (!file) {
+    throw new HttpError({
+      status: 400,
+      code: CommonErrorCode.BAD_REQUEST,
+      message: 'File does not exist. Ensure fileId is correct.',
+    });
+  }
+
+  if (file.folderId == targetFolderId) return;
+
+  const { newFileName, newFilePath } = await resolveFileName(
+    file,
+    getFileNameWithoutExtension(file.name),
+    targetFolderId
+  );
+
+  try {
+    return await prisma.file.update({
+      where: { id: file.id },
+      data: { name: newFileName, fullPath: newFilePath },
+    });
+  } catch (err) {
+    throw new HttpError({
+      status: 500,
+      code: CommonErrorCode.INTERNAL_SERVER_ERROR,
+      message: 'Failed to move file',
     });
   }
 }
