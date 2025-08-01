@@ -9,6 +9,14 @@ export function errorHandler(
   next: NextFunction
 ) {
   if (err instanceof HttpError) {
+    req.logger.error(
+      {
+        msg: (err as Error)?.message,
+        stack: (err as Error)?.stack,
+      },
+      'Internal server error occured'
+    );
+
     return res.status(err.status).json({
       status: err.status,
       code: err.code,
