@@ -10,10 +10,10 @@ import { copyFileController } from './controllers/copyFIle.controller';
 const router = Router();
 
 router.use(requireAuth);
-router.post('/file/upload', upload.single('file'), uploadFileController);
-router.post('/file/delete', deleteFileController);
-router.post('/file/rename', renameFileController);
-router.post('/file/move', moveFileController);
-router.post('/file/copy', copyFileController);
+router.post('/file', upload.single('file'), uploadFileController);
+router.delete('/file/:fileId', deleteFileController);
+router.patch('/file/:fileId/rename', renameFileController);
+router.patch('/file/:fileId/move', moveFileController);
+router.post('/file/:fileId/copy', copyFileController);
 
 export default router;

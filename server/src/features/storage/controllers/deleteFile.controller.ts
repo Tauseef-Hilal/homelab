@@ -1,15 +1,12 @@
 import { Request, Response } from 'express';
-import { deleteFileSchema } from '../schemas/storage.schema';
 import { catchAsync } from '@/lib/catchAsync';
 import * as StorageService from '../services/storage.service';
-import { prisma } from '@/lib/prisma';
+import { fileIdParamSchema } from '../schemas/storage.schema';
 
 export const deleteFileController = catchAsync(
   async (req: Request, res: Response) => {
-    const { fileId } = deleteFileSchema.parse(req.body);
-    req.user = await prisma.user.findFirst();
-
+    const fileId = fileIdParamSchema.parse(req.params.fileId);
     await StorageService.deleteFile(req.user.id, fileId);
-    return res.status(204);
+    return res.status(204).end();
   }
 );

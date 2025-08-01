@@ -5,8 +5,9 @@ import { signupController } from './controllers/signup.controller';
 import { loginController } from './controllers/login.controller';
 import { logoutController } from './controllers/logout.controller';
 import { refreshController } from './controllers/refresh.controller';
-import { changePasswordController } from './controllers/changePassword.controller';
 import { verifyOtpController } from './controllers/verifyOtp.controller';
+import { changePasswordController } from './controllers/changePassword.controller';
+import { requestChangePasswordController } from './controllers/requestChangePassword.controller';
 
 const router = Router();
 
@@ -14,8 +15,12 @@ router.post('/signup', extractClientMeta, signupController);
 router.post('/login', extractClientMeta, loginController);
 router.post('/logout', extractClientMeta, logoutController);
 router.post('/refresh', extractClientMeta, refreshController);
-router.post('/change-password', requireAuth, changePasswordController);
-router.post('/request-change-password', requireAuth, changePasswordController);
+router.patch('/password', requireAuth, changePasswordController);
+router.post(
+  '/forgot-password',
+  extractClientMeta,
+  requestChangePasswordController
+);
 router.post('/verify-otp', extractClientMeta, verifyOtpController);
 
 export default router;
