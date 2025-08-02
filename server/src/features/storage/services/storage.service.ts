@@ -1,13 +1,12 @@
-import fs from 'fs/promises';
 import path from 'path';
+import fs from 'fs/promises';
+import { randomUUID } from 'crypto';
 import { createWriteStream, existsSync } from 'fs';
 import { prisma } from '@/lib/prisma';
 import { HttpError } from '@/errors/HttpError';
 import { StorageErrorCode } from '../constants/StorageErrorCode';
 import { MAX_USER_STORAGE_QUOTA } from '../constants/limits';
 import { Visibility } from '@prisma/client';
-import { env } from '@/config/env';
-import { randomUUID } from 'crypto';
 import { pipeline } from 'stream/promises';
 import { Readable } from 'stream';
 import { CommonErrorCode } from '@/errors/CommonErrorCode';
@@ -16,7 +15,8 @@ import {
   getFileExtension,
   getFileNameWithoutExtension,
   copyFileOnDisk,
-  getStorageKey,
+  getOriginalFilePath,
+  getThumbnailPath,
 } from '../utils/file.util';
 
 export async function saveFile(
@@ -27,7 +27,7 @@ export async function saveFile(
 ) {
   const fileId = randomUUID();
   const ext = getFileExtension(file.originalname);
-  const storagePath = path.join(env.STORAGE_ROOT, userId, `${fileId}.${ext}`);
+  const storagePath = getOriginalFilePath(userId, fileId, ext);
 
   try {
     await fs.mkdir(path.dirname(storagePath), { recursive: true });
@@ -84,8 +84,13 @@ export async function deleteFile(userId: string, fileId: string) {
 
   try {
     const ext = getFileExtension(file.name);
-    const filePath = path.join(env.STORAGE_ROOT, userId, `${fileId}.${ext}`);
+    const filePath = getOriginalFilePath(userId, fileId, ext);
     await fs.rm(filePath);
+
+    const thumbnailPath = getThumbnailPath(userId, fileId);
+    if (existsSync(thumbnailPath)) {
+      await fs.rm(thumbnailPath);
+    }
 
     return await prisma.file.delete({
       where: { id: fileId },
@@ -237,10 +242,15 @@ export async function copyFile(
     const newFileId = randomUUID();
     const ext = getFileExtension(srcFile.name);
 
-    await copyFileOnDisk(
-      `${userId}/${fileId}.${ext}`,
-      `${userId}/${newFileId}.${ext}`
-    );
+    const srcPath = getOriginalFilePath(userId, fileId, ext);
+    const destPath = getOriginalFilePath(userId, newFileId, ext);
+    await copyFileOnDisk(srcPath, destPath);
+
+    const srcThumbnailPath = getThumbnailPath(userId, fileId);
+    if (existsSync(srcThumbnailPath)) {
+      const destPath = getThumbnailPath(userId, newFileId);
+      await copyFileOnDisk(srcThumbnailPath, destPath);
+    }
 
     const { newFileName, newFilePath } = await resolveFileName(
       srcFile,
@@ -298,7 +308,11 @@ export async function getFileDownloadMeta(userId: string, fileId: string) {
     });
   }
 
-  const filePath = getStorageKey(file.userId, file);
+  const filePath = getOriginalFilePath(
+    file.userId,
+    file.id,
+    getFileExtension(file.name)
+  );
 
   if (!existsSync(filePath)) {
     throw new HttpError({

@@ -90,10 +90,22 @@ export async function copyFileOnDisk(src: string, dest: string) {
   );
 }
 
-export function getStorageKey(
+export function getOriginalFilePath(
   userId: string,
-  file: Partial<File>
+  fileId: string,
+  ext: string
 ) {
-  const fileNameOnDisk = `${file.id!}.${getFileExtension(file.name!)}`;
-  return path.join(env.STORAGE_ROOT, userId, fileNameOnDisk);
+  return path.join(getOriginalsDirPath(userId), `${fileId}.${ext}`);
+}
+
+export function getThumbnailPath(userId: string, fileId: string) {
+  return path.join(getThumbnailsDirPath(userId), `${fileId}.jpg`);
+}
+
+export function getThumbnailsDirPath(userId: string) {
+  return path.join(env.STORAGE_ROOT, userId, 'thumbnails');
+}
+
+export function getOriginalsDirPath(userId: string) {
+  return path.join(env.STORAGE_ROOT, userId, 'originals');
 }
