@@ -6,6 +6,7 @@ import { deleteFileController } from './controllers/deleteFile.controller';
 import { renameFileController } from './controllers/renameFile.controller';
 import { moveFileController } from './controllers/moveFile.controller';
 import { copyFileController } from './controllers/copyFIle.controller';
+import { downloadFileController } from './controllers/downloadFile.controller';
 
 const router = Router();
 
@@ -15,5 +16,6 @@ router.delete('/file/:fileId', deleteFileController);
 router.patch('/file/:fileId/rename', renameFileController);
 router.patch('/file/:fileId/move', moveFileController);
 router.post('/file/:fileId/copy', copyFileController);
+router.get('/file/:fileId/download', requireAuth, downloadFileController);
 
 export default router;

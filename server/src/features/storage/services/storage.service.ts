@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { createWriteStream } from 'fs';
+import { createWriteStream, existsSync } from 'fs';
 import { prisma } from '@/lib/prisma';
 import { HttpError } from '@/errors/HttpError';
 import { StorageErrorCode } from '../constants/StorageErrorCode';
@@ -16,6 +16,7 @@ import {
   getFileExtension,
   getFileNameWithoutExtension,
   copyFileOnDisk,
+  getStorageKey,
 } from '../utils/file.util';
 
 export async function saveFile(
@@ -267,6 +268,47 @@ export async function copyFile(
       message: 'Failed to copy file',
     });
   }
+}
+
+export async function getFileDownloadMeta(userId: string, fileId: string) {
+  const file = await prisma.file.findUnique({
+    where: { id: fileId },
+    select: {
+      id: true,
+      name: true,
+      userId: true,
+      mimeType: true,
+      visibility: true,
+    },
+  });
+
+  if (!file) {
+    throw new HttpError({
+      status: 404,
+      code: CommonErrorCode.NOT_FOUND,
+      message: 'File does not exist.',
+    });
+  }
+
+  if (file.userId != userId && file.visibility == Visibility.public) {
+    throw new HttpError({
+      status: 403,
+      code: CommonErrorCode.FORBIDDEN,
+      message: 'You do not have the permission to download this file',
+    });
+  }
+
+  const filePath = getStorageKey(file.userId, file);
+
+  if (!existsSync(filePath)) {
+    throw new HttpError({
+      status: 500,
+      code: CommonErrorCode.INTERNAL_SERVER_ERROR,
+      message: 'File missing on disk',
+    });
+  }
+
+  return { fileName: file.name, filePath, mimeType: file.mimeType };
 }
 
 export async function ensureQuotaAvailable(userId: string, fileSize: number) {

@@ -7,6 +7,7 @@ import { CommonErrorCode } from '@/errors/CommonErrorCode';
 import { HttpError } from '@/errors/HttpError';
 import { prisma } from '@/lib/prisma';
 import { createWriteStream } from 'fs';
+import { File } from '@prisma/client';
 
 export function getFileExtension(filename: string): string {
   const ext = path.extname(filename || '').toLowerCase();
@@ -87,4 +88,12 @@ export async function copyFileOnDisk(src: string, dest: string) {
     Readable.from((await fs.open(srcFilePath)).createReadStream()),
     createWriteStream(destFilePath)
   );
+}
+
+export function getStorageKey(
+  userId: string,
+  file: Partial<File>
+) {
+  const fileNameOnDisk = `${file.id!}.${getFileExtension(file.name!)}`;
+  return path.join(env.STORAGE_ROOT, userId, fileNameOnDisk);
 }
