@@ -6,6 +6,7 @@ const redis = new Redis({
   port: env.REDIS_PORT,
   password: env.REDIS_PASSWORD,
   db: 0,
+  maxRetriesPerRequest: null,
 });
 
 redis.on('connect', () => console.log('[REDIS] Connected'));

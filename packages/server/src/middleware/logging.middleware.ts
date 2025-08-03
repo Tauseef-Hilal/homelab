@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { withRequestId } from '@server/lib/logger';
+import { withRequestId } from '@shared/logging';
+import { randomUUID } from 'crypto';
 
 export function requestLogger(req: Request, res: Response, next: NextFunction) {
   const requestId = req.headers['x-request-id'] as string | undefined;
-  req.logger = withRequestId(requestId);
+  req.id = requestId ?? randomUUID();
+  req.logger = withRequestId(req.id);
 
   req.logger.info({
     msg: `Incoming request`,

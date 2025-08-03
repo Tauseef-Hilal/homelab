@@ -4,7 +4,7 @@ import * as bcrypt from '@server/lib/bcrypt';
 import * as jwtUtils from '@server/lib/jwt';
 import * as tokenUtils from '@server/features/auth/utils/token.util';
 import { HttpError } from '@server/errors/HttpError';
-import { prisma } from '@server/lib/prisma';
+import { prisma } from '@shared/prisma';
 import { Prisma, RefreshToken, User } from '@prisma/client';
 import { AuthErrorCode } from '@server/features/auth/constants/AuthErrorCode';
 import { CommonErrorCode } from '@server/errors/CommonErrorCode';
@@ -13,7 +13,7 @@ import redis from '@shared/redis';
 import { RedisKeys } from '@shared/redis/redisKeys';
 import { authConfig } from '@server/features/auth/auth.config';
 
-vi.mock('@server/lib/prisma');
+vi.mock('@shared/prisma');
 
 const meta = { ipAddress: '127.0.0.1', userAgent: 'Vitest' };
 const mockUser = {

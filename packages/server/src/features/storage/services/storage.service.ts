@@ -2,7 +2,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { randomUUID } from 'crypto';
 import { createWriteStream, existsSync } from 'fs';
-import { prisma } from '@server/lib/prisma';
+import { prisma } from '@shared/prisma';
 import { HttpError } from '@server/errors/HttpError';
 import { StorageErrorCode } from '../constants/StorageErrorCode';
 import { MAX_USER_STORAGE_QUOTA } from '../constants/limits';
@@ -16,8 +16,8 @@ import {
   getFileNameWithoutExtension,
   copyFileOnDisk,
   getOriginalFilePath,
-  getThumbnailPath,
 } from '../utils/file.util';
+import { getThumbnailPath } from '@shared/utils/storage.utils';
 
 export async function saveFile(
   userId: string,
@@ -52,6 +52,7 @@ export async function saveFile(
       },
     });
   } catch (err) {
+    console.log(err)
     throw new HttpError({
       status: 500,
       code: CommonErrorCode.INTERNAL_SERVER_ERROR,

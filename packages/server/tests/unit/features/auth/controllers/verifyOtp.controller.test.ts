@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import logger from '@server/lib/logger';
-import { prisma } from '@server/lib/prisma';
+import { prisma } from '@shared/prisma';
 import { User } from '@prisma/client';
 import { env } from '@shared/config/env';
 import { HttpError } from '@server/errors/HttpError';
@@ -16,7 +16,7 @@ import { verifyOtpController } from '@server/features/auth/controllers/verifyOtp
 import { tokenExpirations } from '@server/constants/token.constants';
 
 vi.mock('@server/lib/logger');
-vi.mock('@server/lib/prisma');
+vi.mock('@shared/prisma');
 
 describe('verifyOtpController', () => {
   const mockOtp = '123456';

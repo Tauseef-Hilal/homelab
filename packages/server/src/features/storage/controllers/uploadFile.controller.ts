@@ -4,6 +4,8 @@ import { uploadFileSchema } from '../schemas/storage.schema';
 import { HttpError } from '@server/errors/HttpError';
 import { CommonErrorCode } from '@server/errors/CommonErrorCode';
 import * as StorageService from '../services/storage.service';
+import { enqueueThumbnailJob } from '@server/queues/thumbnail.producer';
+import { getFileExtension, getOriginalFilePath } from '../utils/file.util';
 
 export const uploadFileController = catchAsync(
   async (req: Request, res: Response) => {
@@ -24,6 +26,18 @@ export const uploadFileController = catchAsync(
       visibility,
       folderId
     );
+
+    await enqueueThumbnailJob({
+      requestId: req.id,
+      userId: req.user.id,
+      fileId: result.id,
+      mimeType: result.mimeType,
+      filePath: getOriginalFilePath(
+        req.user.id,
+        result.id,
+        getFileExtension(result.name)
+      ),
+    });
 
     return res.status(201).json({
       success: true,

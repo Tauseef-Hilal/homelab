@@ -14,14 +14,34 @@ services:
       - db
       - redis
     env_file:
-      - ./packages/server/.env
+      - ./packages/shared/.env
     volumes:
       - .:/app
       - /app/node_modules
     command: sh -c "
-              pnpm --filter ./packages/server exec prisma migrate deploy &&
-              pnpm --filter ./packages/server exec prisma generate &&
+              pnpm --filter ./packages/shared exec prisma migrate deploy &&
+              pnpm --filter ./packages/shared exec prisma generate &&
               pnpm --filter ./packages/server dev
+            "
+  
+  thumbnail-worker:
+    container_name: homelab-worker-thumbnail
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./packages/thumbnail-worker/Dockerfile
+      target: dev
+    depends_on:
+      - redis
+    env_file:
+      - ./packages/shared/.env
+    volumes: 
+      - .:/app
+      - /app/node_modules
+    command: sh -c "
+              pnpm --filter ./packages/shared exec prisma migrate deploy &&
+              pnpm --filter ./packages/shared exec prisma generate &&
+              pnpm --filter ./packages/thumbnail-worker dev
             "
 
   db:

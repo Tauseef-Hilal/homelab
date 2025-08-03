@@ -1,0 +1,26 @@
+{
+  "name": "thumbnail-worker",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon",
+    "start": "node dist/consumer.js",
+    "test": "npx vitest",
+    "build": "npx tsc"
+  },
+  "keywords": [],
+  "author": "Tauseef Tantary",
+  "license": "MIT",
+  "packageManager": "pnpm@10.13.1+sha512.37ebf1a5c7a30d5fabe0c5df44ee8da4c965ca0c5af3dbab28c3a1681b70a256218d05c81c9c0dcf767ef6b8551eb5b960042b9ed4300c59242336377e01cfad",
+  "dependencies": {
+    "bullmq": "^5.56.9",
+    "fluent-ffmpeg": "^2.1.3",
+    "pdf-poppler": "^0.2.1",
+    "sharp": "^0.34.3"
+  },
+  "devDependencies": {
+    "@types/fluent-ffmpeg": "^2.1.27",
+    "nodemon": "^3.1.10"
+  }
+}

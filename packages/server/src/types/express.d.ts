@@ -9,6 +9,7 @@ declare global {
       clientMeta?: { ipAddr: string; userAgent: string };
       user?: UserPayload;
       logger: Logger;
+      id: string;
     }
   }
 }

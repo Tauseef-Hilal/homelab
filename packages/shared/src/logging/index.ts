@@ -1,15 +1,12 @@
 import fs from 'fs';
-import path from 'path';
 import pino from 'pino';
 import pretty from 'pino-pretty';
 import rfs from 'pino-rotating-file-stream';
-import { multistream } from 'pino';
-import { v4 as uuidv4 } from 'uuid';
 import { env } from '@shared/config/env';
 
-const logDir = path.join(__dirname, '../../logs');
+const logDir = env.LOG_ROOT;
 if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir);
+  fs.mkdirSync(logDir, { recursive: true });
 }
 
 const streams: pino.StreamEntry[] = [
@@ -37,11 +34,11 @@ const logger = pino(
       level: (label) => ({ level: label }),
     },
   },
-  multistream(streams)
+  pino.multistream(streams)
 );
 
-export function withRequestId(reqId?: string) {
-  return logger.child({ reqId: reqId ?? uuidv4() });
+export function withRequestId(reqId: string) {
+  return logger.child({ reqId });
 }
 
 export default logger;

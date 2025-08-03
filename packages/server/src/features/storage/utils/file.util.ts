@@ -5,7 +5,7 @@ import { pipeline } from 'stream/promises';
 import { env } from '@shared/config/env';
 import { CommonErrorCode } from '@server/errors/CommonErrorCode';
 import { HttpError } from '@server/errors/HttpError';
-import { prisma } from '@server/lib/prisma';
+import { prisma } from '@shared/prisma';
 import { createWriteStream } from 'fs';
 import { File } from '@prisma/client';
 
@@ -96,14 +96,6 @@ export function getOriginalFilePath(
   ext: string
 ) {
   return path.join(getOriginalsDirPath(userId), `${fileId}.${ext}`);
-}
-
-export function getThumbnailPath(userId: string, fileId: string) {
-  return path.join(getThumbnailsDirPath(userId), `${fileId}.jpg`);
-}
-
-export function getThumbnailsDirPath(userId: string) {
-  return path.join(env.STORAGE_ROOT, userId, 'thumbnails');
 }
 
 export function getOriginalsDirPath(userId: string) {
