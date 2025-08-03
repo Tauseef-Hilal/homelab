@@ -5,22 +5,24 @@ services:
     container_name: homelab-server
     restart: unless-stopped
     build:
-      context: ./server
-      dockerfile: ./Dockerfile
-      args:
-        - NODE_ENV=development
+      context: .
+      dockerfile: ./packages/server/Dockerfile
+      target: dev
     ports:
       - "3000:3000"
     depends_on:
       - db
       - redis
     env_file:
-      - ./server/.env
+      - ./packages/server/.env
     volumes:
-      - ./server:/app
-      - ./server/logs:/app/logs
+      - .:/app
       - /app/node_modules
-    command: sh -c "pnpm prisma migrate deploy && pnpm prisma generate && pnpm run dev"
+    command: sh -c "
+              pnpm --filter ./packages/server exec prisma migrate deploy &&
+              pnpm --filter ./packages/server exec prisma generate &&
+              pnpm --filter ./packages/server dev
+            "
 
   db:
     image: postgres:16
