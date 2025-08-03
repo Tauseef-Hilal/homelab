@@ -15,12 +15,8 @@ router.post('/signup', extractClientMeta, signupController);
 router.post('/login', extractClientMeta, loginController);
 router.post('/logout', extractClientMeta, logoutController);
 router.post('/refresh', extractClientMeta, refreshController);
-router.patch('/password', requireAuth, changePasswordController);
-router.post(
-  '/forgot-password',
-  extractClientMeta,
-  requestChangePasswordController
-);
+router.patch('/password', changePasswordController);
+router.post('/forgot-password', requestChangePasswordController);
 router.post('/verify-otp', extractClientMeta, verifyOtpController);
 
 export default router;

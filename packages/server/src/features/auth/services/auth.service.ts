@@ -27,6 +27,7 @@ import redis from '@shared/redis';
 import { RedisKeys } from '@shared/redis/redisKeys';
 import { authConfig } from '../auth.config';
 import { TfaPurpose } from '../constants/TfaPurpose';
+import * as OtpService from '../services/otp.service';
 
 export async function signup(
   username: string,
@@ -112,6 +113,7 @@ export async function login(email: string, password: string, meta: TokenMeta) {
 
   const token = generateTfaToken({
     userId: user.id,
+    email: user.email,
     purpose: TfaPurpose.LOGIN,
     createdAt: Date.now(),
   });
@@ -150,12 +152,10 @@ export async function logout(
 }
 
 export async function changePassword(
-  userId: string,
+  email: string,
   oldPassword: string,
   newPassword: string
 ) {
-  if (!userId) return throwUnauthorized();
-
   if (!oldPassword || !newPassword) {
     throw new HttpError({
       status: 400,
@@ -165,15 +165,27 @@ export async function changePassword(
   }
 
   const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { password: true },
+    where: { email },
+    select: { id: true, password: true },
   });
 
   if (!user) {
     throw new HttpError({
-      status: 401,
+      status: 404,
       code: AuthErrorCode.USER_DOES_NOT_EXIST,
       message: 'User does not exist',
+    });
+  }
+
+  const canProceed = await redis.get(
+    RedisKeys.auth.allowPasswordChange(user.id)
+  );
+
+  if (!canProceed) {
+    throw new HttpError({
+      status: 403,
+      code: AuthErrorCode.OTP_VERIFICATION_REQUIRED,
+      message: 'OTP verification required to change password',
     });
   }
 
@@ -181,22 +193,54 @@ export async function changePassword(
     return throwUnauthorized();
 
   await prisma.user.update({
-    where: { id: userId },
+    where: { id: user.id },
     data: { password: await hashPassword(newPassword) },
   });
 
-  await prisma.refreshToken.deleteMany({ where: { userId } });
+  await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
 }
 
-export async function allowPasswordChange(userId: string) {
-  if (!userId) return throwUnauthorized();
+export async function allowPasswordChange(email: string) {
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, email: true },
+  });
+
+  if (!user) {
+    throw new HttpError({
+      status: 404,
+      code: AuthErrorCode.USER_DOES_NOT_EXIST,
+      message: 'User does not exist',
+    });
+  }
+
+  const existing = await redis.get(RedisKeys.auth.allowPasswordChange(user.id));
+
+  if (existing && Number(existing) > Date.now()) {
+    return null;
+  }
+
+  await OtpService.sendOtp(user.id, user.email);
+
+  const expiresAt = String(
+    Date.now() + authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS * 1000
+  );
 
   await redis.set(
-    RedisKeys.auth.allowPasswordChange(userId),
-    Date.now() + authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS * 1000,
+    RedisKeys.auth.allowPasswordChange(user.id),
+    expiresAt,
     'EX',
     authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS
   );
+
+  const token = generateTfaToken({
+    userId: user.id,
+    email: user.email,
+    purpose: TfaPurpose.CHANGE_PASSWORD,
+    createdAt: Date.now(),
+  });
+
+  return token;
 }
 
 export async function refreshTokens(refreshToken: string, meta: TokenMeta) {

@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import logger from '@server/lib/logger';
 import { prisma } from '@shared/prisma';
 import { User } from '@prisma/client';
 import { env } from '@shared/config/env';
@@ -14,6 +13,7 @@ import * as JwtUtils from '@server/lib/jwt';
 import * as TokenUtils from '@server/features/auth/utils/token.util';
 import { verifyOtpController } from '@server/features/auth/controllers/verifyOtp.controller';
 import { tokenExpirations } from '@server/constants/token.constants';
+import { withRequestId } from '@shared/logging';
 
 vi.mock('@server/lib/logger');
 vi.mock('@shared/prisma');
@@ -24,6 +24,7 @@ describe('verifyOtpController', () => {
   const mockTokens = { access: 'access-token', refresh: 'refresh-token' };
   const mockTokenPayload = {
     userId: 'user-123',
+    email: 'user@example.com',
     purpose: TfaPurpose.CHANGE_PASSWORD,
   };
   const mockUser = { id: 'user-123', email: 'user@example.com', role: 'USER' };
@@ -34,11 +35,12 @@ describe('verifyOtpController', () => {
 
   beforeEach(() => {
     req = {
+      id: 'requestId',
+      logger: withRequestId('requestId'),
       body: {
         token: mockToken,
         otp: mockOtp,
       },
-      logger: logger,
       clientMeta: { ipAddress: '127.0.0.1', userAgent: 'Vitest' },
     };
 
@@ -52,7 +54,7 @@ describe('verifyOtpController', () => {
       errorHandler(err, req, res, next);
     });
 
-    vi.spyOn(AuthService, 'allowPasswordChange').mockResolvedValue();
+    vi.spyOn(AuthService, 'allowPasswordChange').mockResolvedValue(mockToken);
   });
 
   it('should verify OTP and allow password change', async () => {
@@ -68,7 +70,7 @@ describe('verifyOtpController', () => {
     );
     expect(next).not.toHaveBeenCalled();
     expect(AuthService.allowPasswordChange).toHaveBeenCalledWith(
-      mockTokenPayload.userId
+      mockTokenPayload.email
     );
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
@@ -96,7 +98,7 @@ describe('verifyOtpController', () => {
     expect(next).not.toHaveBeenCalled();
     expect(OtpService.verifyOtp).toHaveBeenCalledWith(payload.userId, mockOtp);
     expect(prisma.user.findUnique).toHaveBeenCalledWith({
-      where: { id: payload.userId },
+      where: { email: payload.email },
     });
     expect(JwtUtils.generateAccessToken).toHaveBeenCalled();
     expect(JwtUtils.generateRefreshToken).toHaveBeenCalled();

@@ -3,6 +3,7 @@ import { User } from '@prisma/client';
 import { loginController } from '@server/features/auth/controllers/login.controller';
 import * as AuthService from '@server/features/auth/services/auth.service';
 import * as OtpService from '@server/features/auth/services/otp.service';
+import { withRequestId } from '@shared/logging';
 
 describe('loginController', () => {
   const mockUser = { id: '123', email: 'test@example.com' };
@@ -14,6 +15,8 @@ describe('loginController', () => {
 
   beforeEach(() => {
     req = {
+      id: 'requestId',
+      logger: withRequestId('requestId'),
       body: {
         email: 'test@example.com',
         password: 'Test@12345678',

@@ -1,43 +1,17 @@
 import { Request, Response } from 'express';
 import { catchAsync } from '@server/lib/catchAsync';
-import * as OtpService from '../services/otp.service';
-import redis from '@shared/redis';
-import { RedisKeys } from '@shared/redis/redisKeys';
-import { generateTfaToken } from '../../../lib/jwt';
-import { TfaPurpose } from '../constants/TfaPurpose';
-import { authConfig } from '../auth.config';
+import { requestChangePasswordSchema } from '../schemas/auth.schema';
+import { allowPasswordChange } from '../services/auth.service';
 
 export const requestChangePasswordController = catchAsync(
   async (req: Request, res: Response) => {
-    const existing = await redis.get(
-      RedisKeys.auth.allowPasswordChange(req.user?.id ?? '')
-    );
+    const { email } = requestChangePasswordSchema.parse(req.body);
+    const token = await allowPasswordChange(email);
 
-    if (existing && Number(existing) > Date.now()) {
-      return res
-        .status(200)
-        .json({ success: true, message: 'OTP already sent' });
-    }
-
-    await OtpService.sendOtp(req.user.id, req.user.email);
-
-    const expiresAt = String(
-      Date.now() + authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS * 1000
-    );
-
-    await redis.set(
-      RedisKeys.auth.allowPasswordChange(req.user.id),
-      expiresAt,
-      'EX',
-      authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS
-    );
-
-    const token = generateTfaToken({
-      userId: req.user?.id ?? '',
-      purpose: TfaPurpose.CHANGE_PASSWORD,
-      createdAt: Date.now(),
+    return res.status(200).json({
+      success: true,
+      token,
+      message: token ? 'OTP sent!' : 'OTP already sent!',
     });
-
-    return res.status(200).json({ success: true, token });
   }
 );

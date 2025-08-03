@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '@server/middleware/error.middleware';
 import * as AuthService from '@server/features/auth/services/auth.service';
 import { changePasswordController } from '@server/features/auth/controllers/changePassword.controller';
+import { withRequestId } from '@shared/logging';
+import { AuthErrorCode } from '@server/features/auth/constants/AuthErrorCode';
+import { HttpError } from '@server/errors/HttpError';
 
 describe('changePasswordController', () => {
   let req: any;
@@ -11,10 +14,10 @@ describe('changePasswordController', () => {
 
   beforeEach(() => {
     req = {
-      user: {
-        id: 'user-123',
-      },
+      id: 'requestId',
+      logger: withRequestId('requestId'),
       body: {
+        email: 'user@example.com',
         oldPassword: 'old-password',
         newPassword: 'new-password',
       },
@@ -29,12 +32,17 @@ describe('changePasswordController', () => {
     next = vi.fn().mockImplementation((err) => {
       errorHandler(err, req, res, next);
     });
-
-    vi.spyOn(AuthService, 'changePassword').mockResolvedValue();
   });
 
   it('should throw if user has not verified OTP', async () => {
     vi.spyOn(redis, 'get').mockResolvedValue(null);
+    vi.spyOn(AuthService, 'changePassword').mockRejectedValue(
+      new HttpError({
+        status: 403,
+        code: AuthErrorCode.OTP_VERIFICATION_REQUIRED,
+        message: 'OTP verification required to change password',
+      })
+    );
 
     await changePasswordController(req, res, next);
     expect(next).toHaveBeenCalled();
@@ -43,11 +51,12 @@ describe('changePasswordController', () => {
 
   it('should successfully change password if user has verified OTP', async () => {
     vi.spyOn(redis, 'get').mockResolvedValue('true');
+    vi.spyOn(AuthService, 'changePassword').mockResolvedValue();
 
     await changePasswordController(req, res, next);
 
     expect(AuthService.changePassword).toHaveBeenCalledWith(
-      req.user.id,
+      req.body.email,
       req.body.oldPassword,
       req.body.newPassword
     );

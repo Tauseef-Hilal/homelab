@@ -12,6 +12,7 @@ export type JwtPayload = {
 
 export type TfaPayload = {
   userId: string;
+  email: string;
   purpose: TfaPurpose;
   createdAt: number;
 };

@@ -20,23 +20,23 @@ import { tokenExpirations } from '@server/constants/token.constants';
 export const verifyOtpController = catchAsync(
   async (req: Request, res: Response) => {
     const { token, otp } = verifyOtpSchema.parse(req.body);
-    const { userId, purpose } = verifyTfaToken(token);
+    const { email, userId, purpose } = verifyTfaToken(token);
 
     await OtpService.verifyOtp(userId, otp);
-    await handleOtpPurpose[purpose](res, userId, req.clientMeta ?? {});
+    await handleOtpPurpose[purpose](res, email, req.clientMeta ?? {});
   }
 );
 
 const handleOtpPurpose = {
   [TfaPurpose.LOGIN]: async (
     res: Response,
-    userId: string,
+    email: string,
     meta: TokenMeta
   ) => {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       throw new HttpError({
-        status: 401,
+        status: 404,
         code: AuthErrorCode.USER_DOES_NOT_EXIST,
         message: 'No user with the given email exists',
       });

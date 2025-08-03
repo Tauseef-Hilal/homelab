@@ -4,6 +4,7 @@ import { errorHandler } from '@server/middleware/error.middleware';
 import * as AuthService from '@server/features/auth/services/auth.service';
 import { refreshController } from '@server/features/auth/controllers/refresh.controller';
 import { tokenExpirations } from '@server/constants/token.constants';
+import { withRequestId } from '@shared/logging';
 
 describe('refreshController', () => {
   const mockTokens = { access: 'access-token', refresh: 'refresh-token' };
@@ -15,6 +16,8 @@ describe('refreshController', () => {
 
   beforeEach(() => {
     req = {
+      id: 'requestId',
+      logger: withRequestId('requestId'),
       user: {
         id: 'user-123',
         email: 'user@example.com',

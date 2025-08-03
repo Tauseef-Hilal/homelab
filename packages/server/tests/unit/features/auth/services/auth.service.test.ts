@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as authService from '@server/features/auth/services/auth.service';
+import * as otpService from '@server/features/auth/services/otp.service';
 import * as bcrypt from '@server/lib/bcrypt';
 import * as jwtUtils from '@server/lib/jwt';
 import * as tokenUtils from '@server/features/auth/utils/token.util';
@@ -244,18 +245,18 @@ describe('changePassword()', () => {
     const errorObj = { status: 400, code: CommonErrorCode.MISSING_FIELDS };
 
     await expect(
-      authService.changePassword('user-id', '', 'new')
+      authService.changePassword('email', '', 'new')
     ).rejects.toMatchObject(errorObj);
 
     await expect(
-      authService.changePassword('user-id', 'old', '')
+      authService.changePassword('email', 'old', '')
     ).rejects.toMatchObject(errorObj);
 
     await expect(
       authService.changePassword('', 'old', 'new')
     ).rejects.toMatchObject({
-      status: 401,
-      code: CommonErrorCode.UNAUTHORIZED,
+      status: 404,
+      code: AuthErrorCode.USER_DOES_NOT_EXIST,
     });
   });
 
@@ -263,9 +264,9 @@ describe('changePassword()', () => {
     vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
 
     await expect(
-      authService.changePassword('user', 'old', 'pass')
+      authService.changePassword('email', 'old', 'pass')
     ).rejects.toMatchObject({
-      status: 401,
+      status: 404,
       code: AuthErrorCode.USER_DOES_NOT_EXIST,
     });
   });
@@ -275,14 +276,14 @@ describe('changePassword()', () => {
     vi.spyOn(bcrypt, 'isValidPassword').mockResolvedValue(false);
 
     await expect(
-      authService.changePassword('user', 'old', 'new')
+      authService.changePassword('email', 'old', 'new')
     ).rejects.toMatchObject({
       status: 401,
       code: CommonErrorCode.UNAUTHORIZED,
     });
   });
 
-  it('should change update password and delete matching tokens', async () => {
+  it('should update password and delete matching tokens', async () => {
     const mockHashedPassword = 'hashedPswd';
     vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser);
     vi.spyOn(bcrypt, 'isValidPassword').mockResolvedValue(true);
@@ -291,7 +292,7 @@ describe('changePassword()', () => {
     const updateSpy = vi.spyOn(prisma.user, 'update');
     const deleteManySpy = vi.spyOn(prisma.refreshToken, 'deleteMany');
 
-    await authService.changePassword(mockUser.id, 'old', 'pass');
+    await authService.changePassword(mockUser.email, 'old', 'pass');
 
     expect(updateSpy).toHaveBeenCalledWith({
       where: { id: mockUser.id },
@@ -304,20 +305,28 @@ describe('changePassword()', () => {
 });
 
 describe('allowPasswordChange()', () => {
-  it('should throw if userId is missing', async () => {
-    await expect(authService.allowPasswordChange('')).rejects.toMatchObject({
-      status: 401,
-      code: CommonErrorCode.UNAUTHORIZED,
+  it('should throw if user does not exist', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
+
+    await expect(
+      authService.allowPasswordChange('email')
+    ).rejects.toMatchObject({
+      status: 404,
+      code: AuthErrorCode.USER_DOES_NOT_EXIST,
     });
   });
 
   it('should set password change identifier for user in redis', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser);
+    vi.spyOn(redis, 'get').mockResolvedValue(null);
+    vi.spyOn(otpService, 'sendOtp').mockResolvedValue();
+
     const redisSpy = vi.spyOn(redis, 'set');
-    await authService.allowPasswordChange(mockUser.id);
+    await authService.allowPasswordChange(mockUser.email);
 
     expect(redisSpy).toHaveBeenCalledWith(
       RedisKeys.auth.allowPasswordChange(mockUser.id),
-      expect.any(Number),
+      expect.any(String),
       'EX',
       authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS
     );

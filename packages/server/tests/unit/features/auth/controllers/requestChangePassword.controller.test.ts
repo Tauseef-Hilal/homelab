@@ -8,9 +8,13 @@ import * as AuthService from '@server/features/auth/services/auth.service';
 import * as OtpService from '@server/features/auth/services/otp.service';
 import * as jwtUtils from '@server/lib/jwt';
 import { requestChangePasswordController } from '@server/features/auth/controllers/requestChangePassword.controller';
+import { withRequestId } from '@shared/logging';
+import { prisma } from '@shared/prisma';
+import { User } from '@prisma/client';
 
 describe('requestChangePasswordController', () => {
   const mockToken = 'tfa-token';
+  const mockUser = { id: 'user123', email: 'user@example.com' };
 
   let req: any;
   let res: any;
@@ -18,9 +22,10 @@ describe('requestChangePasswordController', () => {
 
   beforeEach(() => {
     req = {
-      user: {
-        id: 'user-123',
-        email: 'user@example.com',
+      id: 'requestId',
+      logger: withRequestId('requestId'),
+      body: {
+        email: mockUser.email,
       },
     };
 
@@ -33,10 +38,10 @@ describe('requestChangePasswordController', () => {
       errorHandler(err, req, res, next);
     });
 
-    vi.spyOn(AuthService, 'allowPasswordChange').mockResolvedValue();
     vi.spyOn(OtpService, 'sendOtp').mockResolvedValue();
     vi.spyOn(redis, 'set').mockResolvedValue('OK');
     vi.spyOn(jwtUtils, 'generateTfaToken').mockReturnValue(mockToken);
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser as User);
   });
 
   const cases = [
@@ -53,17 +58,18 @@ describe('requestChangePasswordController', () => {
     await requestChangePasswordController(req, res, next);
 
     expect(OtpService.sendOtp).toHaveBeenCalledWith(
-      req.user.id,
-      req.user.email
+      mockUser.id,
+      req.body.email
     );
     expect(redis.set).toHaveBeenCalledWith(
-      RedisKeys.auth.allowPasswordChange(req.user.id),
+      RedisKeys.auth.allowPasswordChange(mockUser.id),
       expect.any(String),
       'EX',
       authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS
     );
     expect(jwtUtils.generateTfaToken).toHaveBeenCalledWith({
-      userId: req.user.id,
+      userId: mockUser.id,
+      email: req.body.email,
       purpose: TfaPurpose.CHANGE_PASSWORD,
       createdAt: expect.any(Number),
     });
@@ -71,18 +77,21 @@ describe('requestChangePasswordController', () => {
     expect(res.json).toHaveBeenCalledWith({
       success: true,
       token: mockToken,
+      message: 'OTP sent!',
     });
   });
 
   it('should not resend OTP if previous OTP has not expired', async () => {
     vi.spyOn(redis, 'get').mockResolvedValue(String(Date.now() + 10000));
+    vi.spyOn(AuthService, 'allowPasswordChange').mockResolvedValue(null);
 
     await requestChangePasswordController(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
       success: true,
-      message: 'OTP already sent',
+      token: null,
+      message: 'OTP already sent!',
     });
   });
 });

@@ -4,6 +4,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { User } from '@prisma/client';
 import { signupController } from '@server/features/auth/controllers/signup.controller';
 import { tokenExpirations } from '@server/constants/token.constants';
+import { withRequestId } from '@shared/logging';
 
 describe('signupController', () => {
   const mockUser = { id: '123', email: 'test@example.com' };
@@ -18,6 +19,8 @@ describe('signupController', () => {
 
   beforeEach(() => {
     req = {
+      id: 'requestId',
+      logger: withRequestId('requestId'),
       body: {
         username: 'testuser',
         email: 'test@example.com',
