@@ -7,6 +7,7 @@ import { renameFileController } from './controllers/renameFile.controller';
 import { moveFileController } from './controllers/moveFile.controller';
 import { copyFileController } from './controllers/copyFIle.controller';
 import { downloadFileController } from './controllers/downloadFile.controller';
+import { previewFileController } from './controllers/previewFile.controller';
 
 const router = Router();
 
@@ -17,5 +18,6 @@ router.patch('/file/:fileId/rename', renameFileController);
 router.patch('/file/:fileId/move', moveFileController);
 router.post('/file/:fileId/copy', copyFileController);
 router.get('/file/:fileId/download', requireAuth, downloadFileController);
+router.get('/file/:fileId/preview', requireAuth, previewFileController);
 
 export default router;

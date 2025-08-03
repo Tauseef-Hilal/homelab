@@ -52,7 +52,7 @@ export async function saveFile(
       },
     });
   } catch (err) {
-    console.log(err)
+    console.log(err);
     throw new HttpError({
       status: 500,
       code: CommonErrorCode.INTERNAL_SERVER_ERROR,
@@ -281,7 +281,7 @@ export async function copyFile(
   }
 }
 
-export async function getFileDownloadMeta(userId: string, fileId: string) {
+export async function getFileMeta(userId: string, fileId: string) {
   const file = await prisma.file.findUnique({
     where: { id: fileId },
     select: {
@@ -290,6 +290,7 @@ export async function getFileDownloadMeta(userId: string, fileId: string) {
       userId: true,
       mimeType: true,
       visibility: true,
+      size: true,
     },
   });
 
@@ -323,7 +324,12 @@ export async function getFileDownloadMeta(userId: string, fileId: string) {
     });
   }
 
-  return { fileName: file.name, filePath, mimeType: file.mimeType };
+  return {
+    filePath,
+    fileName: file.name,
+    mimeType: file.mimeType,
+    fileSize: file.size,
+  };
 }
 
 export async function ensureQuotaAvailable(userId: string, fileSize: number) {
