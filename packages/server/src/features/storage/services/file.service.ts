@@ -14,10 +14,8 @@ import {
   resolveFileName,
   getFileExtension,
   getFileNameWithoutExtension,
-  copyFileOnDisk,
-  getOriginalFilePath,
 } from '../utils/file.util';
-import { getThumbnailPath } from '@shared/utils/storage.utils';
+import { copyFileOnDisk, getOriginalFilePath, getThumbnailPath } from '@shared/utils/storage.utils';
 
 export async function saveFile(
   userId: string,

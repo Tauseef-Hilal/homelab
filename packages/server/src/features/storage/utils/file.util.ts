@@ -79,22 +79,3 @@ export async function resolveFileName(
 
   return { newFileName, newFilePath };
 }
-
-export async function copyFileOnDisk(src: string, dest: string) {
-  await pipeline(
-    Readable.from((await fs.open(src)).createReadStream()),
-    createWriteStream(dest)
-  );
-}
-
-export function getOriginalFilePath(
-  userId: string,
-  fileId: string,
-  ext: string
-) {
-  return path.join(getOriginalsDirPath(userId), `${fileId}.${ext}`);
-}
-
-export function getOriginalsDirPath(userId: string) {
-  return path.join(env.STORAGE_ROOT, userId, 'originals');
-}

@@ -24,12 +24,12 @@ services:
               pnpm --filter ./packages/server dev
             "
   
-  thumbnail-worker:
-    container_name: homelab-worker-thumbnail
+  workers:
+    container_name: homelab-workers
     restart: unless-stopped
     build:
       context: .
-      dockerfile: ./packages/thumbnail-worker/Dockerfile
+      dockerfile: ./packages/workers/Dockerfile
       target: dev
     depends_on:
       - redis
@@ -41,7 +41,7 @@ services:
     command: sh -c "
               pnpm --filter ./packages/shared exec prisma migrate deploy &&
               pnpm --filter ./packages/shared exec prisma generate &&
-              pnpm --filter ./packages/thumbnail-worker dev
+              pnpm --filter ./packages/workers dev
             "
 
   db:

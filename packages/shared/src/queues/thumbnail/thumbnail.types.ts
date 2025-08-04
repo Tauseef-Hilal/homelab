@@ -4,6 +4,7 @@ export type ThumbnailJobPayload = {
   fileId: string;
   filePath: string;
   mimeType: string;
+  prismaJobId: string;
 };
 
 export type ThumbnailJobResult = {

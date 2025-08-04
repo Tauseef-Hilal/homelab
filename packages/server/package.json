@@ -25,7 +25,8 @@
     "multer": "^2.0.2",
     "nodemailer": "^7.0.5",
     "vitest": "^3.2.4",
-    "zod": "^4.0.5"
+    "zod": "^4.0.5",
+    "@prisma/client": "^6.13.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",

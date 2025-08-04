@@ -5,7 +5,8 @@ import { CommonErrorCode } from '@server/errors/CommonErrorCode';
 import { enqueueThumbnailJob } from '@server/queues/thumbnail.producer';
 import { uploadFileSchema } from '../../schemas/file.schema';
 import { ensureQuotaAvailable, saveFile } from '../../services/file.service';
-import { getFileExtension, getOriginalFilePath } from '../../utils/file.util';
+import { getFileExtension } from '../../utils/file.util';
+import { getOriginalFilePath } from '@shared/utils/storage.utils';
 
 export const uploadFileController = catchAsync(
   async (req: Request, res: Response) => {
@@ -22,7 +23,8 @@ export const uploadFileController = catchAsync(
     await ensureQuotaAvailable(req.user.id, req.file.size);
     const result = await saveFile(req.user.id, req.file, visibility, folderId);
 
-    await enqueueThumbnailJob({
+    const job = await enqueueThumbnailJob(req.id, {
+      prismaJobId: '',
       requestId: req.id,
       userId: req.user.id,
       fileId: result.id,
@@ -43,6 +45,7 @@ export const uploadFileController = catchAsync(
         fullPath: result.fullPath,
         size: result.size,
       },
+      job,
     });
   }
 );

@@ -1,11 +1,11 @@
 {
-  "name": "thumbnail-worker",
+  "name": "workers",
   "version": "0.1.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "dev": "nodemon",
-    "start": "node dist/consumer.js",
+    "start": "node dist/index.js",
     "test": "npx vitest",
     "build": "npx tsc"
   },
@@ -17,7 +17,8 @@
     "bullmq": "^5.56.9",
     "fluent-ffmpeg": "^2.1.3",
     "pdf-poppler": "^0.2.1",
-    "sharp": "^0.34.3"
+    "sharp": "^0.34.3",
+    "@prisma/client": "^6.13.0"
   },
   "devDependencies": {
     "@types/fluent-ffmpeg": "^2.1.27",

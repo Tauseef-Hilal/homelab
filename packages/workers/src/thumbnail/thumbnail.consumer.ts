@@ -1,6 +1,6 @@
 import { Worker } from 'bullmq';
 import { queueNames } from '@shared/queues/queue.constants';
-import { generateThumbnail } from './processor';
+import { generateThumbnail } from './thumbnail.processor';
 import {
   ThumbnailJobPayload,
   ThumbnailJobResult,
@@ -8,15 +8,17 @@ import {
 import redis from '@shared/redis';
 import { withRequestId } from '@shared/logging';
 import { prisma } from '@shared/prisma';
+import { updateJob } from '../utils/db';
 
-const worker = new Worker<ThumbnailJobPayload, ThumbnailJobResult>(
-  queueNames.thumbnail,
-  generateThumbnail,
-  { connection: redis }
-);
+export const thumbnailWorker = new Worker<
+  ThumbnailJobPayload,
+  ThumbnailJobResult
+>(queueNames.thumbnail, generateThumbnail, { connection: redis });
 
-worker.on('active', (job, prev) => {
+thumbnailWorker.on('active', async (job, prev) => {
   const logger = withRequestId(job.data.requestId);
+  await updateJob(job.data.prismaJobId, { status: 'processing', progress: 0 });
+
   logger.info(
     {
       userId: job.data.userId,
@@ -27,13 +29,19 @@ worker.on('active', (job, prev) => {
   );
 });
 
-worker.on('completed', async (job) => {
+thumbnailWorker.on('completed', async (job) => {
+  const logger = withRequestId(job.data.requestId);
+
+  await updateJob(job.data.prismaJobId, {
+    status: 'completed',
+    progress: 100,
+    attempts: job.attemptsMade,
+  });
   await prisma.file.update({
     where: { id: job.data.fileId },
     data: { hasThumbnail: true },
   });
 
-  const logger = withRequestId(job.data.requestId);
   logger.info(
     {
       userId: job.data.userId,
@@ -44,8 +52,13 @@ worker.on('completed', async (job) => {
   );
 });
 
-worker.on('failed', (job, err) => {
+thumbnailWorker.on('failed', async (job, err) => {
   const logger = withRequestId(job?.data.requestId ?? '');
+  await updateJob(job?.data.prismaJobId ?? '', {
+    status: 'failed',
+    attempts: job?.attemptsMade ?? 0,
+  });
+
   logger.error(
     {
       userId: job?.data.userId,
