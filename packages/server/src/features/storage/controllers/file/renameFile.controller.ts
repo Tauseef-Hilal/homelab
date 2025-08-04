@@ -1,7 +1,7 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { renameFile } from '../services/storage.service';
-import { fileIdParamSchema, renameFileSchema } from '../schemas/storage.schema';
+import { fileIdParamSchema, renameFileSchema } from '../../schemas/file.schema';
+import { renameFile } from '../../services/file.service';
 
 export const renameFileController = catchAsync(
   async (req: Request, res: Response) => {

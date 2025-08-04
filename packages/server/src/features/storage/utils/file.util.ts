@@ -81,12 +81,9 @@ export async function resolveFileName(
 }
 
 export async function copyFileOnDisk(src: string, dest: string) {
-  const srcFilePath = path.join(env.STORAGE_ROOT, src);
-  const destFilePath = path.join(env.STORAGE_ROOT, dest);
-
   await pipeline(
-    Readable.from((await fs.open(srcFilePath)).createReadStream()),
-    createWriteStream(destFilePath)
+    Readable.from((await fs.open(src)).createReadStream()),
+    createWriteStream(dest)
   );
 }
 

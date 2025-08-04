@@ -1,11 +1,11 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { uploadFileSchema } from '../schemas/storage.schema';
 import { HttpError } from '@server/errors/HttpError';
 import { CommonErrorCode } from '@server/errors/CommonErrorCode';
-import * as StorageService from '../services/storage.service';
 import { enqueueThumbnailJob } from '@server/queues/thumbnail.producer';
-import { getFileExtension, getOriginalFilePath } from '../utils/file.util';
+import { uploadFileSchema } from '../../schemas/file.schema';
+import { ensureQuotaAvailable, saveFile } from '../../services/file.service';
+import { getFileExtension, getOriginalFilePath } from '../../utils/file.util';
 
 export const uploadFileController = catchAsync(
   async (req: Request, res: Response) => {
@@ -19,13 +19,8 @@ export const uploadFileController = catchAsync(
       });
     }
 
-    await StorageService.ensureQuotaAvailable(req.user.id, req.file.size);
-    const result = await StorageService.saveFile(
-      req.user.id,
-      req.file,
-      visibility,
-      folderId
-    );
+    await ensureQuotaAvailable(req.user.id, req.file.size);
+    const result = await saveFile(req.user.id, req.file, visibility, folderId);
 
     await enqueueThumbnailJob({
       requestId: req.id,
