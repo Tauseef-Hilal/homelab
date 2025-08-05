@@ -7,6 +7,7 @@ const envSchema = z.object({
   PORT: z.string().default('3000'),
   NODE_ENV: z.enum(['test', 'development', 'production']),
   CLIENT_URL: z.url(),
+  API_BASE_URL: z.url(),
   ACCESS_TOKEN_SECRET: z.string().min(1, 'ACCESS_TOKEN_SECRET is required'),
   REFRESH_TOKEN_SECRET: z.string().min(1, 'REFRESH_TOKEN_SECRET is required'),
   TFA_TOKEN_SECRET: z.string().min(1, 'TFA_TOKEN_SECRET is required'),
@@ -18,8 +19,9 @@ const envSchema = z.object({
   REDIS_HOST: z.string(),
   REDIS_PORT: z.coerce.number(),
   REDIS_PASSWORD: z.string(),
-  STORAGE_ROOT: z.string().min(1),
-  LOG_ROOT: z.string().min(1),
+  MEDIA_DIR_PATH: z.string().min(1),
+  LOG_DIR_PATH: z.string().min(1),
+  TEMP_DIR_PATH: z.string().min(1),
 });
 
 const parsed = envSchema.safeParse(process.env);

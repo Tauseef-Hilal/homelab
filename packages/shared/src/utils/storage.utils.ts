@@ -4,6 +4,7 @@ import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { createWriteStream } from 'fs';
 import { env } from '@shared/config/env';
+import { mediaConstants } from '@shared/constants/media.constants';
 
 export function getFileExtension(filename: string): string {
   const ext = path.extname(filename || '').toLowerCase();
@@ -22,7 +23,11 @@ export function getThumbnailPath(userId: string, fileId: string) {
 }
 
 export function getThumbnailsDirPath(userId: string) {
-  return path.join(env.STORAGE_ROOT, userId, 'thumbnails');
+  return path.join(
+    env.MEDIA_DIR_PATH,
+    userId,
+    mediaConstants.thumbnailsDirName
+  );
 }
 
 export function getOriginalFilePath(
@@ -34,5 +39,9 @@ export function getOriginalFilePath(
 }
 
 export function getOriginalsDirPath(userId: string) {
-  return path.join(env.STORAGE_ROOT, userId, 'originals');
+  return path.join(env.MEDIA_DIR_PATH, userId, mediaConstants.originalsDirName);
+}
+
+export function getTempFilePath(fileName: string) {
+  return path.join(env.TEMP_DIR_PATH, fileName);
 }

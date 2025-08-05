@@ -14,6 +14,8 @@ import {
   copyFolderController,
   createFolderController,
   deleteFolderController,
+  downloadController,
+  downloadFolderController,
   moveFolderController,
 } from './controllers/folder';
 
@@ -32,5 +34,7 @@ router.post('/folder', createFolderController);
 router.delete('/folder/:folderId', deleteFolderController);
 router.patch('/folder/:folderId/move', moveFolderController);
 router.post('/folder/:folderId/copy', copyFolderController);
+router.get('/folder/:folderId/download', downloadFolderController)
+router.get('/download/:id', downloadController)
 
 export default router;

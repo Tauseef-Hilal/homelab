@@ -20,10 +20,10 @@ export const moveFolderSchema = z
   );
 
 export const copyFolderSchema = z.object({
-  targetFolderId: z.nullable(z.uuidv4())
+  targetFolderId: z.nullable(z.uuidv4()),
 });
 
-export const folderIdParamSchema = z.uuidv4();
+export const idParamSchema = z.uuidv4();
 
 export type CreateFolderInput = z.infer<typeof createFolderSchema>;
 export type MoveFolderInput = z.infer<typeof moveFolderSchema>;

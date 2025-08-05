@@ -1,14 +1,11 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import {
-  folderIdParamSchema,
-  moveFolderSchema,
-} from '../../schemas/folder.schema';
+import { idParamSchema, moveFolderSchema } from '../../schemas/folder.schema';
 import { moveFolder } from '../../services/folder.service';
 
 export const moveFolderController = catchAsync(
   async (req: Request, res: Response) => {
-    const folderId = folderIdParamSchema.parse(req.params.folderId);
+    const folderId = idParamSchema.parse(req.params.folderId);
     const { targetFolderId, newFolderName } = moveFolderSchema.parse(req.body);
 
     await moveFolder(

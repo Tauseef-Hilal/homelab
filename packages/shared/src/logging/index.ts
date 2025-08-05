@@ -4,7 +4,7 @@ import pretty from 'pino-pretty';
 import rfs from 'pino-rotating-file-stream';
 import { env } from '@shared/config/env';
 
-const logDir = env.LOG_ROOT;
+const logDir = env.LOG_DIR_PATH;
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }

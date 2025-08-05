@@ -1,19 +1,21 @@
-import fs from 'fs/promises';
+import fs from 'fs';
 import { prisma } from '@shared/prisma';
-import { Folder } from '@prisma/client';
+import { File, Folder } from '@prisma/client';
 import {
   ensureFolderExists,
-  ensureUserHasPermission,
+  ensureUserIsOwner,
   resolveFolderName,
 } from '../utils/folder.util';
 import { getFileExtension } from '../utils/file.util';
 import {
   getOriginalFilePath,
+  getTempFilePath,
   getThumbnailPath,
 } from '@shared/utils/storage.utils';
 import { HttpError } from '@server/errors/HttpError';
 import { CommonErrorCode } from '@server/errors/CommonErrorCode';
 import { randomUUID } from 'crypto';
+import { throwUnauthorized } from '@server/features/auth/utils/error.util';
 
 export async function createFolder(
   userId: string,
@@ -25,7 +27,7 @@ export async function createFolder(
   if (parentId) {
     parent = await prisma.folder.findUnique({ where: { id: parentId } });
     ensureFolderExists(parent);
-    ensureUserHasPermission(parent!, userId);
+    ensureUserIsOwner(parent!, userId);
   }
 
   const folderId = randomUUID();
@@ -53,7 +55,7 @@ export async function deleteFolder(userId: string, folderId: string) {
   const folder = await prisma.folder.findUnique({ where: { id: folderId } });
 
   ensureFolderExists(folder);
-  ensureUserHasPermission(folder!, userId);
+  ensureUserIsOwner(folder!, userId);
 
   // Get all descendant folder IDs
   const folderIds = await prisma.folder.findMany({
@@ -71,11 +73,11 @@ export async function deleteFolder(userId: string, folderId: string) {
   // Delte files on disk along with thumbnails
   await Promise.all(
     files.flatMap((file) => [
-      fs.unlink(
+      fs.promises.unlink(
         getOriginalFilePath(userId, file.id, getFileExtension(file.name))
       ),
       ...(file.hasThumbnail
-        ? [fs.unlink(getThumbnailPath(userId, file.id))]
+        ? [fs.promises.unlink(getThumbnailPath(userId, file.id))]
         : []),
     ])
   );
@@ -100,7 +102,7 @@ export async function moveFolder(
   });
 
   ensureFolderExists(folder as Folder);
-  ensureUserHasPermission(folder as Folder, userId);
+  ensureUserIsOwner(folder as Folder, userId);
 
   const targetFolder = await prisma.folder.findUnique({
     where: { id: targetFolderId ?? '' },
@@ -174,7 +176,7 @@ export async function copyFolder(
     select: { id: true, name: true, userId: true, fullPath: true },
   });
   ensureFolderExists(folder as Folder);
-  ensureUserHasPermission(folder as Folder, userId);
+  ensureUserIsOwner(folder as Folder, userId);
 
   const targetFolder = await prisma.folder.findUnique({
     where: { id: targetFolderId ?? '' },
@@ -182,7 +184,7 @@ export async function copyFolder(
 
   if (targetFolderId) {
     ensureFolderExists(targetFolder);
-    ensureUserHasPermission(targetFolder!, userId);
+    ensureUserIsOwner(targetFolder!, userId);
 
     if (targetFolder!.fullPath.startsWith(folder!.fullPath + '/')) {
       throw new HttpError({
@@ -218,4 +220,50 @@ export async function copyFolder(
     srcPath: folder!.fullPath,
     destPath: newFolder.fullPath,
   };
+}
+
+export async function prepareDownload(userId: string, folderId: string) {
+  const folderOrNull = await prisma.folder.findUnique({
+    where: { id: folderId },
+    include: { files: true, children: true },
+  });
+
+  ensureFolderExists(folderOrNull);
+  const folder = folderOrNull!;
+  ensureUserIsOwner(folder, userId);
+
+  return { folderId, folderPath: folder.fullPath };
+}
+
+export async function validateLinkAndGetDownloadMeta(
+  userId: string,
+  linkId: string
+) {
+  const link = await prisma.downloadLink.findUnique({ where: { id: linkId } });
+
+  if (!link || (link && !fs.existsSync(getTempFilePath(link.fileName)))) {
+    throw new HttpError({
+      status: 404,
+      code: CommonErrorCode.NOT_FOUND,
+      message: 'The resource does not exist',
+    });
+  }
+
+  if (link.userId != userId) {
+    throw new HttpError({
+      status: 403,
+      code: CommonErrorCode.FORBIDDEN,
+      message: 'You do not have the permission to download this resource',
+    });
+  }
+
+  if (Date.now() > link.expiresAt.getTime()) {
+    throw new HttpError({
+      status: 410,
+      code: CommonErrorCode.GONE,
+      message: 'Download link has expired',
+    });
+  }
+
+  return { filePath: getTempFilePath(link.fileName), fileName: link.fileName };
 }

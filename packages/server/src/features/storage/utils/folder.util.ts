@@ -16,7 +16,7 @@ export function ensureFolderExists(
   }
 }
 
-export function ensureUserHasPermission(
+export function ensureUserIsOwner(
   folder: Folder,
   userId: string,
   errMsg: string = 'You do not have the permission to perform this action'

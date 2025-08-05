@@ -1,16 +1,13 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import {
-  copyFolderSchema,
-  folderIdParamSchema,
-} from '../../schemas/folder.schema';
+import { copyFolderSchema, idParamSchema } from '../../schemas/folder.schema';
 import { copyFolder } from '../../services/folder.service';
 import { CopyJobPayload } from '@shared/queues/copy/copy.types';
 import { enqueueCopyJob } from '@server/queues/copy.producer';
 
 export const copyFolderController = catchAsync(
   async (req: Request, res: Response) => {
-    const folderId = folderIdParamSchema.parse(req.params.folderId);
+    const folderId = idParamSchema.parse(req.params.folderId);
     const { targetFolderId } = copyFolderSchema.parse(req.body);
 
     const jobPayload = (await copyFolder(

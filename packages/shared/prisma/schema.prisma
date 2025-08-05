@@ -28,6 +28,7 @@ model User {
   folders       Folder[]
   createdAt     DateTime       @default(now())
   refreshTokens RefreshToken[]
+  DownloadLink  DownloadLink[]
 }
 
 model RefreshToken {
@@ -98,6 +99,7 @@ model Job {
   status    JobStatus @default(enqueued)
   progress  Int       @default(0)
   payload   Json
+  result    Json?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -107,4 +109,14 @@ enum JobStatus {
   processing
   completed
   failed
+}
+
+model DownloadLink {
+  id        String   @id @default(uuid())
+  fileName  String
+  requestId String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  userId    String
+  User      User     @relation(fields: [userId], references: [id])
 }
