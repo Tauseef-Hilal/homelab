@@ -1,7 +1,7 @@
 ## 🏗️ Project Architecture
 
-This project uses a **Modular Layered Architecture**, combining the benefits of **layered design (SoC)** and **feature-based modularity**.
-
+This project uses a **Monorepo + Modular Layered Architecture**, combining the benefits of **layered design (SoC)** and **feature-based modularity**.
+- Project is divided into packages. Each package runs in a separate docker container.
 - Code is organized by **features** (`auth/`, `chat/`, etc.), not by technical layers (e.g., `routes/`, `services/`).
 - Each feature has its own route/controller/service/middleware.
 - Supports **clean separation of concerns** and **scalability**.
@@ -10,26 +10,68 @@ This project uses a **Modular Layered Architecture**, combining the benefits of 
 
 ## Internals
 
-**Folder Structure Breakdown:**
+### Folder Structure Breakdown:
+
+**Overall Structure**
+
+```
+homelab
+├── packages     # Except shared, each package is run in a separate container
+│   ├── server
+│   │   ├── src
+│   │   ├── tests
+│   │   ├── Dockerfile
+│   │   ├── nodemon.json
+│   │   ├── package.json
+│   │   ├── pnpm-lock.yaml
+│   │   ├── tsconfig.json
+│   │   └── vitest.config.ts
+│   ├── shared
+│   │   ├── prisma
+│   │   ├── src
+│   │   ├── package.json
+│   │   ├── pnpm-lock.yaml
+│   │   └── tsconfig.json
+│   └── workers
+│       ├── src
+│       ├── Dockerfile
+│       ├── nodemon.json
+│       ├── package.json
+│       └── tsconfig.json
+├── a.md
+├── Arch.md
+├── docker-compose.yml
+├── LICENSE
+├── package.json
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+├── README.md
+└── tsconfig.json
+```
+
+**Server Code Structure**
 
 ```
 src/
-├── features/         # Modular business logic (e.g., auth, chat)
-│   └── auth/                   # Auth feature (self-contained slice)
-│       ├── auth.routes.ts      # Route definitions for auth
-│       ├── auth.config.ts      # Auth-specific config (e.g., OTP expiry, secrets)
-│       ├── controllers/        # Request/response handlers
-│       ├── services/           # Core business logic (e.g., token, user services)
-│       ├── constants/          # Static values (e.g., token types, role enums)
-│       ├── schemas/            # Zod validation schemas for input
-│       ├── types/              # Feature-specific TypeScript types
-│       ├── utils/              # Helper functions (e.g., otp generator, jwt signer)
-│       └── middlewares/        # Auth-specific middleware (e.g., role guard)
-├── lib/              # Shared utilities (prisma, jwt, bcrypt)
-├── middleware/       # Global middleware (errorHandler, rateLimiter)
-├── config/           # Env and app-wide config
-├── app.ts            # Express app bootstrapper
-└── server.ts         # Entry point that starts HTTP server
+├── constants/          # Static values used globally in the server
+├── errors/             # Error classes and codes
+├── features/           # Modular business logic
+│   ├── auth/                  # Auth feature
+│   │   ├── constants/         # Feature-specific static values
+│   │   ├── controllers/       # Request/response handlers
+│   │   ├── middlewares/       # Auth-specific middleware
+│   │   ├── schemas/           # Zod validation schemas
+│   │   ├── services/          # Core business logic
+│   │   ├── types/             # Feature-specific types
+│   │   ├── utils/             # Helper functions
+│   │   ├── auth.config.ts     # Auth-specific config
+│   │   └── auth.routes.ts     # Route definitions for auth
+├── lib/                # Shared utilities (prisma, bcrypt etc.)
+├── middleware/         # Global middleware (errorHandler, logger etc.)
+├── queues/             # Job producers
+├── types/              # Global types
+├── app.ts/             # Express app bootstrapper
+└── server.ts/          # Entry point that starts HTTP server
 ```
 
 **Layered Flow:**
