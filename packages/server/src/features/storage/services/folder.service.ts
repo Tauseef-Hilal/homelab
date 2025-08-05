@@ -1,12 +1,12 @@
 import fs from 'fs';
 import { prisma } from '@shared/prisma';
-import { File, Folder } from '@prisma/client';
+import { Folder } from '@prisma/client';
 import {
   ensureFolderExists,
   ensureUserIsOwner,
   resolveFolderName,
 } from '../utils/folder.util';
-import { getFileExtension } from '../utils/file.util';
+import { getFileExtension, pathJoin } from '../utils/file.util';
 import {
   getOriginalFilePath,
   getTempFilePath,
@@ -15,7 +15,6 @@ import {
 import { HttpError } from '@server/errors/HttpError';
 import { CommonErrorCode } from '@server/errors/CommonErrorCode';
 import { randomUUID } from 'crypto';
-import { throwUnauthorized } from '@server/features/auth/utils/error.util';
 
 export async function createFolder(
   userId: string,
@@ -45,7 +44,7 @@ export async function createFolder(
     data: {
       name: resolvedName,
       userId,
-      fullPath: parent ? `${parent.fullPath}/${resolvedName}` : resolvedName,
+      fullPath: pathJoin(parent?.fullPath, resolvedName),
       parentId: parent?.id || null,
     },
   });
@@ -125,12 +124,10 @@ export async function moveFolder(
 
   const oldPathPrefix = folder!.fullPath;
   const parentPath = oldPathPrefix.slice(0, oldPathPrefix.lastIndexOf('/'));
-  let newPathPrefix = `${parentPath}/${resolvedName}`;
+  let newPathPrefix = pathJoin(parentPath, resolvedName);
 
   if (!renameOnly) {
-    newPathPrefix = targetFolder
-      ? `${targetFolder.fullPath}/${resolvedName}`
-      : resolvedName;
+    newPathPrefix = pathJoin(targetFolder?.fullPath, resolvedName)
   }
 
   await prisma.$transaction([
@@ -207,9 +204,7 @@ export async function copyFolder(
       name: resolvedName,
       userId,
       parentId: targetFolderId,
-      fullPath: targetFolder
-        ? `${targetFolder.fullPath}/${resolvedName}`
-        : resolvedName,
+      fullPath: pathJoin(targetFolder?.fullPath, resolvedName),
     },
   });
 

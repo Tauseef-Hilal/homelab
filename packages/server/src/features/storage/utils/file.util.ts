@@ -1,13 +1,7 @@
-import fs from 'fs/promises';
 import path from 'path';
-import { Readable } from 'stream';
-import { pipeline } from 'stream/promises';
-import { env } from '@shared/config/env';
 import { CommonErrorCode } from '@server/errors/CommonErrorCode';
 import { HttpError } from '@server/errors/HttpError';
 import { prisma } from '@shared/prisma';
-import { createWriteStream } from 'fs';
-import { File } from '@prisma/client';
 
 export function getFileExtension(filename: string): string {
   const ext = path.extname(filename || '').toLowerCase();
@@ -59,7 +53,7 @@ export async function resolveFileName(
   newFileName = `${newFileName}.${ext}`;
 
   if (!folderId) {
-    newFilePath = newFileName;
+    newFilePath = `/${newFileName}`;
   } else {
     const folder = await prisma.folder.findUnique({
       where: { id: folderId },
@@ -78,4 +72,8 @@ export async function resolveFileName(
   }
 
   return { newFileName, newFilePath };
+}
+
+export function pathJoin(parent: string | undefined, child: string) {
+  return path.join(parent ?? '/', child);
 }

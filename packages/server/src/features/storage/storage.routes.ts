@@ -7,7 +7,6 @@ import {
   downloadFileController,
   moveFileController,
   previewFileController,
-  renameFileController,
   uploadFileController,
 } from './controllers/file';
 import {
@@ -24,7 +23,6 @@ router.use(requireAuth);
 
 router.post('/file', upload.single('file'), uploadFileController);
 router.delete('/file/:fileId', deleteFileController);
-router.patch('/file/:fileId/rename', renameFileController);
 router.patch('/file/:fileId/move', moveFileController);
 router.post('/file/:fileId/copy', copyFileController);
 router.get('/file/:fileId/download', requireAuth, downloadFileController);
@@ -34,7 +32,7 @@ router.post('/folder', createFolderController);
 router.delete('/folder/:folderId', deleteFolderController);
 router.patch('/folder/:folderId/move', moveFolderController);
 router.post('/folder/:folderId/copy', copyFolderController);
-router.get('/folder/:folderId/download', downloadFolderController)
-router.get('/download/:id', downloadController)
+router.get('/folder/:folderId/download', downloadFolderController);
+router.get('/download/:id', downloadController);
 
 export default router;

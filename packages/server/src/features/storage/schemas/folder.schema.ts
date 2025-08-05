@@ -8,7 +8,17 @@ export const createFolderSchema = z.object({
 export const moveFolderSchema = z
   .object({
     targetFolderId: z.optional(z.nullable(z.uuidv4())),
-    newFolderName: z.optional(z.string().min(1, "Folder name can't be empty")),
+    newFolderName: z.optional(
+      z
+        .string()
+        .min(1, "Folder name can't be empty")
+        .max(255, 'Name too long')
+        .refine(
+          (name) =>
+            !name.includes('.') && !name.includes('/') && !name.includes('\\'),
+          'Name cannot include dots or slashes'
+        )
+    ),
   })
   .refine(
     (data) =>

@@ -1,5 +1,5 @@
-import { thumbnailWorker } from './thumbnail/thumbnail.consumer';
-import { copyWorker } from './copy/copy.consumer';
-import { zipWorker } from './zip/zip.consumer';
+import { copyWorker } from "./workers/copy/copy.consumer";
+import { thumbnailWorker } from "./workers/thumbnail/thumbnail.consumer";
+import { zipWorker } from "./workers/zip/zip.consumer";
 
 export { thumbnailWorker, copyWorker, zipWorker };

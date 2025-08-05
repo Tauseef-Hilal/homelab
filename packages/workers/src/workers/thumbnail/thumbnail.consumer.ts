@@ -8,7 +8,7 @@ import {
 import redis from '@shared/redis';
 import { withRequestId } from '@shared/logging';
 import { prisma } from '@shared/prisma';
-import { updateJob } from '../utils/db';
+import { updateJob } from '../../utils/db';
 
 export const thumbnailWorker = new Worker<
   ThumbnailJobPayload,

@@ -6,9 +6,14 @@ import { fileIdParamSchema, moveFileSchema } from '../../schemas/file.schema';
 export const moveFileController = catchAsync(
   async (req: Request, res: Response) => {
     const fileId = fileIdParamSchema.parse(req.params.fileId);
-    const { targetFolderId } = moveFileSchema.parse(req.body);
+    const { targetFolderId, newFileName } = moveFileSchema.parse(req.body);
 
-    await moveFile(req.user.id, fileId, targetFolderId);
+    await moveFile(
+      req.user.id,
+      fileId,
+      targetFolderId,
+      newFileName === undefined ? null : newFileName
+    );
 
     return res
       .status(200)

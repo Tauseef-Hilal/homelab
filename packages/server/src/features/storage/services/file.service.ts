@@ -15,7 +15,11 @@ import {
   getFileExtension,
   getFileNameWithoutExtension,
 } from '../utils/file.util';
-import { copyFileOnDisk, getOriginalFilePath, getThumbnailPath } from '@shared/utils/storage.utils';
+import {
+  copyFileOnDisk,
+  getOriginalFilePath,
+  getThumbnailPath,
+} from '@shared/utils/storage.utils';
 
 export async function saveFile(
   userId: string,
@@ -103,64 +107,11 @@ export async function deleteFile(userId: string, fileId: string) {
   }
 }
 
-export async function renameFile(
-  userId: string,
-  fileId: string,
-  newName: string
-) {
-  const file = await prisma.file.findUnique({
-    where: { id: fileId },
-    select: {
-      id: true,
-      name: true,
-      userId: true,
-      folderId: true,
-    },
-  });
-
-  if (!file) {
-    throw new HttpError({
-      status: 400,
-      code: CommonErrorCode.BAD_REQUEST,
-      message: 'File does not exist. Ensure fileId is correct.',
-    });
-  }
-
-  if (userId != file.userId) {
-    throw new HttpError({
-      status: 403,
-      code: CommonErrorCode.FORBIDDEN,
-      message: 'You do not have the permission to rename this file',
-    });
-  }
-
-  try {
-    const { newFileName, newFilePath } = await resolveFileName(
-      file,
-      newName,
-      file.folderId
-    );
-
-    await prisma.file.update({
-      where: { id: fileId },
-      data: {
-        name: newFileName,
-        fullPath: newFilePath,
-      },
-    });
-  } catch (err) {
-    throw new HttpError({
-      status: 500,
-      code: CommonErrorCode.INTERNAL_SERVER_ERROR,
-      message: 'Failed to rename file',
-    });
-  }
-}
-
 export async function moveFile(
   userId: string,
   fileId: string,
-  targetFolderId: string | null = null
+  targetFolderId?: string | null,
+  newName: string | null = null
 ) {
   const file = await prisma.file.findUnique({
     where: { id: fileId },
@@ -188,11 +139,13 @@ export async function moveFile(
     });
   }
 
-  if (file.folderId == targetFolderId) return;
+  if (targetFolderId === undefined) {
+    targetFolderId = file.folderId;
+  }
 
   const { newFileName, newFilePath } = await resolveFileName(
     file,
-    getFileNameWithoutExtension(file.name),
+    newName ?? getFileNameWithoutExtension(file.name),
     targetFolderId
   );
 
