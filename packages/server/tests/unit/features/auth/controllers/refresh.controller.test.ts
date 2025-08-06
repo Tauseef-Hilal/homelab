@@ -63,7 +63,7 @@ describe('refreshController', () => {
       }
     );
     expect(res.json).toHaveBeenCalledWith({
-      success: true,
+      status: 'success',
       data: { tokens: { access: mockTokens.access } },
     });
   });

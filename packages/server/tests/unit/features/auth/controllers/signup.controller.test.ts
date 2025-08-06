@@ -68,13 +68,14 @@ describe('signupController', () => {
     );
 
     expect(res.json).toHaveBeenCalledWith({
-      success: true,
+      status: 'success',
       data: {
         user: mockUser,
         tokens: {
           access: mockTokens.access,
         },
       },
+      message: 'Signup successful',
     });
   });
 });

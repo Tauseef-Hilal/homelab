@@ -4,6 +4,7 @@ import { signupSchema } from '../schemas/auth.schema';
 import * as AuthService from '../services/auth.service';
 import { env } from '@shared/config/env';
 import { tokenExpirations } from '@server/constants/token.constants';
+import { success } from '@server/lib/response';
 
 export const signupController = catchAsync(
   async (req: Request, res: Response) => {
@@ -24,9 +25,11 @@ export const signupController = catchAsync(
         maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
         path: '/api/auth/refresh',
       })
-      .json({
-        success: true,
-        data: { user, tokens: { access: tokens.access } },
-      });
+      .json(
+        success(
+          { user, tokens: { access: tokens.access } },
+          'Signup successful'
+        )
+      );
   }
 );

@@ -54,7 +54,8 @@ describe('logoutController', () => {
       path: '/api/auth/refresh',
     });
     expect(res.json).toHaveBeenCalledWith({
-      success: true,
+      status: 'success',
+      data: {},
       message: 'Logged out successfully',
     });
   });

@@ -3,6 +3,7 @@ import { idParamSchema } from '../schemas/job.schema';
 import { catchAsync } from '@server/lib/catchAsync';
 import { generateETag } from '../utils/hash.util';
 import { getJob } from '../services/job.service';
+import { success } from '@server/lib/response';
 
 export const getJobController = catchAsync(
   async (req: Request, res: Response) => {
@@ -16,6 +17,16 @@ export const getJobController = catchAsync(
     }
 
     res.setHeader('ETag', etag);
-    res.status(200).json({ success: true, job });
+    res.status(200).json(
+      success({
+        job: {
+          id: job.id,
+          status: job.status,
+          progress: job.progress,
+          result: job.result,
+          error: job.error,
+        },
+      })
+    );
   }
 );

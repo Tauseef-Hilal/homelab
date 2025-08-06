@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { HttpError } from '../errors/HttpError';
 import z, { ZodError } from 'zod';
+import { error } from '@server/lib/response';
+import { CommonErrorCode } from '@server/errors/CommonErrorCode';
 
 export function errorHandler(
   err: unknown,
@@ -17,20 +19,21 @@ export function errorHandler(
       'Internal server error occured'
     );
 
-    return res.status(err.status).json({
-      status: err.status,
-      code: err.code,
-      message: err.message,
-    });
+    return res.status(err.status).json(error(err.message, err.code));
   }
 
   if (err instanceof ZodError) {
     req.logger.warn({ details: z.treeifyError(err) }, 'Validation failed');
 
-    return res.status(400).json({
-      error: 'Validation failed',
-      details: z.treeifyError(err),
-    });
+    return res
+      .status(400)
+      .json(
+        error(
+          'Validation failed',
+          CommonErrorCode.BAD_REQUEST,
+          z.treeifyError(err)
+        )
+      );
   }
 
   req.logger.error(
@@ -41,7 +44,9 @@ export function errorHandler(
     'Unhandled error occurred'
   );
 
-  return res.status(500).json({
-    error: 'Internal Server Error',
-  });
+  return res
+    .status(500)
+    .json(
+      error('An internal error occured', CommonErrorCode.INTERNAL_SERVER_ERROR)
+    );
 }

@@ -4,6 +4,7 @@ import * as AuthService from '../services/auth.service';
 import { env } from '@shared/config/env';
 import { throwUnauthorized } from '../utils/error.util';
 import { tokenExpirations } from '@server/constants/token.constants';
+import { success } from '@server/lib/response';
 
 export const refreshController = catchAsync(
   async (req: Request, res: Response) => {
@@ -26,9 +27,6 @@ export const refreshController = catchAsync(
         maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
         path: '/api/auth/refresh',
       })
-      .json({
-        success: true,
-        data: { tokens: { access: tokens.access } },
-      });
+      .json(success({ tokens: { access: tokens.access } }));
   }
 );

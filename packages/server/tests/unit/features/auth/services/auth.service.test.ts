@@ -288,6 +288,7 @@ describe('changePassword()', () => {
     vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser);
     vi.spyOn(bcrypt, 'isValidPassword').mockResolvedValue(true);
     vi.spyOn(bcrypt, 'hashPassword').mockResolvedValue(mockHashedPassword);
+    vi.spyOn(redis, 'get').mockResolvedValue('ok');
 
     const updateSpy = vi.spyOn(prisma.user, 'update');
     const deleteManySpy = vi.spyOn(prisma.refreshToken, 'deleteMany');

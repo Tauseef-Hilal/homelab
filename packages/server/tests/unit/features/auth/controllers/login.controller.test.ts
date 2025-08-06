@@ -49,9 +49,9 @@ describe('loginController', () => {
     expect(next).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
-      success: true,
+      status: 'success',
+      data: { token: mockToken },
       message: 'Verify OTP to login',
-      token: mockToken,
     });
   });
 });

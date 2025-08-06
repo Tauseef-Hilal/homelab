@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { catchAsync } from '@server/lib/catchAsync';
 import { env } from '@shared/config/env';
 import * as AuthService from '../services/auth.service';
+import { success } from '@server/lib/response';
 
 export const logoutController = catchAsync(
   async (req: Request, res: Response) => {
@@ -18,6 +19,6 @@ export const logoutController = catchAsync(
         sameSite: 'strict',
         path: '/api/auth/refresh',
       })
-      .json({ success: true, message: 'Logged out successfully' });
+      .json(success({}, 'Logged out successfully'));
   }
 );

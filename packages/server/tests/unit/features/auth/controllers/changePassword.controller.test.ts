@@ -63,7 +63,8 @@ describe('changePasswordController', () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
-      success: true,
+      status: 'success',
+      data: {},
       message: 'Password changed successfully',
     });
   });

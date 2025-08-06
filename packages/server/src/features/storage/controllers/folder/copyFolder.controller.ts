@@ -4,6 +4,7 @@ import { copyFolderSchema, idParamSchema } from '../../schemas/folder.schema';
 import { copyFolder } from '../../services/folder.service';
 import { CopyJobPayload } from '@shared/queues/copy/copy.types';
 import { enqueueCopyJob } from '@server/queues/copy.producer';
+import { success } from '@server/lib/response';
 
 export const copyFolderController = catchAsync(
   async (req: Request, res: Response) => {
@@ -18,8 +19,6 @@ export const copyFolderController = catchAsync(
       prismaJobId: '',
     });
 
-    res
-      .status(203)
-      .json({ success: true, message: 'Folder will be copied shortly', job });
+    res.status(203).json(success({ job }, 'Folder will be copied shortly'));
   }
 );

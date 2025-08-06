@@ -16,6 +16,7 @@ import { buildTokenPayload, storeRefreshToken } from '../utils/token.util';
 import { TokenMeta } from '../../../types/jwt.types';
 import { env } from '@shared/config/env';
 import { tokenExpirations } from '@server/constants/token.constants';
+import { success } from '@server/lib/response';
 
 export const verifyOtpController = catchAsync(
   async (req: Request, res: Response) => {
@@ -28,11 +29,7 @@ export const verifyOtpController = catchAsync(
 );
 
 const handleOtpPurpose = {
-  [TfaPurpose.LOGIN]: async (
-    res: Response,
-    email: string,
-    meta: TokenMeta
-  ) => {
+  [TfaPurpose.LOGIN]: async (res: Response, email: string, meta: TokenMeta) => {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       throw new HttpError({
@@ -61,17 +58,11 @@ const handleOtpPurpose = {
         maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
         path: '/api/auth/refresh',
       })
-      .json({
-        success: true,
-        message: 'Login successful',
-        data: { tokens: { access: accessToken } },
-      });
+      .json(success({ tokens: { access: accessToken } }, 'Login successful'));
   },
 
   [TfaPurpose.CHANGE_PASSWORD]: async (res: Response, userId: string) => {
     await AuthService.allowPasswordChange(userId);
-    return res
-      .status(200)
-      .json({ success: true, message: 'Continue to change password' });
+    return res.status(200).json(success({}, 'Continue to change password'));
   },
 };

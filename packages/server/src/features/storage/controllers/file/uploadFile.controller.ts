@@ -7,6 +7,7 @@ import { uploadFileSchema } from '../../schemas/file.schema';
 import { ensureQuotaAvailable, saveFile } from '../../services/file.service';
 import { getFileExtension } from '../../utils/file.util';
 import { getOriginalFilePath } from '@shared/utils/storage.utils';
+import { success } from '@server/lib/response';
 
 export const uploadFileController = catchAsync(
   async (req: Request, res: Response) => {
@@ -36,16 +37,19 @@ export const uploadFileController = catchAsync(
       ),
     });
 
-    return res.status(201).json({
-      success: true,
-      message: 'File uploaded successfully',
-      file: {
-        id: result.id,
-        name: result.name,
-        fullPath: result.fullPath,
-        size: result.size,
-      },
-      job,
-    });
+    return res.status(201).json(
+      success(
+        {
+          file: {
+            id: result.id,
+            name: result.name,
+            fullPath: result.fullPath,
+            size: result.size,
+          },
+          job,
+        },
+        'File uploaded succesfully'
+      )
+    );
   }
 );

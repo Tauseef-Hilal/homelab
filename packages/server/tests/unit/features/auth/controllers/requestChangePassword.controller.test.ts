@@ -75,9 +75,9 @@ describe('requestChangePasswordController', () => {
     });
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
-      success: true,
-      token: mockToken,
+      status: 'success',
       message: 'OTP sent!',
+      data: { token: mockToken },
     });
   });
 
@@ -89,8 +89,8 @@ describe('requestChangePasswordController', () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
-      success: true,
-      token: null,
+      status: 'success',
+      data: { token: null },
       message: 'OTP already sent!',
     });
   });

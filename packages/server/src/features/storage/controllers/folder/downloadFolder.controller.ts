@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { idParamSchema } from '../../schemas/folder.schema';
 import { prepareDownload } from '../../services/folder.service';
 import { enqueueZipJob } from '@server/queues/zip.producer';
+import { success } from '@server/lib/response';
 
 export const downloadFolderController = catchAsync(
   async (req: Request, res: Response) => {
@@ -15,10 +16,6 @@ export const downloadFolderController = catchAsync(
       prismaJobId: '',
     });
 
-    res.status(203).json({
-      success: true,
-      message: 'Preparing zip for download',
-      job,
-    });
+    res.status(203).json(success({ job }, 'Preparing zip for download'));
   }
 );

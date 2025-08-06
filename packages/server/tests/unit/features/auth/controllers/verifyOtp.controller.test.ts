@@ -74,7 +74,8 @@ describe('verifyOtpController', () => {
     );
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
-      success: true,
+      status: 'success',
+      data: {},
       message: 'Continue to change password',
     });
   });
@@ -121,9 +122,9 @@ describe('verifyOtpController', () => {
       }
     );
     expect(res.json).toHaveBeenCalledWith({
-      success: true,
-      message: 'Login successful',
+      status: 'success',
       data: { tokens: { access: mockTokens.access } },
+      message: 'Login successful',
     });
   });
 

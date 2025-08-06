@@ -16,7 +16,7 @@ export async function getJob(userId: string, jobId: string) {
   });
 
   if (!job) {
-    return new HttpError({
+    throw new HttpError({
       status: 404,
       code: CommonErrorCode.NOT_FOUND,
       message: 'The requested job does not exist',
@@ -24,7 +24,7 @@ export async function getJob(userId: string, jobId: string) {
   }
 
   if (job.userId != userId) {
-    return new HttpError({
+    throw new HttpError({
       status: 403,
       code: CommonErrorCode.FORBIDDEN,
       message: 'You dont have the permission to access this job',

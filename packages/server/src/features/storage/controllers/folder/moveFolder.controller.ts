@@ -2,6 +2,7 @@ import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
 import { idParamSchema, moveFolderSchema } from '../../schemas/folder.schema';
 import { moveFolder } from '../../services/folder.service';
+import { success } from '@server/lib/response';
 
 export const moveFolderController = catchAsync(
   async (req: Request, res: Response) => {
@@ -15,8 +16,6 @@ export const moveFolderController = catchAsync(
       newFolderName === undefined ? null : newFolderName
     );
 
-    res
-      .status(200)
-      .json({ success: true, message: 'Folder moved successfully' });
+    res.status(200).json(success({}, 'Folder moved successfully'));
   }
 );

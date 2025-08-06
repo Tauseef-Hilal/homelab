@@ -4,7 +4,7 @@ import { JobPayload } from '@shared/queues/queue.types';
 
 export const enqueueJob =
   <T extends JobPayload>(enqueue: (payload: T) => Promise<void>) =>
-  async (payload: T): Promise<Job> => {
+  async (payload: T) => {
     const job = await prisma.job.create({
       data: {
         userId: payload.userId,
@@ -16,5 +16,5 @@ export const enqueueJob =
     payload.prismaJobId = job.id;
     await enqueue(payload);
 
-    return job;
+    return { id: job.id };
   };
