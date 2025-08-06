@@ -1,18 +1,20 @@
 import { Job } from '@prisma/client';
 import { prisma } from '@shared/prisma';
+import { JobPayload } from '@shared/queues/queue.types';
 
 export const enqueueJob =
-  <T>(enqueue: (requestId: string, payload: T) => Promise<void>) =>
-  async (
-    requestId: string,
-    payload: T & { prismaJobId: string }
-  ): Promise<Job> => {
+  <T extends JobPayload>(enqueue: (payload: T) => Promise<void>) =>
+  async (payload: T): Promise<Job> => {
     const job = await prisma.job.create({
-      data: { requestId, payload: payload as object },
+      data: {
+        userId: payload.userId,
+        requestId: payload.requestId,
+        payload: payload as object,
+      },
     });
 
     payload.prismaJobId = job.id;
-    await enqueue(requestId, payload);
+    await enqueue(payload);
 
     return job;
   };

@@ -10,15 +10,11 @@ export const copyFolderController = catchAsync(
     const folderId = idParamSchema.parse(req.params.folderId);
     const { targetFolderId } = copyFolderSchema.parse(req.body);
 
-    const jobPayload = (await copyFolder(
-      req.user.id,
-      folderId,
-      targetFolderId
-    )) as CopyJobPayload;
-    jobPayload.requestId = req.id;
+    const jobPayload = await copyFolder(req.user.id, folderId, targetFolderId);
 
-    const job = await enqueueCopyJob(req.id, {
+    const job = await enqueueCopyJob({
       ...jobPayload,
+      requestId: req.id,
       prismaJobId: '',
     });
 

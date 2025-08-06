@@ -23,7 +23,7 @@ export const uploadFileController = catchAsync(
     await ensureQuotaAvailable(req.user.id, req.file.size);
     const result = await saveFile(req.user.id, req.file, visibility, folderId);
 
-    const job = await enqueueThumbnailJob(req.id, {
+    const job = await enqueueThumbnailJob({
       prismaJobId: '',
       requestId: req.id,
       userId: req.user.id,

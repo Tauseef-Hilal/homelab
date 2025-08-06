@@ -1,7 +1,6 @@
 import app from './app';
+import { env } from '@shared/config/env';
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+app.listen(env.PORT, () => {
+  console.log(`Server running on ${env.API_BASE_URL}`);
 });

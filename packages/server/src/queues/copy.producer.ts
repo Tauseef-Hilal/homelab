@@ -9,13 +9,11 @@ export const copyQueue = new Queue<CopyJobPayload>(queueNames.copy, {
   connection: redis,
 });
 
-export const enqueueCopyJob = enqueueJob<CopyJobPayload>(
-  async (requestId, data) => {
-    await copyQueue.add(copyJob.name, data, {
-      attempts: copyJob.attempts,
-      backoff: copyJob.backoff,
-      removeOnComplete: true,
-      removeOnFail: false,
-    });
-  }
-);
+export const enqueueCopyJob = enqueueJob<CopyJobPayload>(async (data) => {
+  await copyQueue.add(copyJob.name, data, {
+    attempts: copyJob.attempts,
+    backoff: copyJob.backoff,
+    removeOnComplete: true,
+    removeOnFail: false,
+  });
+});

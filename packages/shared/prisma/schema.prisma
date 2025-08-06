@@ -29,6 +29,7 @@ model User {
   createdAt     DateTime       @default(now())
   refreshTokens RefreshToken[]
   DownloadLink  DownloadLink[]
+  Job           Job[]
 }
 
 model RefreshToken {
@@ -94,12 +95,15 @@ model SharedLink {
 
 model Job {
   id        String    @id @default(uuid())
+  userId    String
+  User      User      @relation(fields: [userId], references: [id])
   requestId String
   attempts  Int       @default(0)
   status    JobStatus @default(enqueued)
   progress  Int       @default(0)
   payload   Json
   result    Json?
+  error     String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }

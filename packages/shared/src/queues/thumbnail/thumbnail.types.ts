@@ -1,10 +1,9 @@
-export type ThumbnailJobPayload = {
-  requestId: string;
-  userId: string;
+import { JobPayload } from "../queue.types";
+
+export interface ThumbnailJobPayload extends JobPayload  {
   fileId: string;
   filePath: string;
   mimeType: string;
-  prismaJobId: string;
 };
 
 export type ThumbnailJobResult = {

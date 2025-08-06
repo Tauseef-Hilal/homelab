@@ -1,12 +1,11 @@
-export type CopyJobPayload = {
-  requestId: string;
-  userId: string;
+import { JobPayload } from '../queue.types';
+
+export interface CopyJobPayload extends JobPayload {
   srcFolderId: string;
   destFolderId: string;
   srcPath: string;
   destPath: string;
-  prismaJobId: string;
-};
+}
 
 export type CopyJobResult = {
   destPath: string;

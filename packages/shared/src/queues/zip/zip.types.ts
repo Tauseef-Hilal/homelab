@@ -1,10 +1,9 @@
-export type ZipJobPayload = {
-  requestId: string;
-  userId: string;
-  prismaJobId: string;
+import { JobPayload } from '../queue.types';
+
+export interface ZipJobPayload extends JobPayload {
   folderId: string;
   folderPath: string;
-};
+}
 
 export type ZipJobResult = {
   zipPath: string;

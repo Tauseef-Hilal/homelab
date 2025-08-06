@@ -9,13 +9,11 @@ export const zipQueue = new Queue<ZipJobPayload>(queueNames.zip, {
   connection: redis,
 });
 
-export const enqueueZipJob = enqueueJob<ZipJobPayload>(
-  async (requestId, data) => {
-    await zipQueue.add(zipJob.name, data, {
-      attempts: zipJob.attempts,
-      backoff: zipJob.backoff,
-      removeOnComplete: true,
-      removeOnFail: false,
-    });
-  }
-);
+export const enqueueZipJob = enqueueJob<ZipJobPayload>(async (data) => {
+  await zipQueue.add(zipJob.name, data, {
+    attempts: zipJob.attempts,
+    backoff: zipJob.backoff,
+    removeOnComplete: true,
+    removeOnFail: false,
+  });
+});

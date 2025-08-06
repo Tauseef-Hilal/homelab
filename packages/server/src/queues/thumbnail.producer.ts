@@ -11,7 +11,7 @@ export const thumbnailQueue = new Queue<ThumbnailJobPayload>(
 );
 
 export const enqueueThumbnailJob = enqueueJob<ThumbnailJobPayload>(
-  async (requestId, data) => {
+  async (data) => {
     await thumbnailQueue.add(thumbnailJob.name, data, {
       attempts: thumbnailJob.attempts,
       backoff: thumbnailJob.backoff,

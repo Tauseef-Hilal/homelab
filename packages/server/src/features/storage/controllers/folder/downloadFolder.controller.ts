@@ -8,7 +8,7 @@ export const downloadFolderController = catchAsync(
   async (req: Request, res: Response) => {
     const folderId = idParamSchema.parse(req.params.folderId);
     const meta = await prepareDownload(req.user.id, folderId);
-    const job = await enqueueZipJob(req.id, {
+    const job = await enqueueZipJob({
       ...meta,
       userId: req.user.id,
       requestId: req.id,
