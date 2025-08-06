@@ -5,6 +5,7 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import authRoutes from './features/auth/auth.routes';
 import storageRoutes from './features/storage/storage.routes';
+import jobRoutes from './features/job/job.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { requestLogger } from './middleware/logging.middleware';
 import { env } from '../../shared/src/config/env';
@@ -24,6 +25,7 @@ app.use(requestLogger);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/storage', storageRoutes);
+app.use('/api/jobs', jobRoutes);
 
 app.use(errorHandler);
 
