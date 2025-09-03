@@ -1,6 +1,7 @@
-import "@/styles/globals.css";
-import { ReactQueryProvider } from "@/providers/reactQuery.provider";
+import "@client/styles/globals.css";
+import { ReactQueryProvider } from "@client/providers/reactQuery.provider";
 import type { Metadata } from "next";
+import { inter } from "@client/styles/fonts";
 
 export const metadata: Metadata = {
   title: "Homelab",
@@ -14,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="bg-gray-50 text-gray-900">
+      <body className={`bg-gray-50 text-gray-900 ${inter.className}`}>
         <ReactQueryProvider>{children}</ReactQueryProvider>
       </body>
     </html>

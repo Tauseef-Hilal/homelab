@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { catchAsync } from '@server/lib/catchAsync';
-import { changePasswordSchema } from '../schemas/auth.schema';
+import { changePasswordSchema } from '@shared/schemas/auth/request/auth.schema';
 import * as AuthService from '../services/auth.service';
 import { success } from '@server/lib/response';
 

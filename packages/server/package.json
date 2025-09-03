@@ -14,6 +14,7 @@
   "author": "Tauseef Tantary",
   "license": "MIT",
   "dependencies": {
+    "shared": "*",
     "@prisma/client": "^6.13.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.56.9",

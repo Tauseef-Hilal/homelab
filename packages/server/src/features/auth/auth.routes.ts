@@ -13,8 +13,8 @@ const router = Router();
 
 router.post('/signup', extractClientMeta, signupController);
 router.post('/login', extractClientMeta, loginController);
-router.post('/logout', extractClientMeta, logoutController);
-router.post('/refresh', extractClientMeta, refreshController);
+router.post('/logout', requireAuth, extractClientMeta, logoutController);
+router.post('/refresh', requireAuth, extractClientMeta, refreshController);
 router.patch('/password', changePasswordController);
 router.post('/forgot-password', requestChangePasswordController);
 router.post('/verify-otp', extractClientMeta, verifyOtpController);

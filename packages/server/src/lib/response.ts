@@ -1,16 +1,16 @@
-export const success = (data: any, message?: string) => ({
+export const success = (data: object, message?: string) => ({
   status: 'success',
-  data,
+  ...data,
   ...(message && { message }),
 });
 
 export const error = (
   message: string,
   code = 'INTERNAL_ERROR',
-  details?: any
+  details?: object
 ) => ({
   status: 'error',
   message,
   code,
-  ...(details && { details }),
+  details,
 });

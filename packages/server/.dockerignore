@@ -26,6 +26,3 @@ Thumbs.db
 # Docker-related
 Dockerfile
 docker-compose.yml
-
-# Server logs
-logs/

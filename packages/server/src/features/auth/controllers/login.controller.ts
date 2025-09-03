@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { catchAsync } from '@server/lib/catchAsync';
-import { loginSchema } from '../schemas/auth.schema';
+import { loginSchema } from '@shared/schemas/auth/request/auth.schema';
 import * as AuthService from '../services/auth.service';
 import * as OtpService from '../services/otp.service';
 import { success } from '@server/lib/response';
@@ -17,6 +17,13 @@ export const loginController = catchAsync(
 
     await OtpService.sendOtp(user.id, user.email);
 
-    return res.status(200).json(success({ token }, 'Verify OTP to login'));
+    return res.status(200).json(
+      success(
+        {
+          token,
+        },
+        'Verify OTP to login'
+      )
+    );
   }
 );

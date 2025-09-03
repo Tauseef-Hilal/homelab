@@ -16,8 +16,7 @@ export const logoutController = catchAsync(
       .clearCookie('refreshToken', {
         httpOnly: true,
         secure: env.NODE_ENV == 'production',
-        sameSite: 'strict',
-        path: '/api/auth/refresh',
+        sameSite: 'none',
       })
       .json(success({}, 'Logged out successfully'));
   }

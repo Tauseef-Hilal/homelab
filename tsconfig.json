@@ -11,6 +11,7 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
+      "@client/*": ["packages/client/src/*"],
       "@server/*": ["packages/server/src/*"],
       "@worker-thumbnail/*": ["packages/worker-thumbnail/src/*"],
       "@shared/*": ["packages/shared/src/*"]

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { catchAsync } from '@server/lib/catchAsync';
-import { signupSchema } from '../schemas/auth.schema';
+import { signupSchema } from '@shared/schemas/auth/request/auth.schema';
 import * as AuthService from '../services/auth.service';
 import { env } from '@shared/config/env';
 import { tokenExpirations } from '@server/constants/token.constants';
@@ -21,13 +21,20 @@ export const signupController = catchAsync(
       .cookie('refreshToken', tokens.refresh, {
         httpOnly: true,
         secure: env.NODE_ENV == 'production',
-        sameSite: 'strict',
+        sameSite: 'none',
         maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
-        path: '/api/auth/refresh',
       })
       .json(
         success(
-          { user, tokens: { access: tokens.access } },
+          {
+            user: {
+              id: user.id,
+              role: user.role,
+              email: user.email,
+              username: user.username,
+            },
+            tokens: { access: tokens.access },
+          },
           'Signup successful'
         )
       );

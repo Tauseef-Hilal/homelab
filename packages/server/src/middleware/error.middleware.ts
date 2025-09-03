@@ -13,10 +13,10 @@ export function errorHandler(
   if (err instanceof HttpError) {
     req.logger.error(
       {
-        msg: (err as Error)?.message,
-        stack: (err as Error)?.stack,
+        msg: err.message,
+        stack: err.stack,
       },
-      'Internal server error occured'
+      err.message
     );
 
     return res.status(err.status).json(error(err.message, err.code));
@@ -25,15 +25,11 @@ export function errorHandler(
   if (err instanceof ZodError) {
     req.logger.warn({ details: z.treeifyError(err) }, 'Validation failed');
 
-    return res
-      .status(400)
-      .json(
-        error(
-          'Validation failed',
-          CommonErrorCode.BAD_REQUEST,
-          z.treeifyError(err)
-        )
-      );
+    return res.status(400).json(
+      error('Validation failed', CommonErrorCode.BAD_REQUEST, {
+        fieldErrors: z.flattenError(err).fieldErrors,
+      })
+    );
   }
 
   req.logger.error(

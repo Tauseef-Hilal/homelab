@@ -47,7 +47,13 @@ export async function signup(
 
     const user = await prisma.user.create({
       data: { username, email, password: hashedPassword },
-      select: { id: true, email: true, createdAt: true, role: true },
+      select: {
+        id: true,
+        email: true,
+        createdAt: true,
+        role: true,
+        username: true,
+      },
     });
 
     const payload = buildTokenPayload({
@@ -92,7 +98,6 @@ export async function login(email: string, password: string, meta: TokenMeta) {
 
   const user = await prisma.user.findUnique({
     where: { email },
-    select: { id: true, email: true, password: true, role: true },
   });
 
   if (!user) {

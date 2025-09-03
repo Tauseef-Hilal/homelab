@@ -1,0 +1,31 @@
+# Ignore node_modules (we install fresh deps inside container)
+node_modules
+
+# Ignore logs and temp files
+*.log
+*.tsbuildinfo
+npm-debug.log
+pnpm-debug.log
+
+# Ignore local env files (handled via secrets/CI/CD)
+.env
+.env.*
+
+# Ignore Git files and local configs
+.git
+.gitignore
+
+# Editor configs
+.vscode
+.idea
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Docker-related
+Dockerfile
+docker-compose.yml
+
+# NextJS cache
+.next

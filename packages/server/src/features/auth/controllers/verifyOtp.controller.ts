@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { catchAsync } from '@server/lib/catchAsync';
-import { verifyOtpSchema } from '../schemas/auth.schema';
+import { verifyOtpSchema } from '@shared/schemas/auth/request/auth.schema';
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -54,11 +54,23 @@ const handleOtpPurpose = {
       .cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: env.NODE_ENV == 'production',
-        sameSite: 'strict',
+        sameSite: 'none',
         maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
-        path: '/api/auth/refresh',
       })
-      .json(success({ tokens: { access: accessToken } }, 'Login successful'));
+      .json(
+        success(
+          {
+            user: {
+              id: user.id,
+              role: user.role,
+              email: user.email,
+              username: user.username,
+            },
+            tokens: { access: accessToken },
+          },
+          'Login successful'
+        )
+      );
   },
 
   [TfaPurpose.CHANGE_PASSWORD]: async (res: Response, userId: string) => {

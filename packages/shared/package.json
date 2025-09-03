@@ -6,6 +6,9 @@
   "keywords": [],
   "author": "Tauseef Tantary",
   "license": "MIT",
+  "scripts": {
+    "build": "npx tsc"
+  },
   "devDependencies": {
     "@types/fluent-ffmpeg": "^2.1.27",
     "@types/node": "^24.0.14",

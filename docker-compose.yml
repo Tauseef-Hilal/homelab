@@ -9,7 +9,7 @@ services:
       dockerfile: ./packages/server/Dockerfile
       target: dev
     ports:
-      - "3000:3000"
+      - "5001:5001"
     depends_on:
       - db
       - redis
@@ -18,10 +18,12 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+      - /app/packages/shared/node_modules
+      - /app/packages/server/node_modules
     command: sh -c "
-              pnpm --filter ./packages/shared exec prisma migrate deploy &&
-              pnpm --filter ./packages/shared exec prisma generate &&
-              pnpm --filter ./packages/server dev
+              pnpm --filter shared exec prisma migrate deploy &&
+              pnpm --filter shared exec prisma generate &&
+              pnpm --filter server dev
             "
   
   workers:
@@ -32,17 +34,38 @@ services:
       dockerfile: ./packages/workers/Dockerfile
       target: dev
     depends_on:
+      - db
       - redis
     env_file:
       - ./packages/shared/.env
     volumes: 
       - .:/app
       - /app/node_modules
+      - /app/packages/shared/node_modules
+      - /app/packages/workers/node_modules
     command: sh -c "
-              pnpm --filter ./packages/shared exec prisma migrate deploy &&
-              pnpm --filter ./packages/shared exec prisma generate &&
-              pnpm --filter ./packages/workers dev
+              pnpm --filter shared exec prisma migrate deploy &&
+              pnpm --filter shared exec prisma generate &&
+              pnpm --filter workers dev
             "
+    
+  client:
+    container_name: homelab-client
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./packages/client/Dockerfile
+      target: dev
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./packages/shared/.env
+    volumes: 
+      - .:/app
+      - /app/node_modules
+      - /app/packages/client/node_modules
+      - /app/packages/shared/node_modules
+    command: sh -c "pnpm --filter client dev"
 
   db:
     image: postgres:16

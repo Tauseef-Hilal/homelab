@@ -47,7 +47,7 @@ zipWorker.on('completed', async (job, res) => {
     progress: 100,
     attempts: job.attemptsMade,
     result: {
-      downloadLink: `${env.API_BASE_URL}/api/storage/download/${link.id}`,
+      downloadLink: `${env.API_BASE_URL}/storage/download/${link.id}`,
     },
   });
 
