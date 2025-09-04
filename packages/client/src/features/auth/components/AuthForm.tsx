@@ -6,6 +6,8 @@ import { mapServerFieldErrors } from "../utils/fieldErrors";
 import {
   LoginInput,
   loginSchema,
+  RequestChangePasswordInput,
+  requestChangePasswordSchema,
   SignupInput,
   signupSchema,
 } from "@shared/schemas/auth/request/auth.schema";
@@ -14,20 +16,44 @@ import { useState } from "react";
 import { Button } from "@client/components/ui/button";
 import { useLogin } from "../hooks/useLogin";
 import { useSignup } from "../hooks/useSignup";
+import { useRequestChangePassword } from "../hooks/useRequestChangePassword";
+import { Loader } from "lucide-react";
 
-type AuthMode = "login" | "signup";
+type FormType = "login" | "signup" | "verification";
 
 interface AuthFormProps {
-  mode: AuthMode;
+  formType: FormType;
 }
 
-export function AuthForm({ mode }: AuthFormProps) {
+export function AuthForm({ formType: defaultFormType }: AuthFormProps) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [formType, setFormType] = useState(defaultFormType);
 
-  const [isLogin, setIsLogin] = useState(mode === "login");
-  const schema = isLogin ? loginSchema : signupSchema;
+  type FormValues = LoginInput | SignupInput | RequestChangePasswordInput;
 
-  type FormValues = LoginInput | SignupInput;
+  const schemas: Record<FormType, any> = {
+    login: loginSchema,
+    signup: signupSchema,
+    verification: requestChangePasswordSchema,
+  };
+
+  const mutations = {
+    login: useLogin({
+      onFieldError: (fieldErrors: any) => {
+        mapServerFieldErrors(fieldErrors, setError);
+      },
+      onGlobalError: (msg: string) => setErrorMsg(msg),
+    }),
+    signup: useSignup({
+      onFieldError: (fieldErrors: any) => {
+        mapServerFieldErrors(fieldErrors, setError);
+      },
+      onGlobalError: (msg: string) => setErrorMsg(msg),
+    }),
+    verification: useRequestChangePassword({
+      onGlobalError: (msg) => setErrorMsg(msg),
+    }),
+  };
 
   const {
     register,
@@ -35,24 +61,10 @@ export function AuthForm({ mode }: AuthFormProps) {
     setError,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schemas[formType]),
   });
 
-  const loginMutation = useLogin({
-    onFieldError: (fieldErrors: any) => {
-      mapServerFieldErrors(fieldErrors, setError);
-    },
-    onGlobalError: (msg: string) => setErrorMsg(msg),
-  });
-
-  const signupMutation = useSignup({
-    onFieldError: (fieldErrors: any) => {
-      mapServerFieldErrors(fieldErrors, setError);
-    },
-    onGlobalError: (msg: string) => setErrorMsg(msg),
-  });
-
-  const mutation = isLogin ? loginMutation : signupMutation;
+  const mutation = mutations[formType];
   const onSubmit = (data: FormValues) => mutation.mutate(data as any);
 
   const fieldClassName = "bg-neutral-100 h-12 w-full shadow-none border-0";
@@ -64,10 +76,12 @@ export function AuthForm({ mode }: AuthFormProps) {
       className="flex flex-col items-center gap-8 w-full px-8"
     >
       <h1 className="text-2xl w-full text-left font-bold">
-        {isLogin ? "Please Log In" : "Create an Account"}
+        {formType == "login" && "Login to your account"}
+        {formType == "signup" && "Create an Account"}
+        {formType == "verification" && "Enter email to get an OTP"}
       </h1>
 
-      {!isLogin && (
+      {formType == "signup" && (
         <FormField
           className={fieldClassName}
           placeholder="Username"
@@ -85,15 +99,17 @@ export function AuthForm({ mode }: AuthFormProps) {
         error={errors.email?.message}
       />
 
-      <FormField
-        className={fieldClassName}
-        placeholder="Password"
-        type="password"
-        registration={register("password")}
-        error={errors.password?.message}
-      />
+      {formType == "login" && (
+        <FormField
+          className={fieldClassName}
+          placeholder="Password"
+          type="password"
+          registration={register("password")}
+          error={"password" in errors ? errors.password?.message : undefined}
+        />
+      )}
 
-      {isLogin && (
+      {formType != "signup" && (
         <div className="flex flex-col w-full">
           <p className="text-sm w-full text-left">
             Don't have an account?{" "}
@@ -101,32 +117,35 @@ export function AuthForm({ mode }: AuthFormProps) {
               type="button"
               variant={"link"}
               className="font-medium cursor-pointer"
-              onClick={() => setIsLogin(false)}
+              onClick={() => setFormType("signup")}
             >
               Register
             </Button>
           </p>
-          <p className="text-sm w-full text-left">
-            Forgot password?{" "}
-            <Button
-              type="button"
-              variant={"link"}
-              className="font-medium cursor-pointer"
-            >
-              Reset
-            </Button>
-          </p>
+          {formType == "login" && (
+            <p className="text-sm w-full text-left">
+              Forgot password?{" "}
+              <Button
+                type="button"
+                variant={"link"}
+                className="font-medium cursor-pointer"
+                onClick={() => setFormType("verification")}
+              >
+                Reset
+              </Button>
+            </p>
+          )}
         </div>
       )}
 
-      {!isLogin && (
+      {formType == "signup" && (
         <p className="text-sm w-full text-left">
           Already have an account?{" "}
           <Button
             type="button"
             variant={"link"}
             className="font-medium cursor-pointer"
-            onClick={() => setIsLogin(true)}
+            onClick={() => setFormType("login")}
           >
             Login
           </Button>
@@ -138,16 +157,14 @@ export function AuthForm({ mode }: AuthFormProps) {
         disabled={isSubmitting || mutation.isPending}
         className="h-12 w-full cursor-pointer"
       >
-        {mutation.isPending
-          ? isLogin
-            ? "Logging in..."
-            : "Signing up..."
-          : isLogin
-          ? "Login now"
-          : "Sign up"}
+        {formType == "login" && "Login"}
+        {formType == "signup" && "Signup"}
+        {formType == "verification" && "Send OTP"}
+        {mutation.isPending ||
+          (isSubmitting && <Loader className="animate-spin" />)}
       </Button>
 
-      {mutation.isError && !errors.email && !errors.password && (
+      {mutation.isError && !errors.email && (
         <p className="text-red-500">{errorMsg}</p>
       )}
     </form>

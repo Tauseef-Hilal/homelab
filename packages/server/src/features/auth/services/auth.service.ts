@@ -158,10 +158,9 @@ export async function logout(
 
 export async function changePassword(
   email: string,
-  oldPassword: string,
   newPassword: string
 ) {
-  if (!oldPassword || !newPassword) {
+  if (!newPassword) {
     throw new HttpError({
       status: 400,
       code: CommonErrorCode.MISSING_FIELDS,
@@ -194,9 +193,6 @@ export async function changePassword(
     });
   }
 
-  if (!(await isValidPassword(oldPassword, user.password)))
-    return throwUnauthorized();
-
   await prisma.user.update({
     where: { id: user.id },
     data: { password: await hashPassword(newPassword) },
@@ -220,9 +216,15 @@ export async function allowPasswordChange(email: string) {
   }
 
   const existing = await redis.get(RedisKeys.auth.allowPasswordChange(user.id));
+  const token = generateTfaToken({
+    userId: user.id,
+    email: user.email,
+    purpose: TfaPurpose.CHANGE_PASSWORD,
+    createdAt: Date.now(),
+  });
 
   if (existing && Number(existing) > Date.now()) {
-    return null;
+    return token;
   }
 
   await OtpService.sendOtp(user.id, user.email);
@@ -237,13 +239,6 @@ export async function allowPasswordChange(email: string) {
     'EX',
     authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS
   );
-
-  const token = generateTfaToken({
-    userId: user.id,
-    email: user.email,
-    purpose: TfaPurpose.CHANGE_PASSWORD,
-    createdAt: Date.now(),
-  });
 
   return token;
 }

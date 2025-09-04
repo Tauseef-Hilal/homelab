@@ -12,8 +12,7 @@ export const loginSchema = z.object({
 });
 
 export const changePasswordSchema = z.object({
-  email: z.email(),
-  oldPassword: z.string().min(8, 'Password must be at least 8 characters'),
+  token: z.string().min(1, 'Missing Token'),
   newPassword: z.string().min(8, 'Password must be at least 8 characters'),
 });
 

@@ -9,8 +9,6 @@ export const requestChangePasswordController = catchAsync(
     const { email } = requestChangePasswordSchema.parse(req.body);
     const token = await allowPasswordChange(email);
 
-    return res
-      .status(200)
-      .json(success({ token }, token ? 'OTP sent!' : 'OTP already sent!'));
+    return res.status(200).json(success({ token }, 'OTP sent!'));
   }
 );

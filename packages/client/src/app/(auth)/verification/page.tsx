@@ -3,7 +3,7 @@ import VerificationForm from "@client/features/auth/components/VerificationForm"
 export default async function VerificationPage({
   searchParams,
 }: {
-  searchParams: { token: string };
+  searchParams: Promise<{ token: string }>;
 }) {
   const tfaToken = (await searchParams).token;
   if (!tfaToken) {

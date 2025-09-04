@@ -30,8 +30,19 @@ export const verifyOtpSchema = z.object({
       access: z.string().min(1),
     })
   ),
+  changePasswordToken: z.optional(z.string().min(1)),
 });
+
+export const requestChangePasswordSchema = z.object({
+  token: z.string().min(1),
+});
+
+export const changePasswordSchema = z.object({});
 
 export type LoginResponse = z.infer<typeof loginSchema>;
 export type SignupResponse = z.infer<typeof signupSchema>;
 export type VerifyOtpResponse = z.infer<typeof verifyOtpSchema>;
+export type RequestChangePasswordResponse = z.infer<
+  typeof requestChangePasswordSchema
+>;
+export type ChangePasswordResponse = z.infer<typeof changePasswordSchema>;

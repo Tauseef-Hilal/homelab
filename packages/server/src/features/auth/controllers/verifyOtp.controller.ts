@@ -24,12 +24,17 @@ export const verifyOtpController = catchAsync(
     const { email, userId, purpose } = verifyTfaToken(token);
 
     await OtpService.verifyOtp(userId, otp);
-    await handleOtpPurpose[purpose](res, email, req.clientMeta ?? {});
+    await handleOtpPurpose[purpose](res, email, req.clientMeta ?? {}, token);
   }
 );
 
 const handleOtpPurpose = {
-  [TfaPurpose.LOGIN]: async (res: Response, email: string, meta: TokenMeta) => {
+  [TfaPurpose.LOGIN]: async (
+    res: Response,
+    email: string,
+    meta: TokenMeta,
+    token: string
+  ) => {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       throw new HttpError({
@@ -73,8 +78,17 @@ const handleOtpPurpose = {
       );
   },
 
-  [TfaPurpose.CHANGE_PASSWORD]: async (res: Response, userId: string) => {
+  [TfaPurpose.CHANGE_PASSWORD]: async (
+    res: Response,
+    userId: string,
+    meta: TokenMeta,
+    token: string
+  ) => {
     await AuthService.allowPasswordChange(userId);
-    return res.status(200).json(success({}, 'Continue to change password'));
+    return res
+      .status(200)
+      .json(
+        success({ changePasswordToken: token }, 'Continue to change password')
+      );
   },
 };

@@ -23,9 +23,8 @@ export const refreshController = catchAsync(
       .cookie('refreshToken', tokens.refresh, {
         httpOnly: true,
         secure: env.NODE_ENV == 'production',
-        sameSite: 'strict',
+        sameSite: 'none',
         maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
-        path: '/api/auth/refresh',
       })
       .json(success({ tokens: { access: tokens.access } }));
   }

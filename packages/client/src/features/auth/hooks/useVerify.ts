@@ -31,7 +31,9 @@ export function useVerifyOtp(options: UseVerifyOtpOptions) {
         return;
       }
 
-      // TODO: HANDLE CHANGE PASSWORD FLOW HERE
+      if (data.changePasswordToken) {
+        router.push(`/change-password?token=${data.changePasswordToken}`);
+      }
     },
     onError: (error) => {
       const serverError = error.response?.data;
