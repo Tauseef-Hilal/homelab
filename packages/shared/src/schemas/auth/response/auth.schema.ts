@@ -39,6 +39,8 @@ export const requestChangePasswordSchema = z.object({
 
 export const changePasswordSchema = z.object({});
 
+export const logoutSchema = z.object({});
+
 export type LoginResponse = z.infer<typeof loginSchema>;
 export type SignupResponse = z.infer<typeof signupSchema>;
 export type VerifyOtpResponse = z.infer<typeof verifyOtpSchema>;
@@ -46,3 +48,4 @@ export type RequestChangePasswordResponse = z.infer<
   typeof requestChangePasswordSchema
 >;
 export type ChangePasswordResponse = z.infer<typeof changePasswordSchema>;
+export type LogoutResponse = z.infer<typeof logoutSchema>;

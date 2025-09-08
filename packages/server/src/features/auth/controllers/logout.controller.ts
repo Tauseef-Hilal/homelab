@@ -3,13 +3,18 @@ import { catchAsync } from '@server/lib/catchAsync';
 import { env } from '@shared/config/env';
 import * as AuthService from '../services/auth.service';
 import { success } from '@server/lib/response';
+import { logoutSchema } from '@shared/schemas/auth/request/auth.schema';
 
 export const logoutController = catchAsync(
   async (req: Request, res: Response) => {
-    const { logoutAll } = req.body;
+    const { logoutAll } = logoutSchema.parse(req.body);
     const refreshToken = req.cookies.refreshToken;
 
-    await AuthService.logout(refreshToken, req.clientMeta ?? {}, logoutAll);
+    await AuthService.logout(
+      refreshToken,
+      req.clientMeta ?? {},
+      logoutAll ?? false
+    );
 
     return res
       .status(200)
