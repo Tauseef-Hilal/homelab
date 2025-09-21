@@ -64,11 +64,9 @@ api.interceptors.response.use(
 
       try {
         const { data } = await api.post(`/auth/refresh`);
-        const newToken = data.accessToken;
-        console.log(data);
+        const newToken = data.tokens.access;
+        
         useAuthStore.getState().setAccessToken(newToken);
-        console.log(newToken);
-
         processQueue(null, newToken);
 
         if (originalRequest.headers) {

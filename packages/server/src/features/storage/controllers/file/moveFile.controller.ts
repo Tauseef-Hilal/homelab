@@ -1,7 +1,10 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
 import { moveFile } from '../../services/file.service';
-import { fileIdParamSchema, moveFileSchema } from '../../schemas/file.schema';
+import {
+  fileIdParamSchema,
+  moveFileSchema,
+} from '../../../../../../shared/src/schemas/storage/request/file.schema';
 import { success } from '@server/lib/response';
 
 export const moveFileController = catchAsync(

@@ -15,6 +15,7 @@ export async function requireAuth(
 
   try {
     const payload = verifyAccessToken(token);
+    console.log(payload.sub, token)
     req.user = { id: payload.sub, email: payload.email, role: payload.role };
     next();
   } catch (err) {

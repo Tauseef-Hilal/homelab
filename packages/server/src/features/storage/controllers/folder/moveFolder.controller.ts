@@ -1,6 +1,6 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { idParamSchema, moveFolderSchema } from '../../schemas/folder.schema';
+import { idParamSchema, moveFolderSchema } from '../../../../../../shared/src/schemas/storage/request/folder.schema';
 import { moveFolder } from '../../services/folder.service';
 import { success } from '@server/lib/response';
 

@@ -35,6 +35,11 @@ export const copyFolderSchema = z.object({
 
 export const idParamSchema = z.uuidv4();
 
+export const listDirectorySchema = z.object({
+  path: z.string()
+});
+
 export type CreateFolderInput = z.infer<typeof createFolderSchema>;
 export type MoveFolderInput = z.infer<typeof moveFolderSchema>;
 export type CopyFolderInput = z.infer<typeof copyFolderSchema>;
+export type ListDirectoryInput = z.infer<typeof listDirectorySchema>;

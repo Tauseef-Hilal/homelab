@@ -56,6 +56,10 @@ export async function signup(
       },
     });
 
+    await prisma.folder.create({
+      data: { name: '', fullPath: '/', userId: user.id },
+    });
+
     const payload = buildTokenPayload({
       id: user.id,
       email: user.email,
@@ -156,10 +160,7 @@ export async function logout(
   });
 }
 
-export async function changePassword(
-  email: string,
-  newPassword: string
-) {
+export async function changePassword(email: string, newPassword: string) {
   if (!newPassword) {
     throw new HttpError({
       status: 400,

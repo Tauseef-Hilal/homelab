@@ -1,6 +1,9 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { copyFileSchema, fileIdParamSchema } from '../../schemas/file.schema';
+import {
+  copyFileSchema,
+  fileIdParamSchema,
+} from '../../../../../../shared/src/schemas/storage/request/file.schema';
 import { copyFile } from '../../services/file.service';
 import { success } from '@server/lib/response';
 

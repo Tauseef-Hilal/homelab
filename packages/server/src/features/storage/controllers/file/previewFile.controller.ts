@@ -1,7 +1,7 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
 import { createReadStream } from 'fs';
-import { fileIdParamSchema } from '../../schemas/file.schema';
+import { fileIdParamSchema } from '../../../../../../shared/src/schemas/storage/request/file.schema';
 import { getFileMeta } from '../../services/file.service';
 
 export const previewFileController = catchAsync(

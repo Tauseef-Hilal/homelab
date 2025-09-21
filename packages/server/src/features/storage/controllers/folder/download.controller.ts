@@ -1,7 +1,7 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
 import { createReadStream } from 'fs';
-import { idParamSchema } from '../../schemas/folder.schema';
+import { idParamSchema } from '../../../../../../shared/src/schemas/storage/request/folder.schema';
 import { validateLinkAndGetDownloadMeta } from '../../services/folder.service';
 
 export const downloadController = catchAsync(

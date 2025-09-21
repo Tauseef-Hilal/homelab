@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { HttpError } from '@server/errors/HttpError';
 import { CommonErrorCode } from '@server/errors/CommonErrorCode';
 import { enqueueThumbnailJob } from '@server/queues/thumbnail.producer';
-import { uploadFileSchema } from '../../schemas/file.schema';
+import { uploadFileSchema } from '../../../../../../shared/src/schemas/storage/request/file.schema';
 import { ensureQuotaAvailable, saveFile } from '../../services/file.service';
 import { getFileExtension } from '../../utils/file.util';
 import { getOriginalFilePath } from '@shared/utils/storage.utils';

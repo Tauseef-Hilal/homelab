@@ -127,7 +127,7 @@ export async function moveFolder(
   let newPathPrefix = pathJoin(parentPath, resolvedName);
 
   if (!renameOnly) {
-    newPathPrefix = pathJoin(targetFolder?.fullPath, resolvedName)
+    newPathPrefix = pathJoin(targetFolder?.fullPath, resolvedName);
   }
 
   await prisma.$transaction([
@@ -261,4 +261,16 @@ export async function validateLinkAndGetDownloadMeta(
   }
 
   return { filePath: getTempFilePath(link.fileName), fileName: link.fileName };
+}
+
+export async function listDirectory(userId: string, path: string) {
+  const folderOrNull = await prisma.folder.findUnique({
+    where: { userId_fullPath: { userId, fullPath: path } },
+    include: { files: true, children: true },
+  });
+
+  ensureFolderExists(folderOrNull);
+  const folder = folderOrNull!;
+
+  return folder;
 }

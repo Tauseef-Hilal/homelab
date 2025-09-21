@@ -1,8 +1,7 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { copyFolderSchema, idParamSchema } from '../../schemas/folder.schema';
+import { copyFolderSchema, idParamSchema } from '../../../../../../shared/src/schemas/storage/request/folder.schema';
 import { copyFolder } from '../../services/folder.service';
-import { CopyJobPayload } from '@shared/queues/copy/copy.types';
 import { enqueueCopyJob } from '@server/queues/copy.producer';
 import { success } from '@server/lib/response';
 

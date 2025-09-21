@@ -1,6 +1,6 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { idParamSchema } from '../../schemas/folder.schema';
+import { idParamSchema } from '../../../../../../shared/src/schemas/storage/request/folder.schema';
 import { prepareDownload } from '../../services/folder.service';
 import { enqueueZipJob } from '@server/queues/zip.producer';
 import { success } from '@server/lib/response';

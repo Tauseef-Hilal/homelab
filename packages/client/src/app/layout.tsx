@@ -1,4 +1,4 @@
-import "@client/styles/globals.css";
+import "@client/styles/global.css";
 import { ReactQueryProvider } from "@client/providers/reactQuery.provider";
 import type { Metadata } from "next";
 import { inter } from "@client/styles/fonts";

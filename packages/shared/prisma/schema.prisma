@@ -57,6 +57,8 @@ model Folder {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([userId, fullPath])
 }
 
 model File {
@@ -75,6 +77,8 @@ model File {
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
   SharedLink SharedLink[]
+  
+  @@unique([userId, fullPath])
 }
 
 enum Visibility {

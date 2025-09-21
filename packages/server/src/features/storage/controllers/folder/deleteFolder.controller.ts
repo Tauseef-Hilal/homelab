@@ -1,6 +1,6 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { idParamSchema } from '../../schemas/folder.schema';
+import { idParamSchema } from '../../../../../../shared/src/schemas/storage/request/folder.schema';
 import { deleteFolder } from '../../services/folder.service';
 
 export const deleteFolderController = catchAsync(
