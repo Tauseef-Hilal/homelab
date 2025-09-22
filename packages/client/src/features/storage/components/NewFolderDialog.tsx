@@ -6,9 +6,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@client/components/ui/dialog";
-import { Input } from "@client/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   CreateFolderInput,

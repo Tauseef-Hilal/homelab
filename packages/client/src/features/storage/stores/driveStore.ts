@@ -3,6 +3,7 @@ import {
   CreateFolderResponse,
   ListDirectoryResponse,
 } from '@shared/schemas/storage/response/folder.schema';
+import { UploadFileResponse } from '@shared/schemas/storage/response/file.schema';
 
 type DriveState = {
   path: string;
@@ -13,6 +14,7 @@ type DriveState = {
   moveBackward: () => void;
   moveForward: () => void;
   addFolder: (folder: CreateFolderResponse['folder']) => void;
+  addFile: (file: UploadFileResponse['file']) => void;
 };
 
 const useDriveStore = create<DriveState>((set, getState) => ({
@@ -42,6 +44,17 @@ const useDriveStore = create<DriveState>((set, getState) => ({
 
       if (currentFolder) {
         currentFolder.children = [...currentFolder.children, folder];
+      }
+
+      return { stack };
+    }),
+  addFile: (file) =>
+    set((state) => {
+      const stack = [...state.stack];
+      const currentFolder = stack.at(-1);
+
+      if (currentFolder) {
+        currentFolder.files = [...currentFolder.files, file];
       }
 
       return { stack };

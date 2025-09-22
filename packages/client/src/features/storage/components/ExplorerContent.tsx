@@ -16,6 +16,7 @@ import {
   ContextMenuTrigger,
 } from "@client/components/ui/context-menu";
 import NewFolderDialog from "./NewFolderDialog";
+import UploadDialog from "./UploadDialog";
 
 interface ExplorerContentProps {
   mutation: UseMutationResult<ListDirectoryResponse>;
@@ -23,6 +24,7 @@ interface ExplorerContentProps {
 
 const ExplorerContent: React.FC<ExplorerContentProps> = ({ mutation }) => {
   const [showFolderDialog, setShowFolderDialog] = useState(false);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const { stack, stackIdx, path, setPath } = useDriveStore();
   const { isPending, error, mutate } = mutation;
 
@@ -83,13 +85,20 @@ const ExplorerContent: React.FC<ExplorerContentProps> = ({ mutation }) => {
           <ContextMenuItem onClick={() => setShowFolderDialog(true)}>
             New Folder
           </ContextMenuItem>
-          <ContextMenuItem>Upload</ContextMenuItem>
+          <ContextMenuItem onClick={() => setShowUploadDialog(true)}>
+            Upload
+          </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
       <NewFolderDialog
         parentId={folder?.id}
         open={showFolderDialog}
         setOpen={setShowFolderDialog}
+      />
+      <UploadDialog
+        folderId={folder?.id}
+        open={showUploadDialog}
+        setOpen={setShowUploadDialog}
       />
     </div>
   );

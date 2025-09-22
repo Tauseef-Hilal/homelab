@@ -40,12 +40,7 @@ export const uploadFileController = catchAsync(
     return res.status(201).json(
       success(
         {
-          file: {
-            id: result.id,
-            name: result.name,
-            fullPath: result.fullPath,
-            size: result.size,
-          },
+          file: result,
           job,
         },
         'File uploaded succesfully'
