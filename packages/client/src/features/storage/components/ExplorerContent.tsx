@@ -2,22 +2,28 @@
 
 import { Button } from "@client/components/ui/button";
 import { ListDirectoryResponse } from "@shared/schemas/storage/response/folder.schema";
-import { ArrowLeft, ForkKnifeCrossedIcon, Loader2Icon } from "lucide-react";
-import { FaFile, FaFolder } from "react-icons/fa6";
+import { ForkKnifeCrossedIcon, Loader2Icon } from "lucide-react";
 import useDriveStore from "../stores/driveStore";
-import { useListDirectory } from "../hooks/useListDirectory";
-import { MouseEventHandler, useEffect } from "react";
 import FolderWidget from "./FolderWidget";
 import FileWidget from "./FileWidget";
-import { cx } from "class-variance-authority";
 import { UseMutationResult } from "@tanstack/react-query";
+import { cx } from "class-variance-authority";
+import { useEffect, useState } from "react";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@client/components/ui/context-menu";
+import NewFolderDialog from "./NewFolderDialog";
 
 interface ExplorerContentProps {
   mutation: UseMutationResult<ListDirectoryResponse>;
 }
 
 const ExplorerContent: React.FC<ExplorerContentProps> = ({ mutation }) => {
-  const { stack, stackIdx, path, setPath, push } = useDriveStore();
+  const [showFolderDialog, setShowFolderDialog] = useState(false);
+  const { stack, stackIdx, path, setPath } = useDriveStore();
   const { isPending, error, mutate } = mutation;
 
   useEffect(() => {
@@ -51,24 +57,40 @@ const ExplorerContent: React.FC<ExplorerContentProps> = ({ mutation }) => {
   const folder = stack[stackIdx];
 
   return (
-    <div>
-      <div
-        className={cx(
-          "grid grid-flow-col align-center place-content-start",
-          "place-items-center gap-2"
-        )}
-      >
-        {folder?.children.map((child) => (
-          <FolderWidget
-            key={child.id}
-            child={child}
-            onClick={handleFolderClick}
-          />
-        ))}
-        {folder?.files.map((child) => (
-          <FileWidget key={child.id} child={child} />
-        ))}
-      </div>
+    <div className="h-full">
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div
+            className={cx(
+              "grid grid-cols-4 align-center place-content-start",
+              "place-items-center gap-2 h-full overflow-auto"
+            )}
+          >
+            {folder?.children.map((child) => (
+              <FolderWidget
+                key={child.id}
+                child={child}
+                onClick={handleFolderClick}
+              />
+            ))}
+
+            {folder?.files.map((child) => (
+              <FileWidget key={child.id} child={child} />
+            ))}
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={() => setShowFolderDialog(true)}>
+            New Folder
+          </ContextMenuItem>
+          <ContextMenuItem>Upload</ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+      <NewFolderDialog
+        parentId={folder?.id}
+        open={showFolderDialog}
+        setOpen={setShowFolderDialog}
+      />
     </div>
   );
 };

@@ -1,5 +1,8 @@
 import { create } from 'zustand';
-import { ListDirectoryResponse } from '@shared/schemas/storage/response/folder.schema';
+import {
+  CreateFolderResponse,
+  ListDirectoryResponse,
+} from '@shared/schemas/storage/response/folder.schema';
 
 type DriveState = {
   path: string;
@@ -9,6 +12,7 @@ type DriveState = {
   push: (folder: ListDirectoryResponse['folder']) => void;
   moveBackward: () => void;
   moveForward: () => void;
+  addFolder: (folder: CreateFolderResponse['folder']) => void;
 };
 
 const useDriveStore = create<DriveState>((set, getState) => ({
@@ -22,15 +26,26 @@ const useDriveStore = create<DriveState>((set, getState) => ({
     set({ stack: [...stack, folder], stackIdx: stack.length });
   },
   moveBackward: () => {
-    const {stackIdx, stack} = getState();
+    const { stackIdx, stack } = getState();
     if (stackIdx == 0) return;
-    set({ stackIdx: stackIdx - 1, path: stack[stackIdx - 1].fullPath});
+    set({ stackIdx: stackIdx - 1, path: stack[stackIdx - 1].fullPath });
   },
   moveForward: () => {
-    const {stackIdx, stack} = getState();
+    const { stackIdx, stack } = getState();
     if (stackIdx == stack.length - 1) return;
-    set({ stackIdx: stackIdx + 1, path: stack[stackIdx + 1].fullPath});
+    set({ stackIdx: stackIdx + 1, path: stack[stackIdx + 1].fullPath });
   },
+  addFolder: (folder) =>
+    set((state) => {
+      const stack = [...state.stack];
+      const currentFolder = stack.at(-1);
+
+      if (currentFolder) {
+        currentFolder.children = [...currentFolder.children, folder];
+      }
+
+      return { stack };
+    }),
 }));
 
 export default useDriveStore;

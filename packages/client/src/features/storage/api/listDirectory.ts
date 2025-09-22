@@ -1,6 +1,7 @@
 import api from '@client/lib/api';
+import { listDirectorySchema } from '@shared/schemas/storage/response/folder.schema';
 
 export async function listDirectory(path: string) {
   const res = await api.get(`/storage/list?path=${path}`);
-  return res.data;
+  return listDirectorySchema.parse(res.data);
 }

@@ -5,9 +5,9 @@ export const listDirectorySchema = z.object({
     id: z.string(),
     name: z.string(),
     fullPath: z.string(),
-    createdAt: z.date(),
+    createdAt: z.string(),
     userId: z.string(),
-    updatedAt: z.date(),
+    updatedAt: z.string(),
     parentId: z.union([z.string(), z.null()]),
     files: z.array(
       z.object({
@@ -19,7 +19,7 @@ export const listDirectorySchema = z.object({
         visibility: z.enum(['private', 'public']),
         hasThumbnail: z.boolean(),
         userId: z.string(),
-        updatedAt: z.date(),
+        updatedAt: z.string(),
         folderId: z.string(),
       })
     ),
@@ -28,13 +28,26 @@ export const listDirectorySchema = z.object({
         id: z.string(),
         name: z.string(),
         fullPath: z.string(),
-        createdAt: z.date(),
+        createdAt: z.string(),
         userId: z.string(),
-        updatedAt: z.date(),
+        updatedAt: z.string(),
         parentId: z.union([z.string(), z.null()]),
       })
     ),
   }),
 });
 
+export const createFolderSchema = z.object({
+  folder: z.object({
+    id: z.string(),
+    name: z.string(),
+    fullPath: z.string(),
+    createdAt: z.string(),
+    userId: z.string(),
+    updatedAt: z.string(),
+    parentId: z.union([z.string(), z.null()]),
+  }),
+});
+
 export type ListDirectoryResponse = z.infer<typeof listDirectorySchema>;
+export type CreateFolderResponse = z.infer<typeof createFolderSchema>;
