@@ -7,7 +7,7 @@ import { UploadFileInput } from '@shared/schemas/storage/request/file.schema';
 
 export type UseUploadFileOptions = {
   onSuccess: (data: UploadFileResponse) => void;
-  onError: (error: string) => void;
+  onError: (file: File) => void;
 };
 
 export function useUploadFile(options: UseUploadFileOptions) {
@@ -19,13 +19,8 @@ export function useUploadFile(options: UseUploadFileOptions) {
     mutationFn: uploadFile,
     onSuccess: options.onSuccess,
     onError: (error) => {
-      const serverError = error.response?.data;
-
-      if (serverError) {
-        options.onError(serverError.message);
-      }
-
-      alert(error)
+      const body = error.config?.data;
+      options.onError(body.file);
     },
   });
 }
