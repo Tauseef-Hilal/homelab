@@ -11,11 +11,7 @@ interface PreviewProps {
   setOpen: (open: boolean) => void;
 }
 
-const Preview: React.FC<PreviewProps> = ({
-  file,
-  open,
-  setOpen,
-}) => {
+const Preview: React.FC<PreviewProps> = ({ file, open, setOpen }) => {
   const token = useAuthStore().accessToken;
   const src = `${process.env.NEXT_PUBLIC_API_BASE_URL}/storage/file/${file.id}/preview?token=${token}`;
 
@@ -42,7 +38,7 @@ const Preview: React.FC<PreviewProps> = ({
       />
     );
   } else {
-    element = <p>Preview not available for this file</p>;
+    element = <p className="text-white py-12">Preview not available for this file</p>;
   }
 
   return (
