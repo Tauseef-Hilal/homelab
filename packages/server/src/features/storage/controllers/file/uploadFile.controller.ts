@@ -12,13 +12,6 @@ import { success } from '@server/lib/response';
 export const uploadFileController = catchAsync(
   async (req: Request, res: Response) => {
     const { folderId, visibility } = uploadFileSchema.parse(req.body);
-    if (Math.random() * 10 > 5) {
-      throw new HttpError({
-        status: 400,
-        code: CommonErrorCode.BAD_REQUEST,
-        message: 'jkyfkjhfkhjfkjhf',
-      });
-    }
 
     if (!req.file) {
       throw new HttpError({

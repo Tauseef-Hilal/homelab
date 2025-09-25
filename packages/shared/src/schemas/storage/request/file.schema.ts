@@ -39,6 +39,9 @@ export const copyFileSchema = z.object({
 });
 
 export const fileIdParamSchema = z.uuidv4();
+export const previewFileQuerySchema = z.object({
+  token: z.string().min(1),
+});
 
 export type UploadFileInput = z.infer<typeof uploadFileSchema>;
 export type DeleteFileInput = z.infer<typeof deleteFileSchema>;
