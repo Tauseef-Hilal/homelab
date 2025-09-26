@@ -2,8 +2,8 @@ import { File } from "../types/storage.types";
 import Image from "next/image";
 import useAuthStore from "@client/features/auth/stores/auth.store";
 import { cx } from "class-variance-authority";
-import { Button } from "@client/components/ui/button";
 import { IoIosCloseCircle } from "react-icons/io";
+import { useRef } from "react";
 
 interface PreviewProps {
   file: File;
@@ -14,6 +14,7 @@ interface PreviewProps {
 const Preview: React.FC<PreviewProps> = ({ file, open, setOpen }) => {
   const token = useAuthStore().accessToken;
   const src = `${process.env.NEXT_PUBLIC_API_BASE_URL}/storage/file/${file.id}/preview?token=${token}`;
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   let element = null;
   if (
@@ -22,6 +23,7 @@ const Preview: React.FC<PreviewProps> = ({ file, open, setOpen }) => {
   ) {
     element = (
       <video
+        ref={videoRef}
         src={src}
         className="max-w-full max-h-full object-contain"
         controls
@@ -38,7 +40,9 @@ const Preview: React.FC<PreviewProps> = ({ file, open, setOpen }) => {
       />
     );
   } else {
-    element = <p className="text-white py-12">Preview not available for this file</p>;
+    element = (
+      <p className="text-white py-12">Preview not available for this file</p>
+    );
   }
 
   return (
@@ -55,7 +59,13 @@ const Preview: React.FC<PreviewProps> = ({ file, open, setOpen }) => {
         <IoIosCloseCircle
           size={48}
           className="absolute right-0 top-0 rounded-full shadow text-white"
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            if (videoRef.current && !videoRef.current.paused) {
+              videoRef.current.pause();
+            }
+
+            setOpen(false);
+          }}
         />
       </div>
     </div>

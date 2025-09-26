@@ -15,6 +15,7 @@ type DriveState = {
   moveForward: () => void;
   addFolder: (folder: CreateFolderResponse['folder']) => void;
   addFile: (file: UploadFileResponse['file']) => void;
+  renameFile: (fileId: string, newName: string) => void;
 };
 
 const useDriveStore = create<DriveState>((set, getState) => ({
@@ -59,6 +60,20 @@ const useDriveStore = create<DriveState>((set, getState) => ({
 
       return { stack };
     }),
+  renameFile: (fileId, newName) => {
+    set((state) => {
+      const stack = [...state.stack];
+      const currentFolder = stack.at(-1);
+
+      if (currentFolder) {
+        currentFolder.files = currentFolder.files.map((file) =>
+          file.id == fileId ? { ...file, name: newName } : file
+        );
+      }
+
+      return { stack };
+    });
+  },
 }));
 
 export default useDriveStore;

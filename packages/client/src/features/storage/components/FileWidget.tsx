@@ -4,7 +4,7 @@ import { FaFile } from "react-icons/fa6";
 import { File } from "../types/storage.types";
 import Image from "next/image";
 import { useState } from "react";
-import PreviewDialog from "./Preview";
+import Preview from "./Preview";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -12,6 +12,7 @@ import {
   ContextMenuTrigger,
 } from "@client/components/ui/context-menu";
 import { useDownloadFile } from "../hooks/useDownloadFile";
+import Rename from "./Rename";
 
 interface FileProps {
   child: File;
@@ -19,6 +20,8 @@ interface FileProps {
 
 const FileWidget: React.FC<FileProps> = ({ child }) => {
   const [showPreview, setShowPreview] = useState(false);
+  const [showRename, setShowRename] = useState(false);
+
   const thumbnailUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/uploads/${child.userId}/thumbnails/${child.id}.webp`;
 
   const downloadMutation = useDownloadFile({
@@ -34,10 +37,6 @@ const FileWidget: React.FC<FileProps> = ({ child }) => {
     },
     onError: (error) => {},
   });
-
-  const triggerDownload = () => {
-    downloadMutation.mutate(child.id);
-  };
 
   return (
     <div key={child.id}>
@@ -62,11 +61,19 @@ const FileWidget: React.FC<FileProps> = ({ child }) => {
             <p className="text-sm truncate w-full text-center">{child.name}</p>
           </div>
         </ContextMenuTrigger>
+
         <ContextMenuContent>
-          <ContextMenuItem onClick={triggerDownload}>Download</ContextMenuItem>
+          <ContextMenuItem onClick={() => downloadMutation.mutate(child.id)}>
+            Download
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => setShowRename(true)}>
+            Rename
+          </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
-      <PreviewDialog open={showPreview} setOpen={setShowPreview} file={child} />
+
+      <Preview open={showPreview} setOpen={setShowPreview} file={child} />
+      <Rename open={showRename} setOpen={setShowRename} file={child} />
     </div>
   );
 };
