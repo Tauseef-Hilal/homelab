@@ -2,8 +2,8 @@ import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
 import { copyFolderSchema, idParamSchema } from '../../../../../../shared/src/schemas/storage/request/folder.schema';
 import { copyFolder } from '../../services/folder.service';
-import { enqueueCopyJob } from '@server/queues/copy.producer';
 import { success } from '@server/lib/response';
+import { enqueueJob } from '@server/lib/jobs/queues';
 
 export const copyFolderController = catchAsync(
   async (req: Request, res: Response) => {
@@ -12,7 +12,7 @@ export const copyFolderController = catchAsync(
 
     const jobPayload = await copyFolder(req.user.id, folderId, targetFolderId);
 
-    const job = await enqueueCopyJob({
+    const job = await enqueueJob("copy", {
       ...jobPayload,
       requestId: req.id,
       prismaJobId: '',

@@ -77,7 +77,7 @@ model File {
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
   SharedLink SharedLink[]
-  
+
   @@unique([userId, fullPath])
 }
 
@@ -99,6 +99,7 @@ model SharedLink {
 
 model Job {
   id        String    @id @default(uuid())
+  name      String
   userId    String
   User      User      @relation(fields: [userId], references: [id])
   requestId String

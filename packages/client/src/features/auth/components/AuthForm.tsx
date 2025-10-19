@@ -99,15 +99,13 @@ export function AuthForm({ formType: defaultFormType }: AuthFormProps) {
         error={errors.email?.message}
       />
 
-      {formType == "login" && (
-        <FormField
-          className={fieldClassName}
-          placeholder="Password"
-          type="password"
-          registration={register("password")}
-          error={"password" in errors ? errors.password?.message : undefined}
-        />
-      )}
+      <FormField
+        className={fieldClassName}
+        placeholder="Password"
+        type="password"
+        registration={register("password")}
+        error={"password" in errors ? errors.password?.message : undefined}
+      />
 
       {formType != "signup" && (
         <div className="flex flex-col w-full">
