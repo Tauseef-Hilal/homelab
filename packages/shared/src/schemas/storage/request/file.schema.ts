@@ -34,7 +34,6 @@ export const moveFileSchema = z
   );
 
 export const copyFileSchema = z.object({
-  fileId: z.uuidv4(),
   targetFolderId: z.nullable(z.uuidv4()),
 });
 

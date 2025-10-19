@@ -25,9 +25,9 @@ import {
 import { useState } from "react";
 import { Button } from "@client/components/ui/button";
 import useDriveStore from "../stores/driveStore";
-import { AxiosError } from "axios";
 import { Progress } from "@client/components/ui/progress";
-import { sleep } from "@client/lib/utils";
+import { useBatchMutation } from "../hooks/useBatchMutation";
+import { UploadFileResponse } from "@shared/schemas/storage/response/file.schema";
 
 interface UploadDialogProps {
   folderId: string;
@@ -40,14 +40,11 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
   open,
   setOpen,
 }) => {
-  const [progress, setProgress] = useState(0);
-  const [failed, setFailed] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
-  const [pending, setPending] = useState(false);
-
   const { addFile } = useDriveStore();
+  const [files, setFiles] = useState<File[]>([]);
   const [visibility, setVisibility] =
     useState<UploadFileInput["visibility"]>("public");
+
   const {
     handleSubmit,
     register,
@@ -62,40 +59,31 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
     onError: () => {},
   });
 
+  const { isPending, mutate, retry, failed, setFailed, progress } =
+    useBatchMutation<UploadFileInput, UploadFileResponse>({
+      mutationFn: mutation.mutateAsync,
+      onProgress: (data) => addFile(data.file),
+      delay: 1000,
+    });
+
   const onSubmit = async (data: UploadFileInput) => {
+    data.folderId = folderId;
+
+    if (failed.length > 0) {
+      return retry();
+    }
+
     if (files.length == 0) return;
 
-    setPending(true);
-    setProgress(0);
+    const inputs = files.map((file) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folderId", data.folderId ?? "");
+      formData.append("visibility", data.visibility);
+      return formData as any as UploadFileInput;
+    });
 
-    const failedFiles: File[] = [];
-    let completed = 0;
-
-    await Promise.allSettled(
-      files.map(async (file) => {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("folderId", data.folderId ?? "");
-        formData.append("visibility", data.visibility);
-
-        try {
-          const result = await mutation.mutateAsync(
-            formData as any as UploadFileInput
-          );
-          addFile(result.file);
-          setProgress(((++completed + 1) / files.length) * 100);
-          await sleep(1000);
-        } catch (error) {
-          if (error instanceof AxiosError) {
-            failedFiles.push(file);
-          }
-        }
-      })
-    );
-
-    setFiles(failedFiles);
-    setFailed(failedFiles.length > 0);
-    setPending(false);
+    mutate(inputs);
   };
 
   return (
@@ -115,8 +103,8 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
             multiple
             type="file"
             onChange={(e) => {
-              setFailed(false);
               setFiles([...(e.target.files ?? [])]);
+              setFailed([]);
             }}
           />
           <Select
@@ -137,25 +125,21 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
             </SelectContent>
           </Select>
 
-          {pending ? (
+          {isPending ? (
             <Progress value={progress} />
           ) : (
-            <div>
-              {progress > 0 && (
-                <p>
-                  {failed
-                    ? `Failed to upload ${files.length} files`
-                    : "Files uploaded successfully"}
-                </p>
-              )}
-            </div>
+            <p>
+              {failed.length > 0
+                ? `Failed to upload ${failed.length} files`
+                : "Files uploaded successfully"}
+            </p>
           )}
 
           <Button
             type="submit"
-            disabled={isSubmitting || mutation.isPending || files.length == 0}
+            disabled={isSubmitting || isPending || files.length == 0}
           >
-            {failed ? "Retry" : "Upload"}
+            {failed.length > 0 ? "Retry" : "Upload"}
           </Button>
         </form>
       </DialogContent>

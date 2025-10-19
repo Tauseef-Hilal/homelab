@@ -13,6 +13,8 @@ import {
 } from "@client/components/ui/context-menu";
 import { useDownloadFile } from "../hooks/useDownloadFile";
 import Rename from "./Rename";
+import { cx } from "class-variance-authority";
+import { useSelect } from "../hooks/useSelect";
 
 interface FileProps {
   child: File;
@@ -21,6 +23,7 @@ interface FileProps {
 const FileWidget: React.FC<FileProps> = ({ child }) => {
   const [showPreview, setShowPreview] = useState(false);
   const [showRename, setShowRename] = useState(false);
+  const { selectedItems, isSelected, onSelect, selectItem } = useSelect();
 
   const thumbnailUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/uploads/${child.userId}/thumbnails/${child.id}.webp`;
 
@@ -38,13 +41,26 @@ const FileWidget: React.FC<FileProps> = ({ child }) => {
     onError: (error) => {},
   });
 
+  const clickHandler = () => {
+    if (selectedItems.length == 0) {
+      setShowPreview(true);
+      return;
+    }
+
+    onSelect(child);
+  };
+
+
   return (
-    <div key={child.id}>
+    <div>
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
-            className="p-4 w-20 flex flex-col items-center justify-start gap-2"
-            onClick={() => setShowPreview(true)}
+            className={cx(
+              "p-4 w-20 flex flex-col items-center justify-start gap-2",
+              isSelected(child) && "bg-blue-400 rounded"
+            )}
+            onClick={clickHandler}
           >
             {child.hasThumbnail ? (
               <Image
@@ -68,6 +84,9 @@ const FileWidget: React.FC<FileProps> = ({ child }) => {
           </ContextMenuItem>
           <ContextMenuItem onClick={() => setShowRename(true)}>
             Rename
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => selectItem(child)}>
+            Select
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>

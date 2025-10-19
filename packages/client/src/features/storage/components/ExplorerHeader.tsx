@@ -4,15 +4,24 @@ import { Button } from "@client/components/ui/button";
 import { Input } from "@client/components/ui/input";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import useDriveStore from "../stores/driveStore";
-import { UseMutationResult } from "@tanstack/react-query";
-import { ListDirectoryResponse } from "@shared/schemas/storage/response/folder.schema";
+import { useEffect } from "react";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 
-interface ExplorerHeaderProps {
-  mutation: UseMutationResult<ListDirectoryResponse>;
-}
+interface ExplorerHeaderProps {}
 
-const ExplorerHeader: React.FC<ExplorerHeaderProps> = ({ mutation }) => {
-  const { path, moveBackward, moveForward, setPath } = useDriveStore();
+const ExplorerHeader: React.FC<ExplorerHeaderProps> = ({}) => {
+  const {
+    inputPath,
+    setInputPath,
+    moveBackward,
+    moveForward,
+    setPath,
+  } = useDriveStore();
+  const debouncedPath = useDebouncedValue(inputPath, 1000);
+
+  useEffect(() => {
+    setPath(debouncedPath);
+  }, [debouncedPath]);
 
   return (
     <div className="grid grid-flow-col">
@@ -34,24 +43,12 @@ const ExplorerHeader: React.FC<ExplorerHeaderProps> = ({ mutation }) => {
       </div>
       <Input
         type="text"
-        value={path}
+        value={inputPath}
         className="w-min text-sm"
-        onChange={(e) => setPath(e.target.value)}
-        onKeyUp={(e) => {
-          if (e.key == "Enter") {
-            mutation.mutate({ path });
-          }
+        onChange={(e) => {
+          setInputPath(e.target.value);
         }}
       />
-      <Button
-        variant={"outline"}
-        className="rounded-full"
-        onClick={() => {
-          mutation.mutate({ path });
-        }}
-      >
-        Go
-      </Button>
     </div>
   );
 };

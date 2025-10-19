@@ -41,12 +41,15 @@ const NewFolderDialog: React.FC<NewFolderDialogProps> = ({
   const { mutate, isPending } = useCreateFolder({
     onSuccess: (data) => {
       addFolder(data.folder);
-      setOpen(false)
+      setOpen(false);
     },
     onError: () => toast("Failed to create folder!"),
   });
 
-  const onSubmit = (data: CreateFolderInput) => mutate(data);
+  const onSubmit = (data: CreateFolderInput) => {
+    data.parentId = parentId;
+    mutate(data);
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

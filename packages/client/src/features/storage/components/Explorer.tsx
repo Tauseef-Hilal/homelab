@@ -1,26 +1,45 @@
 "use client";
 
-import { UseMutationResult } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { UseQueryResult } from "@tanstack/react-query";
 import { useListDirectory } from "../hooks/useListDirectory";
 import useDriveStore from "../stores/driveStore";
 import ExplorerContent from "./ExplorerContent";
 import ExplorerHeader from "./ExplorerHeader";
+import { Button } from "@client/components/ui/button";
 import { ListDirectoryResponse } from "@shared/schemas/storage/response/folder.schema";
 
 const Explorer: React.FC = () => {
-  const { push } = useDriveStore();
-  const mutation = useListDirectory({
-    onError: (err) => {},
-    onSuccess: (data) => push(data.folder),
-  });
+  const { path, push, stack, stackIdx, selectedItems, deselectAll } =
+    useDriveStore();
+  const query = useListDirectory(path, true);
+
+  useEffect(() => {
+    if (!query.data) return;
+
+    const currFolder = stack[stackIdx];
+    const newFolder = query.data.folder;
+
+    if (!currFolder || currFolder.id != newFolder.id) {
+      push(query.data.folder);
+    }
+  }, [query.data]);
 
   return (
     <div className="p-4 h-full">
-      <ExplorerHeader
-        mutation={mutation as UseMutationResult<ListDirectoryResponse>}
-      />
+      {selectedItems.length == 0 ? (
+        <ExplorerHeader />
+      ) : (
+        <div className="flex justify-between items-center">
+          <Button variant={"outline"} onClick={deselectAll}>
+            Cancel
+          </Button>{" "}
+          <p>{selectedItems.length} items selected</p>
+        </div>
+      )}
+
       <ExplorerContent
-        mutation={mutation as UseMutationResult<ListDirectoryResponse>}
+        listQuery={query as UseQueryResult<ListDirectoryResponse>}
       />
     </div>
   );

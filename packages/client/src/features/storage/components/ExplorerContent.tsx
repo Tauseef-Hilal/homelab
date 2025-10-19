@@ -1,14 +1,13 @@
 "use client";
 
 import { Button } from "@client/components/ui/button";
-import { ListDirectoryResponse } from "@shared/schemas/storage/response/folder.schema";
 import { ForkKnifeCrossedIcon, Loader2Icon } from "lucide-react";
 import useDriveStore from "../stores/driveStore";
 import FolderWidget from "./FolderWidget";
 import FileWidget from "./FileWidget";
-import { UseMutationResult } from "@tanstack/react-query";
+import { UseQueryResult } from "@tanstack/react-query";
 import { cx } from "class-variance-authority";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -17,27 +16,24 @@ import {
 } from "@client/components/ui/context-menu";
 import NewFolderDialog from "./NewFolderDialog";
 import UploadDialog from "./UploadDialog";
+import { ListDirectoryResponse } from "@shared/schemas/storage/response/folder.schema";
 
 interface ExplorerContentProps {
-  mutation: UseMutationResult<ListDirectoryResponse>;
+  listQuery: UseQueryResult<ListDirectoryResponse>;
 }
 
-const ExplorerContent: React.FC<ExplorerContentProps> = ({ mutation }) => {
+const ExplorerContent: React.FC<ExplorerContentProps> = ({ listQuery }) => {
   const [showFolderDialog, setShowFolderDialog] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
-  const { stack, stackIdx, path, setPath } = useDriveStore();
-  const { isPending, error, mutate } = mutation;
-
-  useEffect(() => {
-    mutate({ path });
-  }, [mutate]);
+  const { stack, stackIdx, setPath } = useDriveStore();
+  const { isPending, error, refetch } = listQuery;
+  const folder = stack[stackIdx];
 
   function handleFolderClick(folderPath: string) {
     setPath(folderPath);
-    mutate({ path: folderPath });
   }
 
-  if (isPending) {
+  if (isPending || folder == undefined) {
     return (
       <div className="h-full flex items-center justify-center">
         <Loader2Icon className="animate-spin" size={36} />
@@ -49,14 +45,12 @@ const ExplorerContent: React.FC<ExplorerContentProps> = ({ mutation }) => {
     return (
       <div className="h-full flex flex-col justify-center items-center gap-2">
         <ForkKnifeCrossedIcon /> <p>{error.message}</p>
-        <Button onClick={() => mutate({ path })} variant={"outline"}>
+        <Button onClick={() => refetch()} variant={"outline"}>
           Retry
         </Button>
       </div>
     );
   }
-
-  const folder = stack[stackIdx];
 
   return (
     <div className="h-full">
