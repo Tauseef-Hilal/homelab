@@ -1,5 +1,4 @@
-import { Job } from 'bullmq';
-import { CopyJobPayload, CopyJobResult } from '@shared/queues/copy/copy.types';
+import { CopyJobPayload } from '@shared/jobs/payload.types';
 import { prisma } from '@shared/prisma';
 import { randomUUID } from 'crypto';
 import { PrismaClient, Prisma } from '@prisma/client';
@@ -11,11 +10,11 @@ import {
   getThumbnailPath,
 } from '@shared/utils/storage.utils';
 
-export const copyFolder = async (
-  job: Job<CopyJobPayload, CopyJobResult>
-): Promise<CopyJobResult> => {
-  const { srcFolderId, destFolderId, destPath } = job.data;
-
+export const copyFolder = async ({
+  srcFolderId,
+  destFolderId,
+  destPath,
+}: CopyJobPayload) => {
   await prisma.$transaction(
     async (tx) => await _copyFolder(tx, srcFolderId, destFolderId)
   );

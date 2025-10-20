@@ -1,9 +1,13 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { copyFolderSchema, idParamSchema } from '../../../../../../shared/src/schemas/storage/request/folder.schema';
+import {
+  copyFolderSchema,
+  idParamSchema,
+} from '../../../../../../shared/src/schemas/storage/request/folder.schema';
 import { copyFolder } from '../../services/folder.service';
 import { success } from '@server/lib/response';
-import { enqueueJob } from '@server/lib/jobs/queues';
+import { enqueueCopyJob } from '@server/lib/jobs/fileIOQueue';
+import { jobNames } from '@shared/jobs/constants';
 
 export const copyFolderController = catchAsync(
   async (req: Request, res: Response) => {
@@ -12,7 +16,7 @@ export const copyFolderController = catchAsync(
 
     const jobPayload = await copyFolder(req.user.id, folderId, targetFolderId);
 
-    const job = await enqueueJob("copy", {
+    const job = await enqueueCopyJob(jobNames.copyJobName, {
       ...jobPayload,
       requestId: req.id,
       prismaJobId: '',

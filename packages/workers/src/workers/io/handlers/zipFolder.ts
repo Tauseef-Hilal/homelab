@@ -1,17 +1,16 @@
 import fs from 'fs';
-import { Job } from 'bullmq';
-import { ZipJobPayload, ZipJobResult } from '@shared/queues/zip/zip.types';
+import { ZipJobPayload } from '@shared/jobs/payload.types';
 import { prisma } from '@shared/prisma';
 import { randomUUID } from 'crypto';
-import { getFileExtension, getOriginalFilePath, getTempFilePath } from '@shared/utils/storage.utils';
+import {
+  getFileExtension,
+  getOriginalFilePath,
+  getTempFilePath,
+} from '@shared/utils/storage.utils';
 import archiver, { Archiver } from 'archiver';
 import { Folder, File } from '@prisma/client';
 
-export const zipFolder = async (
-  job: Job<ZipJobPayload, ZipJobResult>
-): Promise<ZipJobResult> => {
-  const { folderId } = job.data;
-
+export const zipFolder = async ({ folderId }: ZipJobPayload) => {
   const folder = await prisma.folder.findUnique({
     where: { id: folderId },
     include: { files: true, children: true },
@@ -35,7 +34,7 @@ export const zipFolder = async (
     await archive.finalize();
   });
 
-  return {zipPath, zippedAt: new Date().toISOString()};
+  return { zipPath, zippedAt: new Date().toISOString() };
 };
 
 async function _createZipForDownload(

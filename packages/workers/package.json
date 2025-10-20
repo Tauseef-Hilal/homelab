@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon",
+    "dev:thumbnail": "nodemon --config nodemon.thumbnail.json",
+    "dev:io": "nodemon --config nodemon.io.json",
     "start": "node dist/index.js",
     "test": "npx vitest",
     "build": "npx tsc"

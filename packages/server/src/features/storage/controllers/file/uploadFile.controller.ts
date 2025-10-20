@@ -7,7 +7,8 @@ import { ensureQuotaAvailable, saveFile } from '../../services/file.service';
 import { getFileExtension } from '../../utils/file.util';
 import { getOriginalFilePath } from '@shared/utils/storage.utils';
 import { success } from '@server/lib/response';
-import { enqueueJob } from '@server/lib/jobs/queues';
+import { enqueueThumbnailJob } from '@server/lib/jobs/thumbnailQueue';
+import { jobNames } from '@shared/jobs/constants';
 
 export const uploadFileController = catchAsync(
   async (req: Request, res: Response) => {
@@ -24,7 +25,7 @@ export const uploadFileController = catchAsync(
     await ensureQuotaAvailable(req.user.id, req.file.size);
     const result = await saveFile(req.user.id, req.file, visibility, folderId);
 
-    const job = await enqueueJob('thumbnail', {
+    const job = await enqueueThumbnailJob(jobNames.thumbnailJobName, {
       prismaJobId: '',
       requestId: req.id,
       userId: req.user.id,

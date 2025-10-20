@@ -40,4 +40,4 @@ COPY . .
 RUN pnpm install --recursive
 
 # Start the worker in dev mode (replace with your actual entry command)
-CMD ["pnpm", "--filter", "./packages/workers", "dev"]
+CMD ["pnpm", "--filter", "./packages/workers", "dev:thumbnail"]

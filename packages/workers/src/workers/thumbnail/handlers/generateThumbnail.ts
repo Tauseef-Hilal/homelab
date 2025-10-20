@@ -1,20 +1,17 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { spawn } from 'child_process';
-import sharp from 'sharp';
 import ffmpeg from 'fluent-ffmpeg';
-import { Job } from 'bullmq';
-import {
-  ThumbnailJobPayload,
-  ThumbnailJobResult,
-} from '@shared/queues/thumbnail/thumbnail.types';
+import sharp from 'sharp';
+import { spawn } from 'child_process';
 import { getThumbnailPath } from '@shared/utils/storage.utils';
+import { ThumbnailJobPayload } from '@shared/jobs/payload.types';
 
-export const generateThumbnail = async (
-  job: Job<ThumbnailJobPayload, ThumbnailJobResult>
-): Promise<ThumbnailJobResult> => {
-  const { fileId, filePath, mimeType, userId } = job.data;
-
+export const generateThumbnail = async ({
+  fileId,
+  filePath,
+  mimeType,
+  userId,
+}: ThumbnailJobPayload) => {
   const outputPath = getThumbnailPath(userId, fileId);
   const outputDir = path.dirname(outputPath);
   await fs.mkdir(outputDir, { recursive: true });

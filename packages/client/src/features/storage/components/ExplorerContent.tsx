@@ -52,28 +52,36 @@ const ExplorerContent: React.FC<ExplorerContentProps> = ({ listQuery }) => {
     );
   }
 
+  const emptyFolder = folder.children.length == 0 && folder.files.length == 0;
+
   return (
     <div className="h-full">
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div
-            className={cx(
-              "grid grid-cols-4 align-center place-content-start",
-              "place-items-center gap-2 h-full overflow-auto"
-            )}
-          >
-            {folder?.children.map((child) => (
-              <FolderWidget
-                key={child.id}
-                child={child}
-                onClick={handleFolderClick}
-              />
-            ))}
+          {!emptyFolder ? (
+            <div
+              className={cx(
+                "grid grid-cols-4 align-center place-content-start",
+                "place-items-center gap-2 h-full overflow-auto"
+              )}
+            >
+              {folder?.children.map((child) => (
+                <FolderWidget
+                  key={child.id}
+                  child={child}
+                  onClick={handleFolderClick}
+                />
+              ))}
 
-            {folder?.files.map((child) => (
-              <FileWidget key={child.id} child={child} />
-            ))}
-          </div>
+              {folder?.files.map((child) => (
+                <FileWidget key={child.id} child={child} />
+              ))}
+            </div>
+          ) : (
+            <div className="h-full flex justify-center items-center">
+              <p>Oops, there's nothing here. But you can add your files!</p>
+            </div>
+          )}
         </ContextMenuTrigger>
         <ContextMenuContent>
           <ContextMenuItem onClick={() => setShowFolderDialog(true)}>

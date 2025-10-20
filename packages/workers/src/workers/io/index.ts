@@ -1,33 +1,33 @@
 import { Worker } from 'bullmq';
 import redis from '@shared/redis';
-import { queueNames } from '@shared/queues/queue.constants';
+import { queueNames } from '@shared/jobs/constants';
 import { withRequestId } from '@shared/logging';
-import { copyFolder } from './copy.processor';
-import { CopyJobPayload, CopyJobResult } from '@shared/queues/copy/copy.types';
+import { fileIOJobProcessor } from './processor';
+import { JobPayload } from '@shared/jobs/payload.types';
 import { updateJob } from '../../utils/db';
 
-export const copyWorker = new Worker<CopyJobPayload, CopyJobResult>(
-  queueNames.copy,
-  copyFolder,
-  { connection: redis }
+export const fileIOWorker = new Worker<JobPayload>(
+  queueNames.fileIOQueueName,
+  fileIOJobProcessor,
+  { connection: redis, concurrency: 10 }
 );
 
-copyWorker.on('active', async (job, prev) => {
+fileIOWorker.on('active', async (job, prev) => {
   const logger = withRequestId(job.data.requestId);
   await updateJob(job.data.prismaJobId, { status: 'processing', progress: 0 });
 
   logger.info(
     {
       userId: job.data.userId,
-      src: job.data.srcPath,
-      dest: job.data.destPath,
+      // src: job.data.srcPath,
+      // dest: job.data.destPath,
       attempts: job.attemptsMade,
     },
     `Processing job: ${job.name}<${job.id}>`
   );
 });
 
-copyWorker.on('completed', async (job) => {
+fileIOWorker.on('completed', async (job) => {
   const logger = withRequestId(job.data.requestId);
   await updateJob(job.data.prismaJobId, {
     status: 'completed',
@@ -38,15 +38,15 @@ copyWorker.on('completed', async (job) => {
   logger.info(
     {
       userId: job.data.userId,
-      src: job.data.srcPath,
-      dest: job.data.destPath,
+      // src: job.data.srcPath,
+      // dest: job.data.destPath,
       attempts: job.attemptsMade,
     },
     `Job ${job.name}<${job.id}> completed`
   );
 });
 
-copyWorker.on('failed', async (job, err) => {
+fileIOWorker.on('failed', async (job, err) => {
   const logger = withRequestId(job?.data.requestId ?? '');
   await updateJob(job?.data.prismaJobId ?? '', {
     status: 'failed',
@@ -56,8 +56,8 @@ copyWorker.on('failed', async (job, err) => {
   logger.error(
     {
       userId: job?.data.userId,
-      src: job?.data.srcPath,
-      dest: job?.data.destPath,
+      // src: job?.data.srcPath,
+      // dest: job?.data.destPath,
       attempts: job?.attemptsMade,
       error: err.message,
     },

@@ -1,19 +1,20 @@
 import { Worker } from 'bullmq';
-import { queueNames } from '@shared/queues/queue.constants';
-import { generateThumbnail } from './thumbnail.processor';
-import {
-  ThumbnailJobPayload,
-  ThumbnailJobResult,
-} from '@shared/queues/thumbnail//thumbnail.types';
+import { thumbnailProcessor } from './processor';
 import redis from '@shared/redis';
 import { withRequestId } from '@shared/logging';
 import { prisma } from '@shared/prisma';
 import { updateJob } from '../../utils/db';
+import { ThumbnailJobPayload } from '@shared/jobs/payload.types';
+import { ThumbnailJobResult } from '@shared/jobs/result.types';
+import { queueNames } from '@shared/jobs/constants';
 
 export const thumbnailWorker = new Worker<
   ThumbnailJobPayload,
   ThumbnailJobResult
->(queueNames.thumbnail, generateThumbnail, { connection: redis });
+>(queueNames.thumbnailQueueName, thumbnailProcessor, {
+  connection: redis,
+  concurrency: 1,
+});
 
 thumbnailWorker.on('active', async (job, prev) => {
   const logger = withRequestId(job.data.requestId);
