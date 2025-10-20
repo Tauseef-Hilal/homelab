@@ -13,6 +13,7 @@ type DriveState = {
   stack: ListDirectoryResponse['folder'][];
   stackIdx: number;
   selectedItems: Entry[];
+  clipboard: Entry[];
   setPath: (path: string) => void;
   setInputPath: (path: string) => void;
   push: (folder: ListDirectoryResponse['folder']) => void;
@@ -25,6 +26,7 @@ type DriveState = {
   selectItem: (item: File | Folder) => void;
   deselectItem: (item: File | Folder) => void;
   deselectAll: () => void;
+  setClipboard: (entries: Entry[]) => void;
 };
 
 const useDriveStore = create<DriveState>((set, getState) => ({
@@ -33,6 +35,7 @@ const useDriveStore = create<DriveState>((set, getState) => ({
   stack: [],
   stackIdx: 0,
   selectedItems: [],
+  clipboard: [],
   setPath: (path) => set({ path, inputPath: path }),
   setInputPath: (path) => set({ inputPath: path }),
   push: (folder) => {
@@ -113,6 +116,11 @@ const useDriveStore = create<DriveState>((set, getState) => ({
   },
   deselectAll: () => {
     set((state) => ({ ...state, selectedItems: [] }));
+  },
+  setClipboard: (entries) => {
+    set((state) => {
+      return { ...state, clipboard: [...entries] };
+    });
   },
 }));
 

@@ -4,7 +4,7 @@ import {
   copyFolderSchema,
   idParamSchema,
 } from '../../../../../../shared/src/schemas/storage/request/folder.schema';
-import { copyFolder } from '../../services/folder.service';
+// import { copyFolder } from '../../services/folder.service';
 import { success } from '@server/lib/response';
 import { enqueueCopyJob } from '@server/lib/jobs/fileIOQueue';
 import { jobNames } from '@shared/jobs/constants';
@@ -14,7 +14,7 @@ export const copyFolderController = catchAsync(
     const folderId = idParamSchema.parse(req.params.folderId);
     const { targetFolderId } = copyFolderSchema.parse(req.body);
 
-    const jobPayload = await copyFolder(req.user.id, folderId, targetFolderId);
+    // const jobPayload = await copyFolder(req.user.id, folderId, targetFolderId);
 
     // const job = await enqueueCopyJob(jobNames.copyJobName, {
     //   ...jobPayload,

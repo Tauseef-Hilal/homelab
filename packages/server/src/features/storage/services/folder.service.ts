@@ -163,60 +163,6 @@ export async function moveFolder(
   ]);
 }
 
-export async function copyFolder(
-  userId: string,
-  folderId: string,
-  targetFolderId: string | null
-) {
-  const folder = await prisma.folder.findUnique({
-    where: { id: folderId },
-    select: { id: true, name: true, userId: true, fullPath: true },
-  });
-  ensureFolderExists(folder as Folder);
-  ensureUserIsOwner(folder as Folder, userId);
-
-  const targetFolder = await prisma.folder.findUnique({
-    where: { id: targetFolderId ?? '' },
-  });
-
-  if (targetFolderId) {
-    ensureFolderExists(targetFolder);
-    ensureUserIsOwner(targetFolder!, userId);
-
-    if (targetFolder!.fullPath.startsWith(folder!.fullPath + '/')) {
-      throw new HttpError({
-        status: 400,
-        code: CommonErrorCode.BAD_REQUEST,
-        message: 'Cannot copy a folder into its own subtree.',
-      });
-    }
-  }
-
-  const resolvedName = await resolveFolderName(
-    folder!,
-    folder!.name,
-    targetFolderId,
-    true
-  );
-
-  const newFolder = await prisma.folder.create({
-    data: {
-      name: resolvedName,
-      userId,
-      parentId: targetFolderId,
-      fullPath: pathJoin(targetFolder?.fullPath, resolvedName),
-    },
-  });
-
-  return {
-    userId,
-    srcFolderId: folder!.id,
-    destFolderId: newFolder.id,
-    srcPath: folder!.fullPath,
-    destPath: newFolder.fullPath,
-  };
-}
-
 export async function prepareDownload(userId: string, folderId: string) {
   const folderOrNull = await prisma.folder.findUnique({
     where: { id: folderId },

@@ -18,6 +18,7 @@ import {
   moveFolderController,
 } from './controllers/folder';
 import { listController } from './controllers/folder/list.controller';
+import { copyItemsController } from './controllers/copyItems.controller';
 
 const router = Router();
 
@@ -35,5 +36,7 @@ router.post('/folder/:folderId/copy', requireAuth, copyFolderController);
 router.get('/folder/:folderId/download', requireAuth, downloadFolderController);
 router.get('/download/:id', requireAuth, downloadController);
 router.get('/list', requireAuth, listController);
+
+router.post('/items:copy', requireAuth, copyItemsController);
 
 export default router;

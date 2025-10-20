@@ -18,5 +18,5 @@ export const enqueueJob =
     payload.prismaJobId = job.id;
     await enqueue(name, payload);
 
-    return { id: job.id };
+    return job;
   };

@@ -24,7 +24,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({ child }) => {
   const [showPreview, setShowPreview] = useState(false);
   // const [showRename, setShowRename] = useState(false);
   const { selectedItems, isSelected, onSelect, selectItem } = useSelect();
-  const { setPath } = useDriveStore();
+  const { setPath, setClipboard, deselectAll } = useDriveStore();
 
   const thumbnailUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/uploads/${child.userId}/thumbnails/${child.id}.webp`;
 
@@ -39,6 +39,16 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({ child }) => {
     } else {
       setShowPreview(true);
     }
+  };
+
+  const copyHandler = () => {
+    if (selectedItems.length > 0) {
+      setClipboard(selectedItems);
+      return deselectAll();
+    }
+
+    setClipboard([{ id: child.id, type: isFolder(child) ? "folder" : "file" }]);
+    deselectAll();
   };
 
   return (
@@ -90,6 +100,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({ child }) => {
           <ContextMenuItem onClick={() => selectItem(child)}>
             Select
           </ContextMenuItem>
+          <ContextMenuItem onClick={copyHandler}>Copy</ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
 

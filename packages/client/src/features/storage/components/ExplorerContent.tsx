@@ -16,6 +16,7 @@ import {
 import NewFolderDialog from "./NewFolderDialog";
 import UploadDialog from "./UploadDialog";
 import { ListDirectoryResponse } from "@shared/schemas/storage/response/folder.schema";
+import { useCopyItems } from "../hooks/useCopyItems";
 
 interface ExplorerContentProps {
   listQuery: UseQueryResult<ListDirectoryResponse>;
@@ -24,9 +25,18 @@ interface ExplorerContentProps {
 const ExplorerContent: React.FC<ExplorerContentProps> = ({ listQuery }) => {
   const [showFolderDialog, setShowFolderDialog] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
-  const { stack, stackIdx } = useDriveStore();
+  const { stack, stackIdx, clipboard } = useDriveStore();
   const { isPending, error, refetch } = listQuery;
   const folder = stack[stackIdx];
+
+  const copyMutation = useCopyItems({
+    onSuccess: (data) => {},
+    onError: (err) => {},
+  });
+
+  const pasteHandler = () => {
+    copyMutation.mutate({ destinationFolderId: folder.id, items: clipboard });
+  };
 
   if (isPending || folder == undefined) {
     return (
@@ -81,6 +91,7 @@ const ExplorerContent: React.FC<ExplorerContentProps> = ({ listQuery }) => {
           <ContextMenuItem onClick={() => setShowUploadDialog(true)}>
             Upload
           </ContextMenuItem>
+          <ContextMenuItem onClick={pasteHandler}>Paste</ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
       <NewFolderDialog

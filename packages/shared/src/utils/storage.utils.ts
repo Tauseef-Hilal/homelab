@@ -112,3 +112,34 @@ export function getOriginalsDirPath(userId: string) {
 export function getTempFilePath(fileName: string) {
   return path.join(env.TEMP_DIR_PATH, fileName);
 }
+
+export async function resolveFolderName(
+  folder: {
+    id: string;
+    name: string;
+    userId: string;
+  },
+  newName: string,
+  targetFolderId: string | null,
+  copy: boolean = false
+) {
+  const existingFolders = await prisma.folder.findMany({
+    where: { parentId: targetFolderId, userId: folder.userId },
+    select: { id: true, name: true },
+  });
+
+  const existingFolderNames = existingFolders.map((f) =>
+    f.id != folder.id || copy ? f.name : ''
+  );
+
+  let n = 1;
+  let newFolderName = newName;
+
+  while (existingFolderNames.includes(newFolderName)) {
+    newFolderName = newName;
+    newFolderName = `${newFolderName}-${n}`;
+    n++;
+  }
+
+  return newFolderName;
+}
