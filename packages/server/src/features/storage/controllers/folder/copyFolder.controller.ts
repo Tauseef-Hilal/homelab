@@ -16,12 +16,12 @@ export const copyFolderController = catchAsync(
 
     const jobPayload = await copyFolder(req.user.id, folderId, targetFolderId);
 
-    const job = await enqueueCopyJob(jobNames.copyJobName, {
-      ...jobPayload,
-      requestId: req.id,
-      prismaJobId: '',
-    });
+    // const job = await enqueueCopyJob(jobNames.copyJobName, {
+    //   ...jobPayload,
+    //   requestId: req.id,
+    //   prismaJobId: '',
+    // });
 
-    res.status(203).json(success({ job }, 'Folder will be copied shortly'));
+    // res.status(203).json(success({ job }, 'Folder will be copied shortly'));
   }
 );

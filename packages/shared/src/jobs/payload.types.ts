@@ -5,10 +5,8 @@ export interface JobPayload {
 }
 
 export interface CopyJobPayload extends JobPayload {
-  srcFolderId: string;
+  items: { type: 'folder' | 'file'; id: string }[];
   destFolderId: string;
-  srcPath: string;
-  destPath: string;
 }
 
 export interface ThumbnailJobPayload extends JobPayload {

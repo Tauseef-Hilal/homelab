@@ -3,8 +3,7 @@
 import { Button } from "@client/components/ui/button";
 import { ForkKnifeCrossedIcon, Loader2Icon } from "lucide-react";
 import useDriveStore from "../stores/driveStore";
-import FolderWidget from "./FolderWidget";
-import FileWidget from "./FileWidget";
+import FileSystemEntry from "./FileSystemEntry";
 import { UseQueryResult } from "@tanstack/react-query";
 import { cx } from "class-variance-authority";
 import { useState } from "react";
@@ -25,13 +24,9 @@ interface ExplorerContentProps {
 const ExplorerContent: React.FC<ExplorerContentProps> = ({ listQuery }) => {
   const [showFolderDialog, setShowFolderDialog] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
-  const { stack, stackIdx, setPath } = useDriveStore();
+  const { stack, stackIdx } = useDriveStore();
   const { isPending, error, refetch } = listQuery;
   const folder = stack[stackIdx];
-
-  function handleFolderClick(folderPath: string) {
-    setPath(folderPath);
-  }
 
   if (isPending || folder == undefined) {
     return (
@@ -66,15 +61,11 @@ const ExplorerContent: React.FC<ExplorerContentProps> = ({ listQuery }) => {
               )}
             >
               {folder?.children.map((child) => (
-                <FolderWidget
-                  key={child.id}
-                  child={child}
-                  onClick={handleFolderClick}
-                />
+                <FileSystemEntry key={child.id} child={child} />
               ))}
 
               {folder?.files.map((child) => (
-                <FileWidget key={child.id} child={child} />
+                <FileSystemEntry key={child.id} child={child} />
               ))}
             </div>
           ) : (

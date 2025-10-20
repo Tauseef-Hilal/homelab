@@ -5,13 +5,13 @@ import {
   ZipJobPayload,
 } from '@shared/jobs/payload.types';
 import { jobNames } from '@shared/jobs/constants';
-import { copyFolder } from './handlers/copyFolder';
+import { copyItems } from './handlers/copyItems';
 import { zipFolder } from './handlers/zipFolder';
 
 export const fileIOJobProcessor = async (job: Job<JobPayload>) => {
   switch (job.name) {
     case jobNames.copyJobName:
-      return await copyFolder(job.data as CopyJobPayload);
+      return await copyItems(job.data as CopyJobPayload);
     case jobNames.zipJobName:
       return await zipFolder(job.data as ZipJobPayload);
     default:

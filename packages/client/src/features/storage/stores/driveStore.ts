@@ -4,14 +4,15 @@ import {
   ListDirectoryResponse,
 } from '@shared/schemas/storage/response/folder.schema';
 import { UploadFileResponse } from '@shared/schemas/storage/response/file.schema';
-import { File, Folder } from '../types/storage.types';
+import { Entry, File, Folder } from '../types/storage.types';
+import { isFolder } from '@client/lib/utils';
 
 type DriveState = {
   inputPath: string;
   path: string;
   stack: ListDirectoryResponse['folder'][];
   stackIdx: number;
-  selectedItems: (File | Folder)[];
+  selectedItems: Entry[];
   setPath: (path: string) => void;
   setInputPath: (path: string) => void;
   push: (folder: ListDirectoryResponse['folder']) => void;
@@ -92,7 +93,13 @@ const useDriveStore = create<DriveState>((set, getState) => ({
   },
   selectItem: (item: File | Folder) => {
     set((state) => {
-      const newSelectedItems = [...state.selectedItems, item];
+      const newSelectedItems = [
+        ...state.selectedItems,
+        {
+          id: item.id,
+          type: (isFolder(item) ? 'folder' : 'file') as 'file' | 'folder',
+        },
+      ];
       return { ...state, selectedItems: newSelectedItems };
     });
   },
