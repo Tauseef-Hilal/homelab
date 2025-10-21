@@ -10,13 +10,8 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 interface ExplorerHeaderProps {}
 
 const ExplorerHeader: React.FC<ExplorerHeaderProps> = ({}) => {
-  const {
-    inputPath,
-    setInputPath,
-    moveBackward,
-    moveForward,
-    setPath,
-  } = useDriveStore();
+  const { inputPath, setInputPath, moveBackward, moveForward, setPath } =
+    useDriveStore();
   const debouncedPath = useDebouncedValue(inputPath, 1000);
 
   useEffect(() => {
@@ -24,8 +19,8 @@ const ExplorerHeader: React.FC<ExplorerHeaderProps> = ({}) => {
   }, [debouncedPath]);
 
   return (
-    <div className="grid grid-flow-col">
-      <div>
+    <div className="flex gap-4">
+      <div className="flex gap-1">
         <Button
           variant={"outline"}
           className="rounded-full"
@@ -44,7 +39,7 @@ const ExplorerHeader: React.FC<ExplorerHeaderProps> = ({}) => {
       <Input
         type="text"
         value={inputPath}
-        className="w-min text-sm"
+        className="w-full text-sm"
         onChange={(e) => {
           setInputPath(e.target.value);
         }}

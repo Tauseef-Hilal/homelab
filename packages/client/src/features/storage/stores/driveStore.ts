@@ -26,6 +26,7 @@ type DriveState = {
   selectItem: (item: File | Folder) => void;
   deselectItem: (item: File | Folder) => void;
   deselectAll: () => void;
+  selectAll: () => void;
   setClipboard: (entries: Entry[]) => void;
 };
 
@@ -116,6 +117,21 @@ const useDriveStore = create<DriveState>((set, getState) => ({
   },
   deselectAll: () => {
     set((state) => ({ ...state, selectedItems: [] }));
+  },
+  selectAll: () => {
+    set((state) => {
+      const folder = state.stack[state.stackIdx];
+      const selection: Entry[] = [];
+
+      folder.children.forEach((child) =>
+        selection.push({ id: child.id, type: 'folder' })
+      );
+      folder.files.forEach((file) =>
+        selection.push({ id: file.id, type: 'file' })
+      );
+
+      return { ...state, selectedItems: selection };
+    });
   },
   setClipboard: (entries) => {
     set((state) => {
