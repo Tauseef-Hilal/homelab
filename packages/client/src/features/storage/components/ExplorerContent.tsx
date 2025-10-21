@@ -4,9 +4,8 @@ import { Button } from "@client/components/ui/button";
 import { ForkKnifeCrossedIcon, Loader2Icon } from "lucide-react";
 import useDriveStore from "../stores/driveStore";
 import FileSystemEntry from "./FileSystemEntry";
-import { UseQueryResult } from "@tanstack/react-query";
 import { cx } from "class-variance-authority";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -15,27 +14,76 @@ import {
 } from "@client/components/ui/context-menu";
 import NewFolderDialog from "./NewFolderDialog";
 import UploadDialog from "./UploadDialog";
-import { ListDirectoryResponse } from "@shared/schemas/storage/response/folder.schema";
 import { useCopyItems } from "../hooks/useCopyItems";
+import { toast } from "sonner";
+import { getJob } from "../api/getJob";
+import { useListDirectory } from "../hooks/useListDirectory";
 
-interface ExplorerContentProps {
-  listQuery: UseQueryResult<ListDirectoryResponse>;
-}
-
-const ExplorerContent: React.FC<ExplorerContentProps> = ({ listQuery }) => {
+const ExplorerContent: React.FC = () => {
   const [showFolderDialog, setShowFolderDialog] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
-  const { stack, stackIdx, clipboard } = useDriveStore();
-  const { isPending, error, refetch } = listQuery;
-  const folder = stack[stackIdx];
+  const { path, push, stack, stackIdx, clipboard } = useDriveStore();
+  const { isPending, data, error, refetch } = useListDirectory(path, true);
+  const folder = data?.folder ?? stack[stackIdx];
+
+  useEffect(() => {
+    if (!data) return;
+
+    const currFolder = stack[stackIdx];
+    const newFolder = data.folder;
+
+    if (!currFolder || currFolder.id != newFolder.id) {
+      push(data.folder);
+    }
+  }, [data]);
 
   const copyMutation = useCopyItems({
-    onSuccess: (data) => {},
+    onSuccess: (data) => {
+      const toastId = `toast-${data.job.id}`;
+      toast.loading("Copy job enqueued", { id: toastId });
+
+      const interval = setInterval(async () => {
+        try {
+          const jobRes = await getJob(data.job.id);
+          const status = jobRes.job.status;
+
+          switch (status) {
+            case "completed":
+              toast.success("Files copied successfully", { id: toastId });
+              clearInterval(interval);
+              refetch();
+              break;
+
+            case "processing":
+              toast.loading(`Copying files: ${jobRes.job.progress}%`, {
+                id: toastId,
+              });
+              break;
+
+            case "failed":
+              toast.error("Some files failed to copy", { id: toastId });
+              clearInterval(interval);
+              refetch()
+              break;
+
+            default:
+              toast.loading("Copy job enqueued", { id: toastId });
+              break;
+          }
+        } catch {
+          toast.error("Failed to fetch job status", { id: toastId });
+          clearInterval(interval);
+        }
+      }, 1000);
+    },
     onError: (err) => {},
   });
 
-  const pasteHandler = () => {
-    copyMutation.mutate({ destinationFolderId: folder.id, items: clipboard });
+  const pasteHandler = async () => {
+    copyMutation.mutate({
+      destinationFolderId: folder.id,
+      items: clipboard,
+    });
   };
 
   if (isPending || folder == undefined) {

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { idParamSchema } from '../schemas/job.schema';
+import { idParamSchema } from '@shared/schemas/jobs/request/job.schema';
 import { catchAsync } from '@server/lib/catchAsync';
 import { generateETag } from '../utils/hash.util';
 import { getJob } from '../services/job.service';
@@ -24,7 +24,6 @@ export const getJobController = catchAsync(
           status: job.status,
           progress: job.progress,
           result: job.result,
-          error: job.error,
         },
       })
     );

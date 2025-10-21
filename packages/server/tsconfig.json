@@ -3,5 +3,5 @@
   "compilerOptions": {
     "outDir": "dist"
   },
-  "include": ["src", "tests", "../shared/src/constants/media.constants.ts", "../shared/src/schemas/storage/request/file.schema.ts", "../shared/src/schemas/storage/request/folder.schema.ts"]
+  "include": ["src", "tests", "../shared/src/constants/media.constants.ts", "../shared/src/schemas/storage/request/file.schema.ts", "../shared/src/schemas/storage/request/folder.schema.ts", "../shared/src/schemas/jobs/request/job.schema.ts"]
 }
