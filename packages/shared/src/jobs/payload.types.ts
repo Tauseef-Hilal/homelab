@@ -9,6 +9,15 @@ export interface CopyJobPayload extends JobPayload {
   destFolderId: string;
 }
 
+export interface MoveJobPayload extends JobPayload {
+  items: { type: 'folder' | 'file'; id: string; newName?: string }[];
+  destFolderId?: string;
+}
+
+export interface DeleteJobPayload extends JobPayload {
+  items: { type: 'folder' | 'file'; id: string; }[]
+}
+
 export interface ThumbnailJobPayload extends JobPayload {
   fileId: string;
   filePath: string;
@@ -16,6 +25,5 @@ export interface ThumbnailJobPayload extends JobPayload {
 }
 
 export interface ZipJobPayload extends JobPayload {
-  folderId: string;
-  folderPath: string;
+  items: { type: 'folder' | 'file'; id: string; }[]
 }

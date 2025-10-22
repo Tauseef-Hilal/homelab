@@ -1,17 +1,15 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { idParamSchema } from '../../../../../../shared/src/schemas/storage/request/folder.schema';
-import { prepareDownload } from '../../services/folder.service';
 import { success } from '@server/lib/response';
 import { enqueueZipJob } from '@server/lib/jobs/fileIOQueue';
 import { jobNames } from '@shared/jobs/constants';
+import { downloadItemsSchema } from '@shared/schemas/storage/request.schema';
 
-export const downloadFolderController = catchAsync(
+export const downloadItemsController = catchAsync(
   async (req: Request, res: Response) => {
-    const folderId = idParamSchema.parse(req.params.folderId);
-    const meta = await prepareDownload(req.user.id, folderId);
+    const { items } = downloadItemsSchema.parse(req.body);
     const job = await enqueueZipJob(jobNames.zipJobName, {
-      ...meta,
+      items,
       userId: req.user.id,
       requestId: req.id,
       prismaJobId: '',

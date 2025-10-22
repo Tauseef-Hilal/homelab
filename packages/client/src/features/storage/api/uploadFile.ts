@@ -1,6 +1,6 @@
 import api from '@client/lib/api';
-import { UploadFileInput } from '@shared/schemas/storage/request/file.schema';
-import { uploadFileSchema } from '@shared/schemas/storage/response/file.schema';
+import { UploadFileInput } from '@shared/schemas/storage/request.schema';
+import { uploadFileSchema } from '@shared/schemas/storage/response.schema';
 
 export async function uploadFile(data: UploadFileInput) {
   const res = await api.post('/storage/file', data, {

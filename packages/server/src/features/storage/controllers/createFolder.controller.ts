@@ -1,7 +1,7 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { createFolderSchema } from '../../../../../../shared/src/schemas/storage/request/folder.schema';
-import { createFolder } from '../../services/folder.service';
+import { createFolderSchema } from '@shared/schemas/storage/request.schema';
+import { createFolder } from '../services/folder.service';
 import { success } from '@server/lib/response';
 
 export const createFolderController = catchAsync(

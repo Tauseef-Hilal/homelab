@@ -1,9 +1,9 @@
-import { UploadFileResponse } from '@shared/schemas/storage/response/file.schema';
+import { UploadFileResponse } from '@shared/schemas/storage/response.schema';
 import { useMutation } from '@tanstack/react-query';
 import { uploadFile } from '../api/uploadFile';
 import { AxiosError } from 'axios';
 import { ServerError } from '@shared/types/error';
-import { UploadFileInput } from '@shared/schemas/storage/request/file.schema';
+import { UploadFileInput } from '@shared/schemas/storage/request.schema';
 
 export type UseUploadFileOptions = {
   onSuccess: (data: UploadFileResponse) => void;

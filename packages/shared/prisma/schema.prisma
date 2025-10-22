@@ -68,8 +68,8 @@ model File {
   size         Int // in bytes
   fullPath     String
   visibility   Visibility @default(private)
-  folderId     String?
-  folder       Folder?    @relation(fields: [folderId], references: [id])
+  folderId     String
+  folder       Folder    @relation(fields: [folderId], references: [id])
   userId       String
   user         User       @relation(fields: [userId], references: [id])
   hasThumbnail Boolean    @default(false)

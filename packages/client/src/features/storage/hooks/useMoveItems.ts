@@ -1,19 +1,19 @@
-import { CopyItemsOutput } from '@shared/schemas/storage/response.schema';
-import { CopyItemsInput } from '@shared/schemas/storage/request.schema';
+import { MoveItemsOutput } from '@shared/schemas/storage/response.schema';
+import { MoveItemsInput } from '@shared/schemas/storage/request.schema';
 import { ServerError } from '@shared/types/error';
 import { useMutation } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { copyItems } from '../api/copyItems';
+import { moveItems } from '../api/moveItems';
 import { toast } from 'sonner';
 
-export type UseCopyItemsOptions = {
-  onSuccess: (data: CopyItemsOutput) => void;
+export type UseMoveItemsOptions = {
+  onSuccess: (data: MoveItemsOutput) => void;
   onError: (error: string) => void;
 };
 
-export function useCopyItems(options: UseCopyItemsOptions) {
-  return useMutation<CopyItemsOutput, AxiosError<ServerError>, CopyItemsInput>({
-    mutationFn: copyItems,
+export function useMoveItems(options: UseMoveItemsOptions) {
+  return useMutation<MoveItemsOutput, AxiosError<ServerError>, MoveItemsInput>({
+    mutationFn: moveItems,
     onSuccess: options.onSuccess,
     onError: (error) => {
       const serverError = error.response?.data;

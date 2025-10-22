@@ -1,6 +1,6 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { copyItemsSchema } from '@shared/schemas/storage/request/schema';
+import { copyItemsSchema } from '@shared/schemas/storage/request.schema';
 import { enqueueCopyJob } from '@server/lib/jobs/fileIOQueue';
 import { jobNames } from '@shared/jobs/constants';
 import { success } from '@server/lib/response';

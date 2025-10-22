@@ -6,5 +6,7 @@ export const queueNames = {
 export const jobNames = {
   thumbnailJobName: 'thumbnail',
   copyJobName: 'copy',
+  moveJobName: 'move',
+  deleteJobName: 'delete',
   zipJobName: 'zip',
 };

@@ -6,6 +6,7 @@ import { env } from '@shared/config/env';
 import { mediaConstants } from '@shared/constants/media.constants';
 import path from 'path';
 import { prisma } from '@shared/prisma';
+import { Folder } from '@prisma/client';
 
 export function getFileNameWithoutExtension(name: string) {
   const idx = name.lastIndexOf('.');
@@ -26,7 +27,7 @@ export async function resolveFileName(
     userId: string;
   },
   newNameWithoutExtension: string,
-  folderId: string | null,
+  folderId: string,
   copy: boolean = false
 ) {
   const existingFiles = await prisma.file.findMany({
@@ -142,4 +143,23 @@ export async function resolveFolderName(
   }
 
   return newFolderName;
+}
+
+export function ensureFolderExists(
+  folder: Folder | null,
+  errMsg: string = 'Folder does not exist'
+) {
+  if (!folder) {
+    throw new Error(errMsg);
+  }
+}
+
+export function ensureUserIsOwner(
+  folder: Folder,
+  userId: string,
+  errMsg: string = 'You do not have the permission to perform this action'
+) {
+  if (folder.userId != userId) {
+    throw new Error(errMsg);
+  }
 }

@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   UploadFileInput,
   uploadFileSchema,
-} from "@shared/schemas/storage/request/file.schema";
+} from "@shared/schemas/storage/request.schema";
 import { useForm } from "react-hook-form";
 import { useUploadFile } from "../hooks/useUploadFile";
 import { Input } from "@client/components/ui/input";
@@ -27,18 +27,20 @@ import { Button } from "@client/components/ui/button";
 import useDriveStore from "../stores/driveStore";
 import { Progress } from "@client/components/ui/progress";
 import { useBatchMutation } from "../hooks/useBatchMutation";
-import { UploadFileResponse } from "@shared/schemas/storage/response/file.schema";
+import { UploadFileResponse } from "@shared/schemas/storage/response.schema";
 
 interface UploadDialogProps {
   folderId: string;
   open: boolean;
   setOpen: (open: boolean) => void;
+  refetch: () => void;
 }
 
 const UploadDialog: React.FC<UploadDialogProps> = ({
   folderId,
   open,
   setOpen,
+  refetch
 }) => {
   const [ranOnce, setRanOnce] = useState(false);
   const { addFile } = useDriveStore();
@@ -63,7 +65,7 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
   const { isPending, mutate, retry, failed, setFailed, progress } =
     useBatchMutation<UploadFileInput, UploadFileResponse>({
       mutationFn: mutation.mutateAsync,
-      onProgress: (data) => addFile(data.file),
+      onSuccess: () => refetch(),
       delay: 1000,
     });
 

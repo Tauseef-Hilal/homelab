@@ -12,36 +12,42 @@ import {
   resolveFolderName,
 } from '@shared/utils/storage.utils';
 import { existsSync } from 'fs';
+import { CopyJobResult } from '@shared/jobs/result.types';
+import { validateFolderCopyPaths } from '@workers/utils/storage';
 
 export const copyItems = async ({
   prismaJobId,
   userId,
   items,
   destFolderId,
-}: CopyJobPayload) => {
-  let processed = 0;
+}: CopyJobPayload): Promise<CopyJobResult> => {
+  try {
+    let processed = 0;
 
-  for (const item of items) {
-    if (item.type === 'folder') {
-      await copyFolder(userId, item.id, destFolderId);
-    } else {
-      await copyFile(userId, item.id, destFolderId);
+    for (const item of items) {
+      if (item.type === 'folder') {
+        await copyFolder(userId, item.id, destFolderId);
+      } else {
+        await copyFile(userId, item.id, destFolderId);
+      }
+
+      processed++;
+      await prisma.job.update({
+        where: { id: prismaJobId },
+        data: { progress: (processed / items.length) * 100 },
+      });
     }
 
-    processed++;
-    await prisma.job.update({
-      where: { id: prismaJobId },
-      data: { progress: (processed / items.length) * 100 },
-    });
+    return { copiedAt: new Date().toISOString() };
+  } catch (err) {
+    throw new Error('Failed to copy items');
   }
-
-  return { copiedAt: new Date().toISOString() };
 };
 
 export async function copyFile(
   userId: string,
   fileId: string,
-  targetFolderId: string | null = null
+  targetFolderId: string
 ) {
   const srcFile = await prisma.file.findUnique({ where: { id: fileId } });
   if (!srcFile) throw new Error('File does not exist');
@@ -211,12 +217,3 @@ async function copyFileToFolder(
   });
 }
 
-function validateFolderCopyPaths(srcPath: string, destPath: string) {
-  const normalize = (p: string) => p.replace(/\/+$/, '');
-  const src = normalize(srcPath);
-  const dest = normalize(destPath);
-
-  if (dest === src || dest.startsWith(src + '/')) {
-    throw new Error('Cannot copy a folder into its own subtree.');
-  }
-}

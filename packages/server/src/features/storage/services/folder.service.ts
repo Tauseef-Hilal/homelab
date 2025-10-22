@@ -50,119 +50,6 @@ export async function createFolder(
   });
 }
 
-export async function deleteFolder(userId: string, folderId: string) {
-  const folder = await prisma.folder.findUnique({ where: { id: folderId } });
-
-  ensureFolderExists(folder);
-  ensureUserIsOwner(folder!, userId);
-
-  // Get all descendant folder IDs
-  const folderIds = await prisma.folder.findMany({
-    where: { userId, fullPath: { startsWith: folder!.fullPath } },
-    select: { id: true },
-  });
-
-  const folderIdList = folderIds.map((f) => f.id);
-
-  // Get all descendant files
-  const files = await prisma.file.findMany({
-    where: { userId, folderId: { in: folderIdList } },
-  });
-
-  // Delte files on disk along with thumbnails
-  await Promise.all(
-    files.flatMap((file) => [
-      fs.promises.unlink(
-        getOriginalFilePath(userId, file.id, getFileExtension(file.name))
-      ),
-      ...(file.hasThumbnail
-        ? [fs.promises.unlink(getThumbnailPath(userId, file.id))]
-        : []),
-    ])
-  );
-
-  // Delete from DB
-  await prisma.$transaction([
-    prisma.file.deleteMany({ where: { id: { in: files.map((f) => f.id) } } }),
-    prisma.folder.deleteMany({ where: { id: { in: folderIdList } } }),
-  ]);
-}
-
-export async function moveFolder(
-  userId: string,
-  folderId: string,
-  targetFolderId: string | null = null,
-  newName: string | null = null
-) {
-  const renameOnly = folderId == targetFolderId;
-  const folder = await prisma.folder.findUnique({
-    where: { id: folderId },
-    select: { id: true, name: true, userId: true, fullPath: true },
-  });
-
-  ensureFolderExists(folder as Folder);
-  ensureUserIsOwner(folder as Folder, userId);
-
-  const targetFolder = await prisma.folder.findUnique({
-    where: { id: targetFolderId ?? '' },
-  });
-
-  if (targetFolderId && !targetFolder) {
-    throw new HttpError({
-      status: 404,
-      code: CommonErrorCode.NOT_FOUND,
-      message: 'Target folder does not exist',
-    });
-  }
-
-  // Handle name collisions
-  const resolvedName = await resolveFolderName(
-    folder!,
-    newName ?? folder!.name,
-    targetFolderId
-  );
-
-  const oldPathPrefix = folder!.fullPath;
-  const parentPath = oldPathPrefix.slice(0, oldPathPrefix.lastIndexOf('/'));
-  let newPathPrefix = pathJoin(parentPath, resolvedName);
-
-  if (!renameOnly) {
-    newPathPrefix = pathJoin(targetFolder?.fullPath, resolvedName);
-  }
-
-  await prisma.$transaction([
-    prisma.folder.update({
-      where: { id: folderId },
-      data: {
-        name: resolvedName,
-        fullPath: newPathPrefix,
-      },
-    }),
-    prisma.$executeRawUnsafe(
-      `
-      UPDATE "Folder"
-      SET "fullPath" = REPLACE("fullPath", $1, $2)
-      WHERE "fullPath" LIKE $3 AND "userId" = $4
-    `,
-      oldPathPrefix,
-      newPathPrefix,
-      `${oldPathPrefix}%`,
-      userId
-    ),
-    prisma.$executeRawUnsafe(
-      `
-      UPDATE "File"
-      SET "fullPath" = REPLACE("fullPath", $1, $2)
-      WHERE "fullPath" LIKE $3 AND "userId" = $4
-    `,
-      oldPathPrefix,
-      newPathPrefix,
-      `${oldPathPrefix}%`,
-      userId
-    ),
-  ]);
-}
-
 export async function prepareDownload(userId: string, folderId: string) {
   const folderOrNull = await prisma.folder.findUnique({
     where: { id: folderId },
@@ -176,10 +63,7 @@ export async function prepareDownload(userId: string, folderId: string) {
   return { folderId, folderPath: folder.fullPath };
 }
 
-export async function validateLinkAndGetDownloadMeta(
-  userId: string,
-  linkId: string
-) {
+export async function validateLinkAndGetDownloadMeta(linkId: string) {
   const link = await prisma.downloadLink.findUnique({ where: { id: linkId } });
 
   if (!link || (link && !fs.existsSync(getTempFilePath(link.fileName)))) {
@@ -190,13 +74,13 @@ export async function validateLinkAndGetDownloadMeta(
     });
   }
 
-  if (link.userId != userId) {
-    throw new HttpError({
-      status: 403,
-      code: CommonErrorCode.FORBIDDEN,
-      message: 'You do not have the permission to download this resource',
-    });
-  }
+  // if (link.userId != userId) {
+  //   throw new HttpError({
+  //     status: 403,
+  //     code: CommonErrorCode.FORBIDDEN,
+  //     message: 'You do not have the permission to download this resource',
+  //   });
+  // }
 
   if (Date.now() > link.expiresAt.getTime()) {
     throw new HttpError({

@@ -18,6 +18,7 @@ import { useCopyItems } from "../hooks/useCopyItems";
 import { toast } from "sonner";
 import { getJob } from "../api/getJob";
 import { useListDirectory } from "../hooks/useListDirectory";
+import { useMoveItems } from "../hooks/useMoveItems";
 
 const ExplorerContent: React.FC = () => {
   const [showFolderDialog, setShowFolderDialog] = useState(false);
@@ -63,7 +64,7 @@ const ExplorerContent: React.FC = () => {
             case "failed":
               toast.error("Some files failed to copy", { id: toastId });
               clearInterval(interval);
-              refetch()
+              refetch();
               break;
 
             default:
@@ -79,10 +80,59 @@ const ExplorerContent: React.FC = () => {
     onError: (err) => {},
   });
 
+  const moveMutation = useMoveItems({
+    onSuccess: (data) => {
+      const toastId = `toast-${data.job.id}`;
+      toast.loading("Move job enqueued", { id: toastId });
+
+      const interval = setInterval(async () => {
+        try {
+          const jobRes = await getJob(data.job.id);
+          const status = jobRes.job.status;
+
+          switch (status) {
+            case "completed":
+              toast.success("Files moved successfully", { id: toastId });
+              clearInterval(interval);
+              refetch();
+              break;
+
+            case "processing":
+              toast.loading(`Moving files: ${jobRes.job.progress}%`, {
+                id: toastId,
+              });
+              break;
+
+            case "failed":
+              toast.error("Some files failed to move", { id: toastId });
+              clearInterval(interval);
+              refetch();
+              break;
+
+            default:
+              toast.loading("Move job enqueued", { id: toastId });
+              break;
+          }
+        } catch {
+          toast.error("Failed to fetch job status", { id: toastId });
+          clearInterval(interval);
+        }
+      }, 1000);
+    },
+    onError: (err) => {},
+  });
+
   const pasteHandler = async () => {
-    copyMutation.mutate({
+    if (clipboard.type == "copy") {
+      return copyMutation.mutate({
+        destinationFolderId: folder.id,
+        items: clipboard.items,
+      });
+    }
+
+    moveMutation.mutate({
       destinationFolderId: folder.id,
-      items: clipboard,
+      items: clipboard.items,
     });
   };
 
@@ -119,11 +169,19 @@ const ExplorerContent: React.FC = () => {
               )}
             >
               {folder?.children.map((child) => (
-                <FileSystemEntry key={child.id} child={child} />
+                <FileSystemEntry
+                  key={child.id}
+                  child={child}
+                  refetch={refetch}
+                />
               ))}
 
               {folder?.files.map((child) => (
-                <FileSystemEntry key={child.id} child={child} />
+                <FileSystemEntry
+                  key={child.id}
+                  child={child}
+                  refetch={refetch}
+                />
               ))}
             </div>
           ) : (
@@ -140,17 +198,21 @@ const ExplorerContent: React.FC = () => {
             Upload
           </ContextMenuItem>
           <ContextMenuItem onClick={pasteHandler}>Paste</ContextMenuItem>
+          <ContextMenuItem onClick={pasteHandler}>Download</ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+
       <NewFolderDialog
         parentId={folder?.id}
         open={showFolderDialog}
         setOpen={setShowFolderDialog}
-      />
+        refetch={refetch}
+        />
       <UploadDialog
         folderId={folder?.id}
         open={showUploadDialog}
         setOpen={setShowUploadDialog}
+        refetch={refetch}
       />
     </div>
   );

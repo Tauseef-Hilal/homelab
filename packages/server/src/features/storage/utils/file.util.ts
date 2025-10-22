@@ -27,7 +27,7 @@ export async function resolveFileName(
     userId: string;
   },
   newNameWithoutExtension: string,
-  folderId: string | null,
+  folderId: string,
   copy: boolean = false
 ) {
   const existingFiles = await prisma.file.findMany({

@@ -25,7 +25,7 @@ export async function saveFile(
   userId: string,
   file: Express.Multer.File,
   visibility: Visibility,
-  folderId: string | null = null
+  folderId: string
 ) {
   const fileId = randomUUID();
   const ext = getFileExtension(file.originalname);
@@ -103,131 +103,6 @@ export async function deleteFile(userId: string, fileId: string) {
       status: 500,
       code: CommonErrorCode.INTERNAL_SERVER_ERROR,
       message: 'Failed to delete file',
-    });
-  }
-}
-
-export async function moveFile(
-  userId: string,
-  fileId: string,
-  targetFolderId?: string | null,
-  newName: string | null = null
-) {
-  const file = await prisma.file.findUnique({
-    where: { id: fileId },
-    select: {
-      id: true,
-      name: true,
-      userId: true,
-      folderId: true,
-    },
-  });
-
-  if (!file) {
-    throw new HttpError({
-      status: 400,
-      code: CommonErrorCode.BAD_REQUEST,
-      message: 'File does not exist. Ensure fileId is correct.',
-    });
-  }
-
-  if (file.userId != userId) {
-    throw new HttpError({
-      status: 403,
-      code: CommonErrorCode.FORBIDDEN,
-      message: 'You do not have the permission to move this file',
-    });
-  }
-
-  if (targetFolderId === undefined) {
-    targetFolderId = file.folderId;
-  }
-
-  const { newFileName, newFilePath } = await resolveFileName(
-    file,
-    newName ?? getFileNameWithoutExtension(file.name),
-    targetFolderId
-  );
-
-  try {
-    return await prisma.file.update({
-      where: { id: file.id },
-      data: { name: newFileName, fullPath: newFilePath },
-    });
-  } catch (err) {
-    throw new HttpError({
-      status: 500,
-      code: CommonErrorCode.INTERNAL_SERVER_ERROR,
-      message: 'Failed to move file',
-    });
-  }
-}
-
-export async function copyFile(
-  userId: string,
-  fileId: string,
-  targetFolderId: string | null = null
-) {
-  const srcFile = await prisma.file.findUnique({
-    where: { id: fileId },
-  });
-
-  if (!srcFile) {
-    throw new HttpError({
-      status: 400,
-      code: CommonErrorCode.BAD_REQUEST,
-      message: 'File does not exist. Ensure fileId is correct.',
-    });
-  }
-
-  if (srcFile.userId != userId) {
-    throw new HttpError({
-      status: 403,
-      code: CommonErrorCode.FORBIDDEN,
-      message: 'You do not have the permission to copy this file',
-    });
-  }
-
-  await ensureQuotaAvailable(userId, srcFile.size);
-
-  try {
-    const newFileId = randomUUID();
-    const ext = getFileExtension(srcFile.name);
-
-    const srcPath = getOriginalFilePath(userId, fileId, ext);
-    const destPath = getOriginalFilePath(userId, newFileId, ext);
-    await copyFileOnDisk(srcPath, destPath);
-
-    const srcThumbnailPath = getThumbnailPath(userId, fileId);
-    if (existsSync(srcThumbnailPath)) {
-      const destPath = getThumbnailPath(userId, newFileId);
-      await copyFileOnDisk(srcThumbnailPath, destPath);
-    }
-
-    const { newFileName, newFilePath } = await resolveFileName(
-      srcFile,
-      getFileNameWithoutExtension(srcFile.name),
-      targetFolderId,
-      true
-    );
-
-    return await prisma.file.create({
-      data: {
-        id: newFileId,
-        name: newFileName,
-        mimeType: srcFile.mimeType,
-        size: srcFile.size,
-        folderId: targetFolderId,
-        fullPath: newFilePath,
-        visibility: srcFile.visibility,
-        userId,
-      },
-    });
-  } catch (err) {
-    throw new HttpError({
-      status: 500,
-      code: CommonErrorCode.INTERNAL_SERVER_ERROR,
-      message: 'Failed to copy file',
     });
   }
 }

@@ -2,10 +2,10 @@ import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
 import { createReadStream } from 'fs';
 import {
-  fileIdParamSchema,
+  idParamSchema,
   previewFileQuerySchema,
-} from '../../../../../../shared/src/schemas/storage/request/file.schema';
-import { getFileMeta } from '../../services/file.service';
+} from '@shared/schemas/storage/request.schema';
+import { getFileMeta } from '../services/file.service';
 import { verifyAccessToken } from '@server/lib/jwt';
 import { throwUnauthorized } from '@server/features/auth/utils/error.util';
 
@@ -15,7 +15,7 @@ export const previewFileController = catchAsync(
     try {
       const { sub } = verifyAccessToken(token);
 
-      const fileId = fileIdParamSchema.parse(req.params.fileId);
+      const fileId = idParamSchema.parse(req.params.fileId);
       const range = req.headers.range;
 
       const { filePath, fileSize, mimeType } = await getFileMeta(sub, fileId);

@@ -15,14 +15,23 @@ import { cx } from "class-variance-authority";
 import { useSelect } from "../hooks/useSelect";
 import { isFolder } from "@client/lib/utils";
 import useDriveStore from "../stores/driveStore";
+import { useDeleteItems } from "../hooks/useDeleteItems";
+import { toast } from "sonner";
+import { getJob } from "../api/getJob";
+import { useDownloadItems } from "../hooks/useDownloadItems";
+import Rename from "./Rename";
 
 interface FileSystemEntryProps {
   child: File | Folder;
+  refetch: () => void;
 }
 
-const FileSystemEntry: React.FC<FileSystemEntryProps> = ({ child }) => {
+const FileSystemEntry: React.FC<FileSystemEntryProps> = ({
+  child,
+  refetch,
+}) => {
   const [showPreview, setShowPreview] = useState(false);
-  // const [showRename, setShowRename] = useState(false);
+  const [showRename, setShowRename] = useState(false);
   const { selectedItems, isSelected, onSelect, selectItem } = useSelect();
   const { setPath, setClipboard, deselectAll } = useDriveStore();
 
@@ -42,13 +51,156 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({ child }) => {
   };
 
   const copyHandler = () => {
-    if (selectedItems.length > 0) {
-      setClipboard(selectedItems);
+    if (isSelected(child)) {
+      setClipboard({ type: "copy", items: selectedItems });
       return deselectAll();
     }
 
-    setClipboard([{ id: child.id, type: isFolder(child) ? "folder" : "file" }]);
+    setClipboard({
+      type: "copy",
+      items: [{ id: child.id, type: isFolder(child) ? "folder" : "file" }],
+    });
     deselectAll();
+  };
+
+  const cutHandler = () => {
+    if (isSelected(child)) {
+      setClipboard({ type: "move", items: selectedItems });
+      return deselectAll();
+    }
+
+    setClipboard({
+      type: "move",
+      items: [{ id: child.id, type: isFolder(child) ? "folder" : "file" }],
+    });
+    deselectAll();
+  };
+
+  const deleteMutation = useDeleteItems({
+    onSuccess: (data) => {
+      const toastId = `toast-${data.job.id}`;
+      toast.loading("Delete job enqueued", { id: toastId });
+
+      const interval = setInterval(async () => {
+        try {
+          const jobRes = await getJob(data.job.id);
+          const status = jobRes.job.status;
+
+          switch (status) {
+            case "completed":
+              toast.success("Files deleted successfully", { id: toastId });
+              clearInterval(interval);
+              refetch();
+              break;
+
+            case "processing":
+              toast.loading(`Deleting files: ${jobRes.job.progress}%`, {
+                id: toastId,
+              });
+              break;
+
+            case "failed":
+              toast.error("Some files failed to delete", { id: toastId });
+              clearInterval(interval);
+              refetch();
+              break;
+
+            default:
+              toast.loading("Delete job enqueued", { id: toastId });
+              break;
+          }
+        } catch {
+          toast.error("Failed to fetch job status", { id: toastId });
+          clearInterval(interval);
+        }
+      }, 1000);
+    },
+    onError: (err) => {},
+  });
+
+  const deleteHandler = async () => {
+    if (isSelected(child)) {
+      deleteMutation.mutate({
+        items: selectedItems,
+      });
+
+      return deselectAll();
+    }
+
+    deleteMutation.mutate({
+      items: [{ id: child.id, type: isFolder(child) ? "folder" : "file" }],
+    });
+  };
+
+  const downloadZip = async (url: string) => {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "download.zip";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadMutation = useDownloadItems({
+    onSuccess: (data) => {
+      const toastId = `toast-${data.job.id}`;
+      toast.loading("Zipping items for download", { id: toastId });
+
+      const interval = setInterval(async () => {
+        try {
+          const jobRes = await getJob(data.job.id);
+          const status = jobRes.job.status;
+          const result = jobRes.job.result;
+
+          switch (status) {
+            case "completed":
+              toast.success("Starting download", { id: toastId });
+              clearInterval(interval);
+
+              if (result) {
+                downloadZip((result as { downloadLink: string }).downloadLink);
+              }
+
+              break;
+
+            case "processing":
+              toast.loading(`Zipping items: ${jobRes.job.progress}%`, {
+                id: toastId,
+              });
+              break;
+
+            case "failed":
+              toast.error("Failed to create zip", { id: toastId });
+              clearInterval(interval);
+              refetch();
+              break;
+
+            default:
+              toast.loading("Download job enqueued", { id: toastId });
+              break;
+          }
+        } catch {
+          toast.error("Failed to fetch job status", { id: toastId });
+          clearInterval(interval);
+        }
+      }, 1000);
+    },
+    onError: (err) => {},
+  });
+
+  const downloadHandler = async () => {
+    if (isSelected(child)) {
+      downloadMutation.mutate({
+        items: selectedItems,
+      });
+
+      return deselectAll();
+    }
+
+    downloadMutation.mutate({
+      items: [{ id: child.id, type: isFolder(child) ? "folder" : "file" }],
+    });
   };
 
   return (
@@ -93,18 +245,25 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({ child }) => {
         </ContextMenuTrigger>
 
         <ContextMenuContent>
-          <ContextMenuItem onClick={() => {}}>Download</ContextMenuItem>
-          {/* <ContextMenuItem onClick={() => setShowRename(true)}>
+          <ContextMenuItem onClick={() => setShowRename(true)}>
             Rename
-          </ContextMenuItem> */}
+          </ContextMenuItem>
           <ContextMenuItem onClick={() => selectItem(child)}>
             Select
           </ContextMenuItem>
           <ContextMenuItem onClick={copyHandler}>Copy</ContextMenuItem>
+          <ContextMenuItem onClick={cutHandler}>Cut</ContextMenuItem>
+          <ContextMenuItem onClick={downloadHandler}>Download</ContextMenuItem>
+          <ContextMenuItem onClick={deleteHandler}>Delete</ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
 
-      {/* <Rename open={showRename} setOpen={setShowRename} item={child} /> */}
+      <Rename
+        open={showRename}
+        setOpen={setShowRename}
+        item={child}
+        refetch={refetch}
+      />
 
       {!isFolder(child) && (
         <Preview open={showPreview} setOpen={setShowPreview} file={child} />

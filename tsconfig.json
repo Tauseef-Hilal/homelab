@@ -13,7 +13,7 @@
     "paths": {
       "@client/*": ["packages/client/src/*"],
       "@server/*": ["packages/server/src/*"],
-      "@worker-thumbnail/*": ["packages/worker-thumbnail/src/*"],
+      "@workers/*": ["packages/workers/src/*"],
       "@shared/*": ["packages/shared/src/*"]
     }
   },

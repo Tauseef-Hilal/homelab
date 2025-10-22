@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   CreateFolderInput,
   createFolderSchema,
-} from "@shared/schemas/storage/request/folder.schema";
+} from "@shared/schemas/storage/request.schema";
 import { useForm } from "react-hook-form";
 import { useCreateFolder } from "../hooks/useCreateFolder";
 import useDriveStore from "../stores/driveStore";
@@ -21,14 +21,15 @@ interface NewFolderDialogProps {
   parentId: string;
   open: boolean;
   setOpen: (open: boolean) => void;
+  refetch: () => void;
 }
 
 const NewFolderDialog: React.FC<NewFolderDialogProps> = ({
   parentId,
   open,
   setOpen,
+  refetch
 }) => {
-  const { addFolder } = useDriveStore();
   const {
     register,
     handleSubmit,
@@ -40,7 +41,7 @@ const NewFolderDialog: React.FC<NewFolderDialogProps> = ({
 
   const { mutate, isPending } = useCreateFolder({
     onSuccess: (data) => {
-      addFolder(data.folder);
+      refetch()
       setOpen(false);
     },
     onError: () => toast("Failed to create folder!"),

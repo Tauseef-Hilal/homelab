@@ -2,8 +2,8 @@ import { create } from 'zustand';
 import {
   CreateFolderResponse,
   ListDirectoryResponse,
-} from '@shared/schemas/storage/response/folder.schema';
-import { UploadFileResponse } from '@shared/schemas/storage/response/file.schema';
+} from '@shared/schemas/storage/response.schema';
+import { UploadFileResponse } from '@shared/schemas/storage/response.schema';
 import { Entry, File, Folder } from '../types/storage.types';
 import { isFolder } from '@client/lib/utils';
 
@@ -13,7 +13,7 @@ type DriveState = {
   stack: ListDirectoryResponse['folder'][];
   stackIdx: number;
   selectedItems: Entry[];
-  clipboard: Entry[];
+  clipboard: { type: 'copy' | 'move'; items: Entry[] };
   setPath: (path: string) => void;
   setInputPath: (path: string) => void;
   push: (folder: ListDirectoryResponse['folder']) => void;
@@ -27,7 +27,7 @@ type DriveState = {
   deselectItem: (item: File | Folder) => void;
   deselectAll: () => void;
   selectAll: () => void;
-  setClipboard: (entries: Entry[]) => void;
+  setClipboard: (clipboard: { type: 'copy' | 'move'; items: Entry[] }) => void;
 };
 
 const useDriveStore = create<DriveState>((set, getState) => ({
@@ -36,7 +36,7 @@ const useDriveStore = create<DriveState>((set, getState) => ({
   stack: [],
   stackIdx: 0,
   selectedItems: [],
-  clipboard: [],
+  clipboard: { type: 'copy', items: [] },
   setPath: (path) => set({ path, inputPath: path }),
   setInputPath: (path) => set({ inputPath: path }),
   push: (folder) => {
@@ -133,9 +133,9 @@ const useDriveStore = create<DriveState>((set, getState) => ({
       return { ...state, selectedItems: selection };
     });
   },
-  setClipboard: (entries) => {
+  setClipboard: (clipboard) => {
     set((state) => {
-      return { ...state, clipboard: [...entries] };
+      return { ...state, clipboard };
     });
   },
 }));

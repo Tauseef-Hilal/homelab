@@ -1,7 +1,7 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { listDirectorySchema } from '../../../../../../shared/src/schemas/storage/request/folder.schema';
-import { listDirectory } from '../../services/folder.service';
+import { listDirectorySchema } from '@shared/schemas/storage/request.schema';
+import { listDirectory } from '../services/folder.service';
 import { success } from '@server/lib/response';
 
 export const listController = catchAsync(
