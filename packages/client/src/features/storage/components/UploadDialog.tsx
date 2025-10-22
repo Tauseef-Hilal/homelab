@@ -40,6 +40,7 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
   open,
   setOpen,
 }) => {
+  const [ranOnce, setRanOnce] = useState(false);
   const { addFile } = useDriveStore();
   const [files, setFiles] = useState<File[]>([]);
   const [visibility, setVisibility] =
@@ -68,6 +69,7 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
 
   const onSubmit = async (data: UploadFileInput) => {
     data.folderId = folderId;
+    setRanOnce(true);
 
     if (failed.length > 0) {
       return retry();
@@ -87,7 +89,14 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        setRanOnce(false);
+        setFiles([])
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Upload File</DialogTitle>
@@ -125,14 +134,18 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
             </SelectContent>
           </Select>
 
-          {isPending ? (
-            <Progress value={progress} />
-          ) : (
-            <p>
-              {failed.length > 0
-                ? `Failed to upload ${failed.length} files`
-                : "Files uploaded successfully"}
-            </p>
+          {ranOnce && (
+            <div>
+              {isPending ? (
+                <Progress value={progress} />
+              ) : (
+                <p>
+                  {failed.length > 0
+                    ? `Failed to upload ${failed.length} files`
+                    : "Files uploaded successfully"}
+                </p>
+              )}
+            </div>
           )}
 
           <Button
