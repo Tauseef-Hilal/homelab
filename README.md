@@ -1,28 +1,31 @@
-# 🏠 Homelab
+# Project Homelab
 
-A LAN-first, self-hosted platform for secure file storage, user authentication, and modular collaboration.
+A LAN-first, secure, extensible personal cloud and automation hub.
 
-## 🚀 Features (Phase 1)
-- Secure JWT-based authentication
-- Modular project structure (auth, storage, chat, etc.)
-- PostgreSQL with Prisma ORM
-- Scalable TypeScript + Express backend
-- Ready for future: file sharing, chat, home automation, dashboards
+---
 
-## 🛠️ Tech Stack
-- Node.js + Express (ESM + TypeScript)
-- PostgreSQL + Prisma
-- JWT + bcrypt
-- pnpm for package management
-- Docker-ready architecture (future)
+## Overview
 
-## 📌 Status
+Homelab is a self-hosted system that provides private user storage, local file sharing, and messaging within a LAN. It’s designed to work entirely offline, with modular components for future extensions like automation, dashboards, and AI helpers.
 
-✅ Core scaffolding
-✅ Auth APIs
-⬜ Storage system
-⬜ Chat module
-⬜ Admin dashboard
+---
 
+## Current Progress
 
-Built for learning, growth, and real-world readiness.
+### Authentication
+
+- Implemented using JWT access and refresh tokens.
+
+### Storage
+
+- Local file storage and management implemented.
+- Users can upload, organize, and manage their own files.
+- Data is private — users cannot access each other’s files.
+
+---
+
+## Next Steps
+
+- Local chat (1:1 and broadcast).
+- File sharing and permission system.
+- Add-on framework for modular features.
