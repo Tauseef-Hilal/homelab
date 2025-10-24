@@ -14,7 +14,6 @@
   "author": "Tauseef Tantary",
   "license": "MIT",
   "dependencies": {
-    "shared": "*",
     "@prisma/client": "^6.13.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.56.9",
@@ -26,6 +25,8 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.5",
+    "shared": "*",
+    "socket.io": "^4.8.1",
     "vitest": "^3.2.4",
     "zod": "^4.0.5"
   },
@@ -38,6 +39,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^24.0.14",
     "@types/nodemailer": "^6.4.17",
+    "@types/socket.io": "^3.0.2",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",

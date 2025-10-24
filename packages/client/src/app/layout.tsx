@@ -3,6 +3,7 @@ import { ReactQueryProvider } from "@client/providers/reactQuery.provider";
 import type { Metadata } from "next";
 import { inter } from "@client/styles/fonts";
 import { Toaster } from "sonner";
+import Me from "@client/components/Me";
 
 export const metadata: Metadata = {
   title: "Homelab",
@@ -20,6 +21,7 @@ export default function RootLayout({
         <ReactQueryProvider>
           {children}
           <Toaster />
+          <Me />
         </ReactQueryProvider>
       </body>
     </html>

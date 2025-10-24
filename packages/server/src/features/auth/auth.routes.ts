@@ -8,6 +8,7 @@ import { refreshController } from './controllers/refresh.controller';
 import { verifyOtpController } from './controllers/verifyOtp.controller';
 import { changePasswordController } from './controllers/changePassword.controller';
 import { requestChangePasswordController } from './controllers/requestChangePassword.controller';
+import { meController } from './controllers/me.controller';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.post('/refresh', extractClientMeta, refreshController);
 router.patch('/password', changePasswordController);
 router.post('/forgot-password', requestChangePasswordController);
 router.post('/verify-otp', extractClientMeta, verifyOtpController);
+router.get('/me', requireAuth, meController);
 
 export default router;

@@ -1,8 +1,6 @@
-export interface User {
-  id: string,
-  email: string,
-  
-}
+import { MeResponse } from '@shared/schemas/auth/response/auth.schema';
+
+export type User = MeResponse['user'];
 
 export interface AuthState {
   accessToken: string | null;
@@ -10,4 +8,4 @@ export interface AuthState {
   setAccessToken: (token: string) => void;
   setUser: (user: User) => void;
   logout: () => void;
-};
+}

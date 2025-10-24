@@ -19,17 +19,18 @@ enum UserRole {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  role          UserRole       @default(USER)
-  email         String         @unique
-  username      String
-  password      String
-  files         File[]
-  folders       Folder[]
-  createdAt     DateTime       @default(now())
-  refreshTokens RefreshToken[]
-  DownloadLink  DownloadLink[]
-  Job           Job[]
+  id               String             @id @default(uuid())
+  role             UserRole           @default(USER)
+  email            String             @unique
+  username         String
+  password         String
+  files            File[]
+  folders          Folder[]
+  createdAt        DateTime           @default(now())
+  refreshTokens    RefreshToken[]
+  DownloadLink     DownloadLink[]
+  Job              Job[]
+  BroadcastMessage BroadcastMessage[]
 }
 
 model RefreshToken {
@@ -69,7 +70,7 @@ model File {
   fullPath     String
   visibility   Visibility @default(private)
   folderId     String
-  folder       Folder    @relation(fields: [folderId], references: [id])
+  folder       Folder     @relation(fields: [folderId], references: [id])
   userId       String
   user         User       @relation(fields: [userId], references: [id])
   hasThumbnail Boolean    @default(false)
@@ -128,4 +129,12 @@ model DownloadLink {
   expiresAt DateTime
   userId    String
   User      User     @relation(fields: [userId], references: [id])
+}
+
+model BroadcastMessage {
+  id       String   @id @default(uuid())
+  content  String
+  authorId String
+  author   User     @relation(fields: [authorId], references: [id])
+  sentAt   DateTime @default(now())
 }

@@ -29,6 +29,10 @@ import { authConfig } from '../auth.config';
 import { TfaPurpose } from '../constants/TfaPurpose';
 import * as OtpService from '../services/otp.service';
 
+export async function getUserById(id: string) {
+  return await prisma.user.findUnique({ where: { id } });
+}
+
 export async function signup(
   username: string,
   email: string,

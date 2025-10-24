@@ -1,5 +1,14 @@
 import { z } from 'zod';
 
+export const meSchema = z.object({
+  user: z.object({
+    id: z.uuidv4(),
+    username: z.string(),
+    email: z.email(),
+    role: z.enum(['USER', 'ADMIN']),
+  }),
+});
+
 export const loginSchema = z.object({
   token: z.string(),
 });
@@ -49,3 +58,4 @@ export type RequestChangePasswordResponse = z.infer<
 >;
 export type ChangePasswordResponse = z.infer<typeof changePasswordSchema>;
 export type LogoutResponse = z.infer<typeof logoutSchema>;
+export type MeResponse = z.infer<typeof meSchema>;
