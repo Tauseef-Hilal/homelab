@@ -11,7 +11,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ user }) => {
     <div
       style={{ backgroundColor: `${stringToHslColor(user.username)}` }}
       className={cx(
-        "rounded-full h-10 w-10 flex justify-center items-center text-white"
+        "rounded-full h-10 min-w-10 flex justify-center items-center text-white"
       )}
     >
       {user.username[0]}

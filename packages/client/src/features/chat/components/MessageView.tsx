@@ -7,11 +7,11 @@ interface MessageViewProps {
 
 const MessageView: React.FC<MessageViewProps> = ({ message }) => {
   return (
-    <div className="flex gap-2 items-center">
+    <div className="flex gap-2 w-full">
       <UserAvatar user={message.author} />
-      <div>
-        <p className="font-bold">{message.author.username}</p>
-        <p className="text-neutral-700">{message.content}</p>
+      <div className="">
+        <p className="font-bold text-base/6">{message.author.username}</p>
+        <p className="text-neutral-700  text-sm/4">{message.content}</p>
       </div>
     </div>
   );

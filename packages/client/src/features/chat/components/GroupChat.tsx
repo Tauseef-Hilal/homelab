@@ -61,43 +61,51 @@ const GroupChat: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col justify-between py-2 px-4">
-      <div className="overflow-y-auto flex flex-col-reverse gap-4 h-[85vh]">
-        {messages.map((message) => (
-          <MessageView key={message.id} message={message} />
-        ))}
-        <Paginator
-          paginate={paginate}
-          hasMoreData={data?.hasMoreData ?? false}
-        />
-      </div>
-      <form
-        noValidate
-        className="pt-4 flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (message) {
-            sendMessage(message);
-            setMessage("");
-          }
-        }}
-      >
-        <Input
-          type="text"
-          placeholder="Message"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyUp={(e) => {
-            if (e.key == "return" && message) {
+    <div className="h-full">
+      <h1 className="w-full text-xl font-bold p-2 border-b-1 fixed bg-white">
+        <span className="text-neutral-800">#</span> Group-Chat
+      </h1>
+      <div className="flex flex-col justify-between px-2 h-full">
+        <div className="overflow-y-auto flex flex-col-reverse gap-4">
+          <div className="p-5"></div>
+          {messages.map((message) => (
+            <MessageView key={message.id} message={message} />
+          ))}
+          <div className="p-5"></div>
+          <Paginator
+            paginate={paginate}
+            hasMoreData={data?.hasMoreData ?? false}
+          />
+        </div>
+        <form
+          noValidate
+          className="fixed bottom-0 left-0 w-full flex justify-center gap-2 p-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (message) {
               sendMessage(message);
               setMessage("");
             }
           }}
-        />
-        <Button type="submit" variant={"outline"} className="w-min">
-          <SendHorizonalIcon />
-        </Button>
-      </form>
+        >
+          <Input
+            className="bg-white"
+            type="text"
+            placeholder="Message"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyUp={(e) => {
+              if (e.key == "return" && message) {
+                sendMessage(message);
+                setMessage("");
+              }
+            }}
+          />
+          <Button type="submit" variant={"outline"} className="w-min">
+            <SendHorizonalIcon />
+          </Button>
+        </form>
+      </div>
     </div>
   );
 };
