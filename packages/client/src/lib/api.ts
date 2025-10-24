@@ -47,7 +47,7 @@ api.interceptors.response.use(
     const requestUrl = originalRequest?.url || '';
 
     // Skip auto-refresh if the failed request was to an /auth/* endpoint
-    if (requestUrl.startsWith('/auth') && !requestUrl.endsWith("/me")) {
+    if (requestUrl.startsWith('/auth') && !requestUrl.endsWith('/me')) {
       return Promise.reject(error);
     }
 
@@ -82,6 +82,12 @@ api.interceptors.response.use(
 
         return api(originalRequest);
       } catch (err) {
+        if (err instanceof AxiosError && err.status == 401) {
+          console.error(err);
+          window.location.href = '/auth/login';
+          return;
+        }
+
         console.error(err);
         processQueue(err, null);
         useAuthStore.getState().logout();
