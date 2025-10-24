@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { BroadcastMessage } from '@shared/schemas/chat/io.schema';
 import { toast } from 'sonner';
+import {v4} from "uuid"
 
 export function useMessaging() {
   const { user } = useAuthStore();
@@ -12,7 +13,7 @@ export function useMessaging() {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const socket = io(process.env.NEXT_PUBLIC_HOST, {});
+    const socket = io(process.env.NEXT_PUBLIC_API_BASE_URL, {});
     socketRef.current = socket;
 
     socket.on('broadcast', (message) => {
@@ -28,7 +29,7 @@ export function useMessaging() {
     if (!socketRef.current || !user) return;
 
     const message: BroadcastMessage = {
-      id: crypto.randomUUID(),
+      id: v4(),
       content,
       authorId: user.id,
       sentAt: new Date().toISOString(),

@@ -1,9 +1,11 @@
 import type { NextConfig } from 'next';
+import { env } from 'process';
 
 const nextConfig: NextConfig = {
-  /* config options here */
   images: {
-    remotePatterns: [{ hostname: 'localhost' }],
+    remotePatterns: [
+      { hostname: env.NEXT_PUBLIC_API_HOSTNAME ?? 'localhost' },
+    ],
   },
 };
 

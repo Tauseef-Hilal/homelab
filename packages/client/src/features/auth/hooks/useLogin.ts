@@ -17,7 +17,7 @@ export function useLogin(options: UseLoginOptions) {
   return useMutation<LoginResponse, AxiosError<ServerError>, LoginInput>({
     mutationFn: login,
     onSuccess: (data) => {
-      router.push(`/verification?token=${data.token}`);
+      router.push(`/auth/verification?token=${data.token}`);
     },
     onError: (error) => {
       const serverError = error.response?.data;

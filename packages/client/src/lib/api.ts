@@ -2,7 +2,7 @@ import useAuthStore from '@client/features/auth/stores/auth.store';
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
   withCredentials: true,
 });
 
@@ -44,6 +44,13 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
+    const requestUrl = originalRequest?.url || '';
+
+    // Skip auto-refresh if the failed request was to an /auth/* endpoint
+    if (requestUrl.startsWith('/auth') && !requestUrl.endsWith("/me")) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         // Queue the request until refresh is done
@@ -65,7 +72,7 @@ api.interceptors.response.use(
       try {
         const { data } = await api.post(`/auth/refresh`);
         const newToken = data.tokens.access;
-        
+
         useAuthStore.getState().setAccessToken(newToken);
         processQueue(null, newToken);
 

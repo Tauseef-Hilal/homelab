@@ -32,7 +32,7 @@ export function useVerifyOtp(options: UseVerifyOtpOptions) {
       }
 
       if (data.changePasswordToken) {
-        router.push(`/change-password?token=${data.changePasswordToken}`);
+        router.push(`/auth/change-password?token=${data.changePasswordToken}`);
       }
     },
     onError: (error) => {
