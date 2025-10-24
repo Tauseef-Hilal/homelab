@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import useAuthStore from '../stores/auth.store';
 import { logout } from '../api/logout';
 import { useRouter } from 'next/navigation';
@@ -12,6 +12,7 @@ export type UseLogoutOptions = {
 };
 
 export function useLogout(options: UseLogoutOptions) {
+  const queryClient = useQueryClient();
   const clearAuthState = useAuthStore((state) => state.logout);
   const router = useRouter();
 
@@ -19,10 +20,11 @@ export function useLogout(options: UseLogoutOptions) {
     mutationFn: logout,
     onSuccess: () => {
       clearAuthState();
+      queryClient.removeQueries({ queryKey: ['me'] });
       router.refresh();
     },
     onError: (error) => {
-      alert(error.code)
+      alert(error.code);
       const serverError = error.response?.data;
       if (serverError) {
         options.onError(serverError.message);

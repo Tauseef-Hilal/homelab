@@ -13,7 +13,7 @@ interface PreviewProps {
 
 const Preview: React.FC<PreviewProps> = ({ file, open, setOpen }) => {
   const token = useAuthStore().accessToken;
-  const src = `${process.env.NEXT_PUBLIC_API_BASE_URL}/storage/file/${file.id}/preview?token=${token}`;
+  const src = `${process.env.NEXT_PUBLIC_API_URL}/storage/file/${file.id}/preview?token=${token}`;
   const videoRef = useRef<HTMLVideoElement>(null);
 
   let element = null;

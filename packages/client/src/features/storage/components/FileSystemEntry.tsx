@@ -35,7 +35,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({
   const { selectedItems, isSelected, onSelect, selectItem } = useSelect();
   const { setPath, setClipboard, deselectAll } = useDriveStore();
 
-  const thumbnailUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/uploads/${child.userId}/thumbnails/${child.id}.webp`;
+  const thumbnailUrl = `${process.env.NEXT_PUBLIC_API_URL}/uploads/${child.userId}/thumbnails/${child.id}.webp`;
 
   const clickHandler = () => {
     if (selectedItems.length > 0) {

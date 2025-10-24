@@ -9,11 +9,12 @@ export function useMe() {
   const pathname = usePathname();
 
   return useQuery({
-    queryKey: [],
+    queryKey: ['me'],
     queryFn: async () => {
       const res = await api.get('/auth/me');
       return meSchema.parse(res.data);
     },
     enabled: () => !pathname.startsWith('/auth'),
+    staleTime: 1000 * 60 * 60,
   });
 }
