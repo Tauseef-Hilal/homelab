@@ -62,9 +62,6 @@ const GroupChat: React.FC = () => {
 
   return (
     <div className="h-full">
-      <h1 className="w-full text-xl font-bold p-2 border-b-1 fixed bg-white">
-        <span className="text-neutral-800">#</span> Group-Chat
-      </h1>
       <div className="flex flex-col justify-between px-2 h-full">
         <div className="overflow-y-auto flex flex-col-reverse gap-4">
           <div className="p-5"></div>

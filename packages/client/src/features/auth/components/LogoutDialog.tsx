@@ -21,6 +21,7 @@ import { useState } from "react";
 import { Button } from "@client/components/ui/button";
 import { Checkbox } from "@client/components/ui/checkbox";
 import { Label } from "@client/components/ui/label";
+import { LucideLogOut } from "lucide-react";
 
 interface LogoutDialogProps {}
 
@@ -40,7 +41,9 @@ export const LogoutDialog: React.FC<LogoutDialogProps> = ({}) => {
 
   return (
     <Dialog>
-      <DialogTrigger>Logout</DialogTrigger>
+      <DialogTrigger asChild>
+        <LucideLogOut />
+      </DialogTrigger>
       <DialogContent>
         <form noValidate onSubmit={onSubmit}>
           <DialogHeader>
