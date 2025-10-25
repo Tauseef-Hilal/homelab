@@ -17,7 +17,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`bg-gray-50 text-gray-900 ${inter.className}`}>
+      <body
+        className={`dark:bg-black dark:text-white bg-gray-50 text-gray-900 ${inter.className}`}
+      >
         <ReactQueryProvider>
           {children}
           <Toaster />

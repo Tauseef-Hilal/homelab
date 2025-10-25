@@ -10,6 +10,9 @@ services:
       target: dev
     ports:
       - "5001:5001"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       - db
       - redis
@@ -36,6 +39,9 @@ services:
     depends_on:
       - db
       - redis
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     env_file:
       - ./packages/shared/.env
     volumes: 
@@ -56,6 +62,9 @@ services:
       context: .
       dockerfile: ./packages/workers/docker/io.Dockerfile
       target: dev
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       - db
       - redis
@@ -81,6 +90,9 @@ services:
       target: dev
     ports:
       - "3000:3000"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     env_file:
       - ./packages/shared/.env
     volumes: 
@@ -100,6 +112,9 @@ services:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
   
   redis:
     image: redis:7-alpine
@@ -107,6 +122,9 @@ services:
     restart: unless-stopped
     ports:
       - "6379:6379"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     volumes:
       - redisdata:/data
 

@@ -11,7 +11,9 @@ const MessageView: React.FC<MessageViewProps> = ({ message }) => {
       <UserAvatar user={message.author} />
       <div className="">
         <p className="font-bold text-base/6">{message.author.username}</p>
-        <p className="text-neutral-700  text-sm/4">{message.content}</p>
+        <p className="dark:text-neutral-200 text-neutral-600  text-sm/4">
+          {message.content}
+        </p>
       </div>
     </div>
   );

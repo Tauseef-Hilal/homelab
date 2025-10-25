@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useMessaging } from "../hooks/useMessaging";
 import { Input } from "@client/components/ui/input";
 import { useGetBroadcastMessages } from "../hooks/useGetBroadcastMessages";
@@ -43,7 +43,7 @@ const GroupChat: React.FC = () => {
     <div className="h-full">
       <div className="flex flex-col justify-between px-2 h-full">
         <div className="overflow-y-auto flex flex-col-reverse gap-4">
-          <div className="p-5"></div>
+          <div className="p-6"></div>
           {/* New messages */}
           {messages.map((message) => (
             <MessageView key={message.id} message={message} />
@@ -55,7 +55,7 @@ const GroupChat: React.FC = () => {
               <MessageView key={message.id} message={message} />
             ))
           )}
-          <div className="p-5"></div>
+          <div className="p-7"></div>
           <Paginator paginate={fetchNextPage} hasMoreData={hasNextPage} />
         </div>
         <form
@@ -70,7 +70,7 @@ const GroupChat: React.FC = () => {
           }}
         >
           <Input
-            className="bg-white"
+            className="bg-white dark:bg-black"
             type="text"
             placeholder="Message"
             value={message}

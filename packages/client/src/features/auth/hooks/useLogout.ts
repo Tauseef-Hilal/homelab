@@ -24,7 +24,6 @@ export function useLogout(options: UseLogoutOptions) {
       router.refresh();
     },
     onError: (error) => {
-      alert(error.code);
       const serverError = error.response?.data;
       if (serverError) {
         options.onError(serverError.message);

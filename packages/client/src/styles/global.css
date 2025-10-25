@@ -3,7 +3,8 @@
 
 @source "src/**/*.{js,ts,jsx,tsx}";
 
-@custom-variant dark (&:is(.dark *));
+/* @custom-variant dark (&:is(.dark *)); */
+@custom-variant dark (&:where(.dark, .dark *));
 
 html,
 body {
