@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const getBroadcastMessagesSchema = z.object({
-  hasMoreData: z.boolean(),
+  nextCursor: z.nullable(z.object({ id: z.uuid(), sentAt: z.string() })),
   messages: z.array(
     z.object({
       id: z.uuid(),

@@ -14,34 +14,13 @@ import MessageView from "./MessageView";
 import Paginator from "./Paginator";
 
 const GroupChat: React.FC = () => {
-  const { messages, setMessages, sendMessage } = useMessaging();
-
+  const { messages, sendMessage } = useMessaging();
   const [message, setMessage] = useState("");
-  const [offset, setOffset] = useState<{
-    offsetId?: string;
-    offsetSentAt?: string;
-  }>({});
 
-  const { isPending, data, error, refetch } = useGetBroadcastMessages(
-    20,
-    offset.offsetSentAt,
-    offset.offsetId
-  );
+  const { data, status, hasNextPage, fetchNextPage } =
+    useGetBroadcastMessages(20);
 
-  useEffect(() => {
-    if (data?.messages) {
-      setMessages((prev) => [...prev, ...data.messages]);
-    }
-  }, [data]);
-
-  const paginate = useCallback(() => {
-    setOffset({
-      offsetSentAt: messages.at(-1)?.sentAt,
-      offsetId: messages.at(-1)?.id,
-    });
-  }, [messages]);
-
-  if (isPending && messages.length == 0) {
+  if (status == "pending" && messages.length == 0) {
     return (
       <div className="h-full flex items-center justify-center">
         <Loader2Icon className="animate-spin" size={36} />
@@ -49,11 +28,11 @@ const GroupChat: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (status == "error") {
     return (
       <div className="h-full flex flex-col justify-center items-center gap-2">
         <ForkKnifeCrossedIcon /> <p>Something went wrong</p>
-        <Button onClick={() => refetch()} variant={"outline"}>
+        <Button onClick={() => fetchNextPage()} variant={"outline"}>
           Retry
         </Button>
       </div>
@@ -65,14 +44,19 @@ const GroupChat: React.FC = () => {
       <div className="flex flex-col justify-between px-2 h-full">
         <div className="overflow-y-auto flex flex-col-reverse gap-4">
           <div className="p-5"></div>
+          {/* New messages */}
           {messages.map((message) => (
             <MessageView key={message.id} message={message} />
           ))}
+
+          {/* History */}
+          {data?.pages.flatMap((page) =>
+            page.messages.map((message) => (
+              <MessageView key={message.id} message={message} />
+            ))
+          )}
           <div className="p-5"></div>
-          <Paginator
-            paginate={paginate}
-            hasMoreData={data?.hasMoreData ?? false}
-          />
+          <Paginator paginate={fetchNextPage} hasMoreData={hasNextPage} />
         </div>
         <form
           noValidate

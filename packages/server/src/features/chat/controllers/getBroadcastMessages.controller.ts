@@ -6,14 +6,14 @@ import { success } from '@server/lib/response';
 
 export const getBroadcastMessagesController = catchAsync(
   async (req: Request, res: Response) => {
-    const { limit, offsetId, offsetSentAt } = getBroadcastMessagesSchema.parse(
+    const { limit, cursorId, cursorSentAt } = getBroadcastMessagesSchema.parse(
       req.query
     );
-    const { messages, hasMoreData } = await getBroadcastMessages(
-      offsetId,
-      offsetSentAt,
+    const { messages, nextCursor } = await getBroadcastMessages(
+      cursorId,
+      cursorSentAt,
       limit
     );
-    res.status(200).json(success({ messages, hasMoreData }));
+    res.status(200).json(success({ messages, nextCursor }));
   }
 );

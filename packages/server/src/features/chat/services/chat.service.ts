@@ -1,18 +1,18 @@
 import { prisma } from '@shared/prisma';
-
 export async function getBroadcastMessages(
-  offsetId?: string,
-  offsetSentAt?: string,
+  cursorId?: string,
+  cursorSentAt?: string,
   limit?: number
 ) {
+  const take = limit ?? 30;
   const where =
-    offsetId && offsetSentAt
+    cursorId && cursorSentAt
       ? {
           OR: [
-            { sentAt: { lt: new Date(offsetSentAt) } },
+            { sentAt: { lte: new Date(cursorSentAt) } },
             {
-              sentAt: new Date(offsetSentAt),
-              id: { lt: offsetId },
+              sentAt: new Date(cursorSentAt),
+              id: { lte: cursorId },
             },
           ],
         }
@@ -22,8 +22,16 @@ export async function getBroadcastMessages(
     where,
     include: { author: true },
     orderBy: [{ sentAt: 'desc' }, { id: 'desc' }],
-    take: (limit ?? 30) + 1,
+    take: take + 1,
   });
 
-  return { messages, hasMoreData: messages.length > (limit ?? 30) };
+  if (messages.length > take) {
+    const msg = messages.pop()!;
+    return {
+      messages,
+      nextCursor: { id: msg.id, sentAt: msg.sentAt.toISOString() },
+    };
+  }
+
+  return { messages, nextCursor: null };
 }
