@@ -21,7 +21,7 @@ export function useChangePassword(options: UseChangePasswordOptions) {
   >({
     mutationFn: changePassword,
     onSuccess: () => {
-      router.push('/login');
+      router.push('/auth/login');
     },
     onError: (err) => {
       console.dir(err.response?.data)

@@ -59,7 +59,7 @@ const handleOtpPurpose = {
       .cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: env.NODE_ENV == 'production',
-        sameSite: 'none',
+        sameSite: env.NODE_ENV == 'production' ? 'none' : 'lax',
         maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
       })
       .json(

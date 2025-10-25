@@ -6,7 +6,7 @@ export default function DrivePage() {
   return (
     <>
       <Header icon={<HardDrive />} title="Drive" showBackBtn />
-      <main>
+      <main className="h-full">
         <Explorer />
       </main>
     </>

@@ -9,7 +9,7 @@ const Explorer: React.FC = () => {
   const { selectedItems, selectAll, deselectAll } = useDriveStore();
 
   return (
-    <div className="p-4 flex flex-col gap-2">
+    <div className="p-4 flex flex-col gap-2 h-full">
       {selectedItems.length == 0 ? (
         <ExplorerHeader />
       ) : (
