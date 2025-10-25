@@ -221,3 +221,8 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+.noselect {
+  user-select: none;
+  -webkit-user-select: none;
+}

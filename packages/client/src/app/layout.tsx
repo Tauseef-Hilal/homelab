@@ -18,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`dark:bg-black dark:text-white bg-gray-50 text-gray-900 ${inter.className}`}
+        className={`dark:bg-black dark:text-white bg-gray-50 text-gray-900 noselect ${inter.className}`}
       >
         <ReactQueryProvider>
           {children}

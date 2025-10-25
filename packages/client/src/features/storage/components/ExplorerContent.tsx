@@ -5,7 +5,7 @@ import { ForkKnifeCrossedIcon, Loader2Icon } from "lucide-react";
 import useDriveStore from "../stores/driveStore";
 import FileSystemEntry from "./FileSystemEntry";
 import { cx } from "class-variance-authority";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { getJob } from "../api/getJob";
 import { useListDirectory } from "../hooks/useListDirectory";
 import { useMoveItems } from "../hooks/useMoveItems";
+import { useLongPress } from "@client/hooks/useLongPress";
 
 const ExplorerContent: React.FC = () => {
   const [showFolderDialog, setShowFolderDialog] = useState(false);
@@ -26,6 +27,18 @@ const ExplorerContent: React.FC = () => {
   const { path, push, stack, stackIdx, clipboard } = useDriveStore();
   const { isPending, data, error, refetch } = useListDirectory(path, true);
   const folder = data?.folder ?? stack[stackIdx];
+
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  const { onTouchStart, onTouchEnd } = useLongPress<HTMLDivElement>((e) => {
+    ref.current?.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: false,
+        clientX: e.touches[0].clientX ?? 0,
+        clientY: e.touches[0].clientY ?? 0,
+      })
+    );
+  });
 
   useEffect(() => {
     if (!data) return;
@@ -163,6 +176,9 @@ const ExplorerContent: React.FC = () => {
         <ContextMenuTrigger asChild>
           {!emptyFolder ? (
             <div
+              ref={ref}
+              onTouchStart={onTouchStart}
+              onTouchEnd={onTouchEnd}
               className={cx(
                 "grid grid-cols-4 align-center place-content-start",
                 "place-items-center gap-2 h-full overflow-auto"
@@ -185,7 +201,12 @@ const ExplorerContent: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="h-full flex justify-center items-center">
+            <div
+              ref={ref}
+              onTouchStart={onTouchStart}
+              onTouchEnd={onTouchEnd}
+              className="h-full flex justify-center items-center"
+            >
               <p>Oops, there's nothing here. But you can add your files!</p>
             </div>
           )}
@@ -207,7 +228,7 @@ const ExplorerContent: React.FC = () => {
         open={showFolderDialog}
         setOpen={setShowFolderDialog}
         refetch={refetch}
-        />
+      />
       <UploadDialog
         folderId={folder?.id}
         open={showUploadDialog}

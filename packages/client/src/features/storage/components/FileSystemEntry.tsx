@@ -3,7 +3,7 @@
 import { FaFile, FaFolder } from "react-icons/fa6";
 import { File, Folder } from "../types/storage.types";
 import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Preview from "./Preview";
 import {
   ContextMenu,
@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { getJob } from "../api/getJob";
 import { useDownloadItems } from "../hooks/useDownloadItems";
 import Rename from "./Rename";
+import { useLongPress } from "@client/hooks/useLongPress";
 
 interface FileSystemEntryProps {
   child: File | Folder;
@@ -30,12 +31,24 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({
   child,
   refetch,
 }) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+
   const [showPreview, setShowPreview] = useState(false);
   const [showRename, setShowRename] = useState(false);
   const { selectedItems, isSelected, onSelect, selectItem } = useSelect();
   const { setPath, setClipboard, deselectAll } = useDriveStore();
 
   const thumbnailUrl = `${process.env.NEXT_PUBLIC_API_URL}/uploads/${child.userId}/thumbnails/${child.id}.webp`;
+
+  const { onTouchStart, onTouchEnd } = useLongPress<HTMLDivElement>((e) => {
+    ref.current?.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: false,
+        clientX: e.touches[0].clientX ?? 0,
+        clientY: e.touches[0].clientY ?? 0,
+      })
+    );
+  });
 
   const clickHandler = () => {
     if (selectedItems.length > 0) {
@@ -206,9 +219,11 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({
   return (
     <div>
       <ContextMenu>
-        <ContextMenuTrigger asChild>
+        <ContextMenuTrigger asChild onContextMenu={(e) => e.stopPropagation()}>
           <div
             key={child.id}
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
             onClick={clickHandler}
             className={cx(
               "p-4 w-20 flex flex-col items-center justify-start gap-2",
