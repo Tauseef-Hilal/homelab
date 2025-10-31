@@ -1,0 +1,65 @@
+# --------------------------------
+# Base stage (dependencies)
+# --------------------------------
+FROM node:20-slim AS base
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy dependency files for caching
+COPY pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml ./
+COPY packages/client/package.json packages/client/
+COPY packages/shared/package.json packages/shared/
+
+# Install all dependencies (dev + prod)
+RUN pnpm install -r --frozen-lockfile
+
+# --------------------------------
+# Build stage
+# --------------------------------
+FROM base AS build
+WORKDIR /app
+
+# Copy source code
+COPY . .
+
+# Generate Prisma client
+RUN pnpm --filter ./packages/shared exec prisma generate
+
+# Build Next.js app
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter ./packages/client run build
+
+# --------------------------------
+# Runtime stage (minimal)
+# --------------------------------
+FROM node:20-slim AS prod
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy only necessary files from build
+COPY --from=build /app/package.json ./
+COPY --from=build /app/pnpm-workspace.yaml ./
+COPY --from=build /app/pnpm-lock.yaml ./
+COPY --from=build /app/packages/client/package.json ./packages/client/
+COPY --from=build /app/packages/shared/package.json ./packages/shared/
+COPY --from=build /app/packages/shared/prisma ./packages/shared/prisma/
+
+# Copy Next.js build output and static assets
+COPY --from=build /app/packages/client/.next ./packages/client/.next
+COPY --from=build /app/packages/client/public ./packages/client/public
+COPY --from=build /app/packages/client/next.config.ts ./packages/client/
+
+# Install only production dependencies
+RUN pnpm install -r --prod --frozen-lockfile
+
+# Generate Prisma client again (it must exist at runtime)
+RUN pnpm --filter ./packages/shared exec prisma generate
+
+# Expose Next.js port
+EXPOSE 3000
+
+# Start Next.js app
+CMD ["pnpm", "--filter", "./packages/client", "run", "start"]

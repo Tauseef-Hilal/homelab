@@ -5,8 +5,8 @@ services:
     container_name: homelab-server
     restart: unless-stopped
     build:
-      context: .
-      dockerfile: ./packages/server/Dockerfile
+      context: ..
+      dockerfile: ./packages/server/docker/Dockerfile.dev
       target: dev
     ports:
       - "5001:5001"
@@ -17,9 +17,9 @@ services:
       - db
       - redis
     env_file:
-      - ./packages/shared/.env
+      - ../packages/shared/.env
     volumes:
-      - .:/app
+      - ..:/app
       - /app/node_modules
       - /app/packages/shared/node_modules
       - /app/packages/server/node_modules
@@ -33,8 +33,8 @@ services:
     container_name: homelab-thumbnail-worker
     restart: unless-stopped
     build:
-      context: .
-      dockerfile: ./packages/workers/docker/thumbnail.Dockerfile
+      context: ..
+      dockerfile: ./packages/workers/docker/thumbnail.Dockerfile.dev
       target: dev
     depends_on:
       - db
@@ -43,9 +43,9 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     env_file:
-      - ./packages/shared/.env
+      - ../packages/shared/.env
     volumes: 
-      - .:/app
+      - ..:/app
       - /app/node_modules
       - /app/packages/shared/node_modules
       - /app/packages/workers/node_modules
@@ -59,8 +59,8 @@ services:
     container_name: homelab-io-workers
     restart: unless-stopped
     build:
-      context: .
-      dockerfile: ./packages/workers/docker/io.Dockerfile
+      context: ..
+      dockerfile: ./packages/workers/docker/io.Dockerfile.dev
       target: dev
     dns:
       - 8.8.8.8
@@ -69,9 +69,9 @@ services:
       - db
       - redis
     env_file:
-      - ./packages/shared/.env
+      - ../packages/shared/.env
     volumes: 
-      - .:/app
+      - ..:/app
       - /app/node_modules
       - /app/packages/shared/node_modules
       - /app/packages/workers/node_modules
@@ -85,8 +85,8 @@ services:
     container_name: homelab-client
     restart: unless-stopped
     build:
-      context: .
-      dockerfile: ./packages/client/Dockerfile
+      context: ..
+      dockerfile: ./packages/client/docker/Dockerfile.dev
       target: dev
     ports:
       - "3000:3000"
@@ -94,9 +94,9 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     env_file:
-      - ./packages/shared/.env
+      - ../packages/shared/.env
     volumes: 
-      - .:/app
+      - ..:/app
       - /app/node_modules
       - /app/packages/client/node_modules
       - /app/packages/shared/node_modules
@@ -107,7 +107,7 @@ services:
     restart: unless-stopped
     container_name: homelab-db
     env_file:
-      - .env
+      - ../.env
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:

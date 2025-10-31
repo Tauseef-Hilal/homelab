@@ -2,14 +2,17 @@
 
 import { TouchEvent, TouchEventHandler, useRef } from 'react';
 
-export function useLongPress<T>(
-  callback: (e: TouchEvent<T>) => void
-) {
+
+export function useLongPress<T>(callback: (e: TouchEvent<T>) => void) {
   const longPressTimer = useRef<number | null>(null);
 
   const handleTouchStart: TouchEventHandler<T> = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const eventCopy = { ...e };
+
     longPressTimer.current = window.setTimeout(() => {
-      callback(e);
+      callback(eventCopy);
     }, 600);
   };
 

@@ -9,8 +9,6 @@ import { Input } from "@client/components/ui/input";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button } from "@client/components/ui/button";
-import useDriveStore from "../stores/driveStore";
 import { toast } from "sonner";
 import { isFolder } from "@client/lib/utils";
 import z from "zod";

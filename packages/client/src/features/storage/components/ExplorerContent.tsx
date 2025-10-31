@@ -28,10 +28,8 @@ const ExplorerContent: React.FC = () => {
   const { isPending, data, error, refetch } = useListDirectory(path, true);
   const folder = data?.folder ?? stack[stackIdx];
 
-  const ref = useRef<HTMLDivElement | null>(null);
-
   const { onTouchStart, onTouchEnd } = useLongPress<HTMLDivElement>((e) => {
-    ref.current?.dispatchEvent(
+    e.currentTarget.dispatchEvent(
       new MouseEvent("contextmenu", {
         bubbles: false,
         clientX: e.touches[0].clientX ?? 0,
@@ -176,7 +174,6 @@ const ExplorerContent: React.FC = () => {
         <ContextMenuTrigger asChild>
           {!emptyFolder ? (
             <div
-              ref={ref}
               onTouchStart={onTouchStart}
               onTouchEnd={onTouchEnd}
               className={cx(
@@ -202,7 +199,6 @@ const ExplorerContent: React.FC = () => {
             </div>
           ) : (
             <div
-              ref={ref}
               onTouchStart={onTouchStart}
               onTouchEnd={onTouchEnd}
               className="h-full flex justify-center items-center"

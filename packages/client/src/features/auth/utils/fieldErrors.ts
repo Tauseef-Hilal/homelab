@@ -6,7 +6,7 @@ export function mapServerFieldErrors<T extends FieldValues>(
 ) {
   Object.entries(fieldErrors).forEach(([field, messages]) => {
     messages.forEach((message) => {
-      setError(`${field}`, {
+      setError(`root.${field}`, {
         type: 'server',
         message,
       });

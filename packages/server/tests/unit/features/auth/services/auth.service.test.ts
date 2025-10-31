@@ -245,15 +245,11 @@ describe('changePassword()', () => {
     const errorObj = { status: 400, code: CommonErrorCode.MISSING_FIELDS };
 
     await expect(
-      authService.changePassword('email', '', 'new')
+      authService.changePassword('email', '')
     ).rejects.toMatchObject(errorObj);
 
     await expect(
-      authService.changePassword('email', 'old', '')
-    ).rejects.toMatchObject(errorObj);
-
-    await expect(
-      authService.changePassword('', 'old', 'new')
+      authService.changePassword('', 'new')
     ).rejects.toMatchObject({
       status: 404,
       code: AuthErrorCode.USER_DOES_NOT_EXIST,
@@ -264,7 +260,7 @@ describe('changePassword()', () => {
     vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
 
     await expect(
-      authService.changePassword('email', 'old', 'pass')
+      authService.changePassword('email', 'pass')
     ).rejects.toMatchObject({
       status: 404,
       code: AuthErrorCode.USER_DOES_NOT_EXIST,
@@ -276,7 +272,7 @@ describe('changePassword()', () => {
     vi.spyOn(bcrypt, 'isValidPassword').mockResolvedValue(false);
 
     await expect(
-      authService.changePassword('email', 'old', 'new')
+      authService.changePassword('email', 'new')
     ).rejects.toMatchObject({
       status: 401,
       code: CommonErrorCode.UNAUTHORIZED,
@@ -293,7 +289,7 @@ describe('changePassword()', () => {
     const updateSpy = vi.spyOn(prisma.user, 'update');
     const deleteManySpy = vi.spyOn(prisma.refreshToken, 'deleteMany');
 
-    await authService.changePassword(mockUser.email, 'old', 'pass');
+    await authService.changePassword(mockUser.email, 'pass');
 
     expect(updateSpy).toHaveBeenCalledWith({
       where: { id: mockUser.id },

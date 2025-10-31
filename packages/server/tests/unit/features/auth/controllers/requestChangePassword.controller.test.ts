@@ -83,7 +83,7 @@ describe('requestChangePasswordController', () => {
 
   it('should not resend OTP if previous OTP has not expired', async () => {
     vi.spyOn(redis, 'get').mockResolvedValue(String(Date.now() + 10000));
-    vi.spyOn(AuthService, 'allowPasswordChange').mockResolvedValue(null);
+    vi.spyOn(AuthService, 'allowPasswordChange').mockResolvedValue('');
 
     await requestChangePasswordController(req, res, next);
 

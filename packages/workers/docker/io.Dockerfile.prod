@@ -1,0 +1,56 @@
+# --------------------------------
+# Base stage (dependencies)
+# --------------------------------
+FROM node:20-slim AS base
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy only dependency files for efficient caching
+COPY pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml ./
+COPY packages/workers/package.json packages/workers/
+COPY packages/shared/package.json packages/shared/
+
+# Install dependencies
+RUN pnpm install -r --frozen-lockfile --prod=false
+
+# --------------------------------
+# Build stage
+# --------------------------------
+FROM base AS build
+WORKDIR /app
+
+# Copy source code
+COPY . .
+
+# Generate prisma client
+RUN pnpm --filter ./packages/shared exec prisma generate
+
+# Build
+RUN pnpm --filter ./packages/workers run build
+
+# --------------------------------
+# Runtime stage (minimal)
+# --------------------------------
+FROM node:20-alpine AS prod
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy only built output and required files from build stage
+COPY --from=build /app/packages/workers/dist ./
+COPY --from=build /app/packages/workers/package.json ./packages/workers/
+COPY --from=build /app/packages/shared/prisma ./packages/shared/prisma/
+COPY --from=build /app/packages/shared/package.json ./packages/shared/
+COPY --from=build /app/pnpm-lock.yaml ./
+COPY --from=build /app/pnpm-workspace.yaml ./
+COPY --from=build /app/package.json ./
+
+# Install only production deps for runtime (no dev/build tools)
+RUN pnpm install --prod --frozen-lockfile
+
+# Generate prisma client
+RUN pnpm --filter ./packages/shared exec prisma generate
+
+CMD ["pnpm", "--filter", "./packages/workers", "run", "start:io"]

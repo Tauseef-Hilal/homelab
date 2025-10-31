@@ -21,6 +21,7 @@ describe('JWT utilities', () => {
   const refreshTokenPayload = accessTokenPayload;
   const tfaTokenPayload: TfaPayload = {
     userId: 'abc123',
+    email: 'abc@gmail.com',
     purpose: TfaPurpose.CHANGE_PASSWORD,
     createdAt: Date.now(),
   };

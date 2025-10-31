@@ -14,7 +14,7 @@ export function middleware(req: NextRequest) {
   ) {
     const token = req.cookies.get('refreshToken')?.value;
     if (!token) {
-      const loginUrl = new URL('/login', req.url);
+      const loginUrl = new URL('/auth/login', req.url);
       return NextResponse.redirect(loginUrl);
     }
   }

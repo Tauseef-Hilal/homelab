@@ -1,0 +1,156 @@
+version: '3.9'
+
+services:
+  # ------------------------
+  # Backend API Server
+  # ------------------------
+  server:
+    container_name: homelab-server
+    restart: unless-stopped
+    build:
+      context: ..
+      dockerfile: ./packages/server/docker/Dockerfile.prod
+      target: prod
+    ports:
+      - "5001:5001"
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - ../packages/shared/.env
+    volumes:
+      - ../data:/app/data
+    command: >
+      sh -c "
+        pnpm --filter ./packages/shared exec prisma migrate deploy &&
+        pnpm --filter ./packages/shared exec prisma generate &&
+        pnpm --filter ./packages/server run start
+      "
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  # ------------------------
+  # Thumbnail Worker
+  # ------------------------
+  thumbnail-worker:
+    container_name: homelab-thumbnail-worker
+    restart: unless-stopped
+    build:
+      context: ..
+      dockerfile: ./packages/workers/docker/thumbnail.Dockerfile.prod
+      target: prod
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - ../packages/shared/.env
+    volumes:
+      - ../data:/app/data
+    command: >
+      sh -c "
+        pnpm --filter ./packages/shared exec prisma migrate deploy &&
+        pnpm --filter ./packages/shared exec prisma generate &&
+        pnpm --filter ./packages/workers run start:thumbnail
+      "
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  # ------------------------
+  # IO Worker
+  # ------------------------
+  io-workers:
+    container_name: homelab-io-workers
+    restart: unless-stopped
+    build:
+      context: ..
+      dockerfile: ./packages/workers/docker/io.Dockerfile.prod
+      target: prod
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - ../packages/shared/.env
+    volumes:
+      - ../data:/app/data
+    command: >
+      sh -c "
+        pnpm --filter ./packages/shared exec prisma migrate deploy &&
+        pnpm --filter ./packages/shared exec prisma generate &&
+        pnpm --filter ./packages/workers run start:io
+      "
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  # ------------------------
+  # Frontend Client
+  # ------------------------
+  client:
+    container_name: homelab-client
+    restart: unless-stopped
+    build:
+      context: ..
+      dockerfile: ./packages/client/docker/Dockerfile.prod
+      target: prod
+    ports:
+      - "3000:3000"
+    env_file:
+      - ../packages/client/.env
+    volumes:
+      - ../data:/app/data
+    command: >
+      sh -c "pnpm --filter ./packages/client run start"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  # ------------------------
+  # Database
+  # ------------------------
+  db:
+    image: postgres:16
+    container_name: homelab-db
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  # ------------------------
+  # Redis
+  # ------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: homelab-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+# ------------------------
+# Persistent Volumes
+# ------------------------
+volumes:
+  pgdata:
+  redisdata:

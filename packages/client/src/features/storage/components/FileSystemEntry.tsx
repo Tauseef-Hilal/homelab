@@ -31,8 +31,6 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({
   child,
   refetch,
 }) => {
-  const ref = useRef<HTMLDivElement | null>(null);
-
   const [showPreview, setShowPreview] = useState(false);
   const [showRename, setShowRename] = useState(false);
   const { selectedItems, isSelected, onSelect, selectItem } = useSelect();
@@ -41,7 +39,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({
   const thumbnailUrl = `${process.env.NEXT_PUBLIC_API_URL}/uploads/${child.userId}/thumbnails/${child.id}.webp`;
 
   const { onTouchStart, onTouchEnd } = useLongPress<HTMLDivElement>((e) => {
-    ref.current?.dispatchEvent(
+    e.currentTarget.dispatchEvent(
       new MouseEvent("contextmenu", {
         bubbles: false,
         clientX: e.touches[0].clientX ?? 0,
@@ -219,7 +217,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({
   return (
     <div>
       <ContextMenu>
-        <ContextMenuTrigger asChild onContextMenu={(e) => e.stopPropagation()}>
+        <ContextMenuTrigger asChild>
           <div
             key={child.id}
             onTouchStart={onTouchStart}

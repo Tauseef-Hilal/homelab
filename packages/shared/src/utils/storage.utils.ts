@@ -35,8 +35,8 @@ export async function resolveFileName(
     select: { id: true, name: true },
   });
 
-  const existingFileNames = existingFiles.map((f) =>
-    f.id != file.id || copy ? f.name : ''
+  const existingFileNames = existingFiles.map(
+    (f: { name: string; id: string }) => (f.id != file.id || copy ? f.name : '')
   );
 
   const ext = getFileExtension(file.name);
@@ -129,8 +129,9 @@ export async function resolveFolderName(
     select: { id: true, name: true },
   });
 
-  const existingFolderNames = existingFolders.map((f) =>
-    f.id != folder.id || copy ? f.name : ''
+  const existingFolderNames = existingFolders.map(
+    (f: { name: string; id: string }) =>
+      f.id != folder.id || copy ? f.name : ''
   );
 
   let n = 1;
