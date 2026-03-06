@@ -1,6 +1,6 @@
 import path from 'path';
-import { CommonErrorCode } from '@server/errors/CommonErrorCode';
-import { HttpError } from '@server/errors/HttpError';
+import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
+import { HttpError } from '@shared/errors/HttpError';
 import { prisma } from '@shared/prisma';
 
 export function getFileExtension(filename: string): string {
@@ -28,7 +28,7 @@ export async function resolveFileName(
   },
   newNameWithoutExtension: string,
   folderId: string,
-  copy: boolean = false
+  copy: boolean = false,
 ) {
   const existingFiles = await prisma.file.findMany({
     where: { folderId: folderId, userId: file.userId },
@@ -36,7 +36,7 @@ export async function resolveFileName(
   });
 
   const existingFileNames = existingFiles.map((f) =>
-    f.id != file.id || copy ? f.name : ''
+    f.id != file.id || copy ? f.name : '',
   );
 
   const ext = getFileExtension(file.name);

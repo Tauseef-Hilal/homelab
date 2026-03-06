@@ -20,6 +20,7 @@ import { getJob } from "../api/getJob";
 import { useListDirectory } from "../hooks/useListDirectory";
 import { useMoveItems } from "../hooks/useMoveItems";
 import { useLongPress } from "@client/hooks/useLongPress";
+import { useQueryClient } from "@tanstack/react-query";
 
 const ExplorerContent: React.FC = () => {
   const [showFolderDialog, setShowFolderDialog] = useState(false);
@@ -27,6 +28,7 @@ const ExplorerContent: React.FC = () => {
   const { path, push, stack, stackIdx, clipboard } = useDriveStore();
   const { isPending, data, error, refetch } = useListDirectory(path, true);
   const folder = data?.folder ?? stack[stackIdx];
+  const queryClient = useQueryClient();
 
   const { onTouchStart, onTouchEnd } = useLongPress<HTMLDivElement>((e) => {
     e.currentTarget.dispatchEvent(
@@ -34,7 +36,7 @@ const ExplorerContent: React.FC = () => {
         bubbles: false,
         clientX: e.touches[0].clientX ?? 0,
         clientY: e.touches[0].clientY ?? 0,
-      })
+      }),
     );
   });
 
@@ -62,6 +64,7 @@ const ExplorerContent: React.FC = () => {
           switch (status) {
             case "completed":
               toast.success("Files copied successfully", { id: toastId });
+              queryClient.invalidateQueries({ queryKey: ["stats"] });
               clearInterval(interval);
               refetch();
               break;
@@ -178,7 +181,7 @@ const ExplorerContent: React.FC = () => {
               onTouchEnd={onTouchEnd}
               className={cx(
                 "grid grid-cols-4 align-center place-content-start",
-                "place-items-center gap-2 h-full overflow-auto"
+                "place-items-center gap-2 h-full overflow-auto",
               )}
             >
               {folder?.children.map((child) => (

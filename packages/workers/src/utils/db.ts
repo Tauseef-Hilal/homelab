@@ -5,7 +5,6 @@ export async function updateJob(
   jobId: string,
   update: {
     status?: JobStatus;
-    progress?: number;
     attempts?: number;
     result?: object;
   }

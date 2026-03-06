@@ -10,8 +10,11 @@ import { previewFileController } from './controllers/previewFile.controller';
 import { createFolderController } from './controllers/createFolder.controller';
 import { downloadController } from './controllers/download.controller';
 import { downloadItemsController } from './controllers/downloadItems.controller';
+import { getStatsController } from './controllers/getStats.controller';
 
 const router = Router();
+
+router.get('/stats', requireAuth, getStatsController);
 
 router.post('/file', requireAuth, upload.single('file'), uploadFileController);
 router.get('/file/:fileId/preview', previewFileController);

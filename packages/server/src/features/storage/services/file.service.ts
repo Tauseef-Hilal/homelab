@@ -3,64 +3,74 @@ import fs from 'fs/promises';
 import { randomUUID } from 'crypto';
 import { createWriteStream, existsSync } from 'fs';
 import { prisma } from '@shared/prisma';
-import { HttpError } from '@server/errors/HttpError';
-import { StorageErrorCode } from '../constants/StorageErrorCode';
-import { MAX_USER_STORAGE_QUOTA } from '../constants/limits';
+import { HttpError } from '@shared/errors/HttpError';
 import { Visibility } from '@prisma/client';
 import { pipeline } from 'stream/promises';
 import { Readable } from 'stream';
-import { CommonErrorCode } from '@server/errors/CommonErrorCode';
+import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
 import {
   resolveFileName,
   getFileExtension,
   getFileNameWithoutExtension,
 } from '../utils/file.util';
 import {
-  copyFileOnDisk,
   getOriginalFilePath,
   getThumbnailPath,
 } from '@shared/utils/storage.utils';
+import { reserve, release } from '@shared/utils/quota.utils';
 
 export async function saveFile(
   userId: string,
   file: Express.Multer.File,
   visibility: Visibility,
-  folderId: string
+  folderId: string,
+) {
+  try {
+    await reserve(userId, file.size);
+    const fileMeta = await saveToDisk(file, userId, folderId, visibility);
+    return await prisma.file.create({ data: fileMeta });
+  } catch (err) {
+    await release(userId, file.size);
+
+    throw err instanceof HttpError
+      ? err
+      : new HttpError({
+          status: 500,
+          code: CommonErrorCode.INTERNAL_SERVER_ERROR,
+          message: 'Failed to upload file',
+        });
+  }
+}
+
+async function saveToDisk(
+  file: Express.Multer.File,
+  userId: string,
+  folderId: string,
+  visibility: Visibility,
 ) {
   const fileId = randomUUID();
   const ext = getFileExtension(file.originalname);
   const storagePath = getOriginalFilePath(userId, fileId, ext);
 
-  try {
-    await fs.mkdir(path.dirname(storagePath), { recursive: true });
-    await pipeline(Readable.from(file.buffer), createWriteStream(storagePath));
+  await fs.mkdir(path.dirname(storagePath), { recursive: true });
+  await pipeline(Readable.from(file.buffer), createWriteStream(storagePath));
 
-    const { newFileName, newFilePath } = await resolveFileName(
-      { id: fileId, name: file.originalname, userId: userId },
-      getFileNameWithoutExtension(file.originalname),
-      folderId
-    );
+  const { newFileName, newFilePath } = await resolveFileName(
+    { id: fileId, name: file.originalname, userId: userId },
+    getFileNameWithoutExtension(file.originalname),
+    folderId,
+  );
 
-    return await prisma.file.create({
-      data: {
-        id: fileId,
-        name: newFileName,
-        mimeType: file.mimetype,
-        size: file.size,
-        folderId: folderId,
-        fullPath: newFilePath,
-        visibility,
-        userId,
-      },
-    });
-  } catch (err) {
-    console.log(err);
-    throw new HttpError({
-      status: 500,
-      code: CommonErrorCode.INTERNAL_SERVER_ERROR,
-      message: 'Failed to upload file',
-    });
-  }
+  return {
+    id: fileId,
+    name: newFileName,
+    mimeType: file.mimetype,
+    size: file.size,
+    folderId: folderId,
+    fullPath: newFilePath,
+    visibility,
+    userId,
+  };
 }
 
 export async function deleteFile(userId: string, fileId: string) {
@@ -139,7 +149,7 @@ export async function getFileMeta(userId: string, fileId: string) {
   const filePath = getOriginalFilePath(
     file.userId,
     file.id,
-    getFileExtension(file.name)
+    getFileExtension(file.name),
   );
 
   if (!existsSync(filePath)) {
@@ -158,19 +168,4 @@ export async function getFileMeta(userId: string, fileId: string) {
   };
 }
 
-export async function ensureQuotaAvailable(userId: string, fileSize: number) {
-  const used = await prisma.file.aggregate({
-    _sum: { size: true },
-    where: { userId },
-  });
-
-  const totalUsed = used._sum.size ?? 0;
-
-  if (totalUsed + fileSize > MAX_USER_STORAGE_QUOTA) {
-    throw new HttpError({
-      status: 413,
-      code: StorageErrorCode.QUOTA_EXCEEDED,
-      message: 'Storage quota exceeded',
-    });
-  }
-}
+export async function ensureQuotaAvailable(userId: string, fileSize: number) {}

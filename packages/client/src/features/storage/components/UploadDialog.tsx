@@ -24,10 +24,10 @@ import {
 } from "@client/components/ui/select";
 import { useState } from "react";
 import { Button } from "@client/components/ui/button";
-import useDriveStore from "../stores/driveStore";
 import { Progress } from "@client/components/ui/progress";
 import { useBatchMutation } from "../hooks/useBatchMutation";
 import { UploadFileResponse } from "@shared/schemas/storage/response.schema";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface UploadDialogProps {
   folderId: string;
@@ -40,10 +40,10 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
   folderId,
   open,
   setOpen,
-  refetch
+  refetch,
 }) => {
+  const queryClient = useQueryClient();
   const [ranOnce, setRanOnce] = useState(false);
-  const { addFile } = useDriveStore();
   const [files, setFiles] = useState<File[]>([]);
   const [visibility, setVisibility] =
     useState<UploadFileInput["visibility"]>("public");
@@ -65,7 +65,10 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
   const { isPending, mutate, retry, failed, setFailed, progress } =
     useBatchMutation<UploadFileInput, UploadFileResponse>({
       mutationFn: mutation.mutateAsync,
-      onSuccess: () => refetch(),
+      onSuccess: () => {
+        refetch();
+        queryClient.invalidateQueries({ queryKey: ["stats"] });
+      },
       delay: 1000,
     });
 
@@ -96,7 +99,7 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
       onOpenChange={(isOpen) => {
         setOpen(isOpen);
         setRanOnce(false);
-        setFiles([])
+        setFiles([]);
       }}
     >
       <DialogContent>

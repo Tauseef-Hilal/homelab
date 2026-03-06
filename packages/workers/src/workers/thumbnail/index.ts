@@ -18,7 +18,7 @@ export const thumbnailWorker = new Worker<
 
 thumbnailWorker.on('active', async (job, prev) => {
   const logger = withRequestId(job.data.requestId);
-  await updateJob(job.data.prismaJobId, { status: 'processing', progress: 0 });
+  await updateJob(job.data.prismaJobId, { status: 'processing' });
 
   logger.info(
     {
@@ -35,7 +35,6 @@ thumbnailWorker.on('completed', async (job) => {
 
   await updateJob(job.data.prismaJobId, {
     status: 'completed',
-    progress: 100,
     attempts: job.attemptsMade,
   });
   await prisma.file.update({

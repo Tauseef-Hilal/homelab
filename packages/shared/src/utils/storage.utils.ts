@@ -28,7 +28,7 @@ export async function resolveFileName(
   },
   newNameWithoutExtension: string,
   folderId: string,
-  copy: boolean = false
+  copy: boolean = false,
 ) {
   const existingFiles = await prisma.file.findMany({
     where: { folderId: folderId, userId: file.userId },
@@ -36,7 +36,8 @@ export async function resolveFileName(
   });
 
   const existingFileNames = existingFiles.map(
-    (f: { name: string; id: string }) => (f.id != file.id || copy ? f.name : '')
+    (f: { name: string; id: string }) =>
+      f.id != file.id || copy ? f.name : '',
   );
 
   const ext = getFileExtension(file.name);
@@ -82,7 +83,7 @@ export function getFileExtension(filename: string): string {
 export async function copyFileOnDisk(src: string, dest: string) {
   await pipeline(
     Readable.from((await fs.open(src)).createReadStream()),
-    createWriteStream(dest)
+    createWriteStream(dest),
   );
 }
 
@@ -92,26 +93,30 @@ export function getThumbnailPath(userId: string, fileId: string) {
 
 export function getThumbnailsDirPath(userId: string) {
   return path.join(
-    env.MEDIA_DIR_PATH,
+    path.resolve(env.MEDIA_DIR_PATH),
     userId,
-    mediaConstants.thumbnailsDirName
+    mediaConstants.thumbnailsDirName,
   );
 }
 
 export function getOriginalFilePath(
   userId: string,
   fileId: string,
-  ext: string
+  ext: string,
 ) {
   return path.join(getOriginalsDirPath(userId), `${fileId}.${ext}`);
 }
 
 export function getOriginalsDirPath(userId: string) {
-  return path.join(env.MEDIA_DIR_PATH, userId, mediaConstants.originalsDirName);
+  return path.join(
+    path.resolve(env.MEDIA_DIR_PATH),
+    userId,
+    mediaConstants.originalsDirName,
+  );
 }
 
 export function getTempFilePath(fileName: string) {
-  return path.join(env.TEMP_DIR_PATH, fileName);
+  return path.join(path.resolve(env.TEMP_DIR_PATH), fileName);
 }
 
 export async function resolveFolderName(
@@ -122,7 +127,7 @@ export async function resolveFolderName(
   },
   newName: string,
   targetFolderId: string | null,
-  copy: boolean = false
+  copy: boolean = false,
 ) {
   const existingFolders = await prisma.folder.findMany({
     where: { parentId: targetFolderId, userId: folder.userId },
@@ -131,7 +136,7 @@ export async function resolveFolderName(
 
   const existingFolderNames = existingFolders.map(
     (f: { name: string; id: string }) =>
-      f.id != folder.id || copy ? f.name : ''
+      f.id != folder.id || copy ? f.name : '',
   );
 
   let n = 1;
@@ -148,7 +153,7 @@ export async function resolveFolderName(
 
 export function ensureFolderExists(
   folder: Folder | null,
-  errMsg: string = 'Folder does not exist'
+  errMsg: string = 'Folder does not exist',
 ) {
   if (!folder) {
     throw new Error(errMsg);
@@ -158,7 +163,7 @@ export function ensureFolderExists(
 export function ensureUserIsOwner(
   folder: Folder,
   userId: string,
-  errMsg: string = 'You do not have the permission to perform this action'
+  errMsg: string = 'You do not have the permission to perform this action',
 ) {
   if (folder.userId != userId) {
     throw new Error(errMsg);

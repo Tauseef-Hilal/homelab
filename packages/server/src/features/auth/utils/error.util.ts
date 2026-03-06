@@ -1,5 +1,5 @@
-import { HttpError } from "@server/errors/HttpError";
-import { CommonErrorCode } from "@server/errors/CommonErrorCode";
+import { HttpError } from "@shared/errors/HttpError";
+import { CommonErrorCode } from "@shared/errors/CommonErrorCode";
 import { AuthErrorCode } from "../constants/AuthErrorCode";
 
 export function throwInvalidToken() {

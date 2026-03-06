@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+export const getStatsSchema = z.object({
+  storageUsed: z.number(),
+  storageQuota: z.number(),
+});
+
 export const uploadFileSchema = z.object({
   file: z.object({
     id: z.string(),
@@ -39,7 +44,7 @@ export const listDirectorySchema = z.object({
         userId: z.string(),
         updatedAt: z.string(),
         folderId: z.string(),
-      })
+      }),
     ),
     children: z.array(
       z.object({
@@ -50,7 +55,7 @@ export const listDirectorySchema = z.object({
         userId: z.string(),
         updatedAt: z.string(),
         parentId: z.string(),
-      })
+      }),
     ),
   }),
 });
@@ -91,6 +96,7 @@ export const downloadItemsSchema = z.object({
   }),
 });
 
+export type GetStatsOutput = z.infer<typeof getStatsSchema>;
 export type UploadFileResponse = z.infer<typeof uploadFileSchema>;
 export type ListDirectoryResponse = z.infer<typeof listDirectorySchema>;
 export type CreateFolderResponse = z.infer<typeof createFolderSchema>;

@@ -18,7 +18,7 @@ app.use(
   cors({
     origin: env.CLIENT_URL,
     credentials: true,
-  })
+  }),
 );
 app.use(cookieParser());
 app.use(express.json());
@@ -26,13 +26,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 app.use(
   '/api/uploads',
-  express.static(path.join(process.cwd(), '../../data/uploads'))
+  express.static(path.join(process.cwd(), '../../data/uploads')),
 );
 
 app.use('/api/auth', authRoutes);
 app.use('/api/storage', storageRoutes);
 app.use('/api/jobs', jobRoutes);
-app.use('/api/chat', chatRoutes)
+app.use('/api/chat', chatRoutes);
 
 app.use(errorHandler);
 

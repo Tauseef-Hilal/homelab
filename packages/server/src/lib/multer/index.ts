@@ -1,8 +1,8 @@
 import { Request } from 'express';
 import multer, { FileFilterCallback } from 'multer';
 import allowedMimeTypes from './mimetypes';
-import { HttpError } from '@server/errors/HttpError';
-import { CommonErrorCode } from '@server/errors/CommonErrorCode';
+import { HttpError } from '@shared/errors/HttpError';
+import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
 import { MAX_FILE_SIZE } from '@server/features/storage/constants/limits';
 
 const storage = multer.memoryStorage();

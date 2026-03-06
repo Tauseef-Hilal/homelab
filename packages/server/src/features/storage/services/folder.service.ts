@@ -12,8 +12,8 @@ import {
   getTempFilePath,
   getThumbnailPath,
 } from '@shared/utils/storage.utils';
-import { HttpError } from '@server/errors/HttpError';
-import { CommonErrorCode } from '@server/errors/CommonErrorCode';
+import { HttpError } from '@shared/errors/HttpError';
+import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
 import { randomUUID } from 'crypto';
 
 export async function createFolder(

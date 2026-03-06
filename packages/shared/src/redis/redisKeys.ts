@@ -4,4 +4,7 @@ export const RedisKeys = {
     allowPasswordChange: (userId: string) =>
       `auth:allowPasswordChange:${userId}`,
   },
+  jobs: {
+    progress: (jobId: string) => `jobs:${jobId}:progress`,
+  },
 };

@@ -2,6 +2,8 @@ import { Folder } from '@prisma/client';
 import { MoveJobPayload } from '@shared/jobs/payload.types';
 import { MoveJobResult } from '@shared/jobs/result.types';
 import { prisma } from '@shared/prisma';
+import redis from '@shared/redis';
+import { RedisKeys } from '@shared/redis/redisKeys';
 import {
   ensureFolderExists,
   ensureUserIsOwner,
@@ -19,20 +21,20 @@ export const moveItems = async ({
   destFolderId,
 }: MoveJobPayload): Promise<MoveJobResult> => {
   try {
-    let processed = 0;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
 
-    for (const item of items) {
       if (item.type === 'folder') {
         await moveFolder(userId, item.id, destFolderId!, item.newName);
       } else {
         await moveFile(userId, item.id, destFolderId, item.newName);
       }
 
-      processed++;
-      await prisma.job.update({
-        where: { id: prismaJobId },
-        data: { progress: (processed / items.length) * 100 },
-      });
+      redis.setex(
+        RedisKeys.jobs.progress(prismaJobId),
+        60,
+        Math.floor(((i + 1) / items.length) * 100),
+      );
     }
 
     return { movedAt: new Date().toISOString() };
@@ -45,7 +47,7 @@ export async function moveFolder(
   userId: string,
   folderId: string,
   destFolderId: string,
-  newName?: string
+  newName?: string,
 ) {
   const folder = await prisma.folder.findUnique({
     where: { id: folderId },
@@ -72,7 +74,7 @@ export async function moveFolder(
   const resolvedName = await resolveFolderName(
     folder!,
     newName ?? folder!.name,
-    destFolderId
+    destFolderId,
   );
 
   const oldPath = folder!.fullPath;
@@ -101,7 +103,7 @@ export async function moveFolder(
       oldPath,
       newPath,
       `${oldPath}%`,
-      userId
+      userId,
     ),
     prisma.$executeRawUnsafe(
       `
@@ -112,7 +114,7 @@ export async function moveFolder(
       oldPath,
       newPath,
       `${oldPath}%`,
-      userId
+      userId,
     ),
   ]);
 }
@@ -121,7 +123,7 @@ export async function moveFile(
   userId: string,
   fileId: string,
   destFolderId?: string,
-  newName?: string
+  newName?: string,
 ) {
   const file = await prisma.file.findUnique({
     where: { id: fileId },
@@ -148,7 +150,7 @@ export async function moveFile(
   const { newFileName, newFilePath } = await resolveFileName(
     file,
     newName ?? getFileNameWithoutExtension(file.name),
-    destFolderId
+    destFolderId,
   );
 
   try {

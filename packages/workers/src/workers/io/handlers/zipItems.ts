@@ -15,6 +15,8 @@ import path from 'path';
 import { zipConstants } from '@workers/constants/zip.constants';
 import { updateJob } from '@workers/utils/db';
 import { env } from '@shared/config/env';
+import redis from '@shared/redis';
+import { RedisKeys } from '@shared/redis/redisKeys';
 
 export const zipItems = async ({
   prismaJobId,
@@ -33,18 +35,20 @@ export const zipItems = async ({
       archive.on('error', (err) => reject(err));
       archive.pipe(output);
 
-      let processed = 0;
-      for (const item of items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+
         if (item.type === 'folder') {
           await zipFolder(archive, userId, item.id, null);
         } else {
           await zipFile(archive, userId, item.id, null);
         }
 
-        await prisma.job.update({
-          where: { id: prismaJobId },
-          data: { progress: (++processed / items.length) * 100 },
-        });
+        redis.setex(
+          RedisKeys.jobs.progress(prismaJobId),
+          60,
+          Math.floor(((i + 1) / items.length) * 100),
+        );
       }
 
       await archive.finalize();
@@ -75,7 +79,7 @@ async function zipFolder(
   archiver: Archiver,
   userId: string,
   folderId: string,
-  parentPath: string | null
+  parentPath: string | null,
 ) {
   try {
     const folder = await prisma.folder.findUnique({
@@ -90,7 +94,7 @@ async function zipFolder(
       const filePath = getOriginalFilePath(
         file.userId,
         file.id,
-        getFileExtension(file.name)
+        getFileExtension(file.name),
       );
 
       archiver.file(filePath, {
@@ -114,7 +118,7 @@ async function zipFile(
   archiver: Archiver,
   userId: string,
   fileId: string,
-  parentPath: string | null
+  parentPath: string | null,
 ) {
   try {
     const file = await prisma.file.findUnique({
@@ -132,7 +136,7 @@ async function zipFile(
     const filePath = getOriginalFilePath(
       file.userId,
       file.id,
-      getFileExtension(file.name)
+      getFileExtension(file.name),
     );
 
     archiver.file(filePath, { name: `${parentPath ?? ''}/${file.name}` });

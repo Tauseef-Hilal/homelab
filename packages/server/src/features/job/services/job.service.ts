@@ -1,5 +1,5 @@
-import { CommonErrorCode } from '@server/errors/CommonErrorCode';
-import { HttpError } from '@server/errors/HttpError';
+import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
+import { HttpError } from '@shared/errors/HttpError';
 import { prisma } from '@shared/prisma';
 
 export async function getJob(userId: string, jobId: string) {
@@ -8,7 +8,6 @@ export async function getJob(userId: string, jobId: string) {
     select: {
       id: true,
       status: true,
-      progress: true,
       result: true,
       error: true,
       userId: true,

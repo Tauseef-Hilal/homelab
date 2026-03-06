@@ -10,7 +10,7 @@ import * as OtpService from '../services/otp.service';
 import * as AuthService from '../services/auth.service';
 import { TfaPurpose } from '../constants/TfaPurpose';
 import { prisma } from '@shared/prisma';
-import { HttpError } from '@server/errors/HttpError';
+import { HttpError } from '@shared/errors/HttpError';
 import { AuthErrorCode } from '../constants/AuthErrorCode';
 import { buildTokenPayload, storeRefreshToken } from '../utils/token.util';
 import { TokenMeta } from '../../../types/jwt.types';

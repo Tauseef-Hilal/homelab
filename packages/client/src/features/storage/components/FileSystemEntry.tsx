@@ -21,6 +21,7 @@ import { getJob } from "../api/getJob";
 import { useDownloadItems } from "../hooks/useDownloadItems";
 import Rename from "./Rename";
 import { useLongPress } from "@client/hooks/useLongPress";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface FileSystemEntryProps {
   child: File | Folder;
@@ -31,6 +32,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({
   child,
   refetch,
 }) => {
+  const queryClient = useQueryClient();
   const [showPreview, setShowPreview] = useState(false);
   const [showRename, setShowRename] = useState(false);
   const { selectedItems, isSelected, onSelect, selectItem } = useSelect();
@@ -44,7 +46,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({
         bubbles: false,
         clientX: e.touches[0].clientX ?? 0,
         clientY: e.touches[0].clientY ?? 0,
-      })
+      }),
     );
   });
 
@@ -100,6 +102,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({
           switch (status) {
             case "completed":
               toast.success("Files deleted successfully", { id: toastId });
+              queryClient.invalidateQueries({ queryKey: ["stats"] });
               clearInterval(interval);
               refetch();
               break;
@@ -225,7 +228,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({
             onClick={clickHandler}
             className={cx(
               "p-4 w-20 flex flex-col items-center justify-start gap-2",
-              isSelected(child) && "bg-blue-400 rounded"
+              isSelected(child) && "bg-blue-400 rounded",
             )}
           >
             {isFolder(child) ? (

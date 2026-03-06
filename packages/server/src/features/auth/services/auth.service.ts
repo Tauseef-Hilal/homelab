@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
-import { CommonErrorCode } from '@server/errors/CommonErrorCode';
-import { HttpError } from '@server/errors/HttpError';
+import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
+import { HttpError } from '@shared/errors/HttpError';
 import { prisma } from '@shared/prisma';
 import { hashPassword, isValidPassword } from '@server/lib/bcrypt';
 import {

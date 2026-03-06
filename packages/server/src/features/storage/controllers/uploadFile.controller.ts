@@ -1,9 +1,9 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { HttpError } from '@server/errors/HttpError';
-import { CommonErrorCode } from '@server/errors/CommonErrorCode';
+import { HttpError } from '@shared/errors/HttpError';
+import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
 import { uploadFileSchema } from '@shared/schemas/storage/request.schema';
-import { ensureQuotaAvailable, saveFile } from '../services/file.service';
+import { saveFile } from '../services/file.service';
 import { getFileExtension } from '../utils/file.util';
 import { getOriginalFilePath } from '@shared/utils/storage.utils';
 import { success } from '@server/lib/response';
@@ -22,7 +22,6 @@ export const uploadFileController = catchAsync(
       });
     }
 
-    await ensureQuotaAvailable(req.user.id, req.file.size);
     const result = await saveFile(req.user.id, req.file, visibility, folderId);
 
     const job = await enqueueThumbnailJob(jobNames.thumbnailJobName, {
@@ -34,7 +33,7 @@ export const uploadFileController = catchAsync(
       filePath: getOriginalFilePath(
         req.user.id,
         result.id,
-        getFileExtension(result.name)
+        getFileExtension(result.name),
       ),
     });
 
@@ -44,8 +43,8 @@ export const uploadFileController = catchAsync(
           file: result,
           job,
         },
-        'File uploaded succesfully'
-      )
+        'File uploaded succesfully',
+      ),
     );
-  }
+  },
 );

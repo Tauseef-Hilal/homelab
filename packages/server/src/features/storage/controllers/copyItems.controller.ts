@@ -20,8 +20,6 @@ export const copyItemsController = catchAsync(
       ensureUserIsOwner(targetFolder!, req.user.id);
     }
 
-    // TODO: Impose storage limits
-
     const job = await enqueueCopyJob(jobNames.copyJobName, {
       items,
       destFolderId: destinationFolderId,

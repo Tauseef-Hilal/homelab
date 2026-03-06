@@ -1,6 +1,7 @@
 import { LogoutDialog } from "@client/features/auth/components/LogoutDialog";
 import BackButton from "./BackButton";
 import ThemeSwitch from "./ThemeSwitch";
+import StorageStats from "@client/features/storage/components/Stats";
 
 interface HeaderProps {
   title: string;
@@ -25,6 +26,7 @@ const Header: React.FC<HeaderProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <StorageStats />
           <ThemeSwitch />
           <LogoutDialog />
         </div>

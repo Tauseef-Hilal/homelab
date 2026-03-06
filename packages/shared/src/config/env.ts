@@ -22,6 +22,7 @@ const envSchema = z.object({
   MEDIA_DIR_PATH: z.string().min(1),
   LOG_DIR_PATH: z.string().min(1),
   TEMP_DIR_PATH: z.string().min(1),
+  TRASH_DIR_PATH: z.string().min(1),
 });
 
 const parsed = envSchema.safeParse(process.env);

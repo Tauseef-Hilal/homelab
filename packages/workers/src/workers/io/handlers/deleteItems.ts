@@ -1,6 +1,10 @@
+import { env } from '@shared/config/env';
+import { HttpError } from '@shared/errors/HttpError';
+import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
 import { DeleteJobPayload } from '@shared/jobs/payload.types';
 import { DeleteJobResult } from '@shared/jobs/result.types';
 import { prisma } from '@shared/prisma';
+import { calculateSize, release } from '@shared/utils/quota.utils';
 import {
   ensureFolderExists,
   ensureUserIsOwner,
@@ -10,105 +14,154 @@ import {
 } from '@shared/utils/storage.utils';
 import { existsSync } from 'fs';
 import fs from 'fs/promises';
+import path from 'path';
+import redis from '@shared/redis';
+import { RedisKeys } from '@shared/redis/redisKeys';
 
 export const deleteItems = async ({
   prismaJobId,
   userId,
   items,
 }: DeleteJobPayload): Promise<DeleteJobResult> => {
+  // Track successfully moved files to allow rollback on failure
+  let processed: { srcPath: string; destPath: string }[] = [];
+
   try {
-    let processed = 0;
+    // Separate incoming items into file IDs and folder IDs
+    const fileIds: string[] = [];
+    const folderIds: string[] = [];
+
+    items.forEach((item) =>
+      item.type == 'file' ? fileIds.push(item.id) : folderIds.push(item.id),
+    );
+
+    // Calculate total storage that will be freed
+    const freedSize = await calculateSize(fileIds, folderIds);
+
+    // Collect all physical file paths that must be deleted
+    const filePaths: string[] = [];
 
     for (const item of items) {
       if (item.type === 'folder') {
-        await deleteFolder(userId, item.id);
+        const res = await getDescendantFilePaths(userId, item.id);
+        filePaths.push(...res);
       } else {
-        await deleteFile(userId, item.id);
+        const res = await getFileAndThumbnailPath(userId, item.id);
+        filePaths.push(...res);
       }
-
-      processed++;
-      await prisma.job.update({
-        where: { id: prismaJobId },
-        data: { progress: (processed / items.length) * 100 },
-      });
     }
+
+    // Ensure trash directory exists before moving files
+    await fs.mkdir(path.resolve(env.TRASH_DIR_PATH), { recursive: true });
+
+    // Periodically update job progress in Redis
+    const progressInterval = setInterval(async () => {
+      const progress = Math.floor((processed.length / filePaths.length) * 100);
+      redis.setex(RedisKeys.jobs.progress(prismaJobId), 60, progress);
+    }, 1000);
+
+    // Move each file to trash directory
+    for (const srcPath of filePaths) {
+      if (!existsSync(srcPath)) continue;
+
+      const destPath = path.join(
+        path.resolve(env.TRASH_DIR_PATH),
+        `${Date.now()}-${path.basename(srcPath)}`,
+      );
+
+      await fs.rename(srcPath, destPath);
+      processed.push({ srcPath, destPath });
+    }
+
+    // Stop progress updates after processing completes
+    progressInterval.close();
+
+    // Delete file and folder records from database in a transaction
+    await prisma.$transaction(async (tx) => {
+      await tx.file.deleteMany({ where: { id: { in: fileIds } } });
+      await tx.folder.deleteMany({ where: { id: { in: folderIds } } });
+    });
+
+    // Release the freed storage quota for the user
+    await release(userId, freedSize);
 
     return { deletedAt: new Date().toISOString() };
   } catch (err) {
-    throw new Error('Failed to delete items');
+    // Roll back filesystem changes by restoring moved files
+    for (const item of processed) {
+      fs.rename(item.destPath, item.srcPath);
+    }
+
+    console.error(err);
+
+    // Normalize unknown errors into HttpError
+    throw err instanceof HttpError
+      ? err
+      : new HttpError({
+          status: 500,
+          code: CommonErrorCode.INTERNAL_SERVER_ERROR,
+          message: 'Failed to delete items',
+        });
   }
 };
 
-export async function deleteFolder(userId: string, folderId: string) {
-  try {
-    const folder = await prisma.folder.findUnique({ where: { id: folderId } });
+// Retrieve all file and thumbnail paths belonging to a folder and its descendants
+export async function getDescendantFilePaths(userId: string, folderId: string) {
+  const folder = await prisma.folder.findUnique({ where: { id: folderId } });
 
-    ensureFolderExists(folder);
-    ensureUserIsOwner(folder!, userId);
+  // Validate folder existence and ownership
+  ensureFolderExists(folder);
+  ensureUserIsOwner(folder!, userId);
 
-    // Get all descendant folder IDs
-    const folderIds = await prisma.folder.findMany({
-      where: { userId, fullPath: { startsWith: folder!.fullPath } },
-      select: { id: true },
-    });
+  // Fetch all files whose path is inside the folder hierarchy
+  const files = await prisma.file.findMany({
+    where: { userId, fullPath: { startsWith: folder?.fullPath + '/' } },
+  });
 
-    const folderIdList = folderIds.map((f) => f.id);
+  // Build disk paths for originals and thumbnails
+  const paths: string[] = [];
 
-    // Get all descendant files
-    const files = await prisma.file.findMany({
-      where: { userId, folderId: { in: folderIdList } },
-    });
-
-    // Delte files on disk along with thumbnails
-    await Promise.all(
-      files.flatMap((file) => [
-        fs.unlink(
-          getOriginalFilePath(userId, file.id, getFileExtension(file.name))
-        ),
-        ...(file.hasThumbnail
-          ? [fs.unlink(getThumbnailPath(userId, file.id))]
-          : []),
-      ])
+  files.forEach((file) => {
+    paths.push(
+      getOriginalFilePath(userId, file.id, getFileExtension(file.name)),
     );
+    if (file.hasThumbnail) {
+      paths.push(getThumbnailPath(userId, file.id));
+    }
+  });
 
-    // Delete from DB
-    await prisma.$transaction([
-      prisma.file.deleteMany({ where: { id: { in: files.map((f) => f.id) } } }),
-      prisma.folder.deleteMany({ where: { id: { in: folderIdList } } }),
-    ]);
-  } catch (err) {
-    throw new Error('Failed to delete folder');
-  }
+  return paths;
 }
 
-export async function deleteFile(userId: string, fileId: string) {
-  try {
-    const file = await prisma.file.findUnique({
-      where: { id: fileId },
-      select: { name: true, userId: true },
-    });
+// Retrieve disk paths for a single file and its thumbnail
+export async function getFileAndThumbnailPath(userId: string, fileId: string) {
+  const file = await prisma.file.findUnique({
+    where: { id: fileId },
+    select: { name: true, userId: true },
+  });
 
-    if (!file) {
-      throw new Error('File does not exist. Ensure fileId is correct.');
-    }
-
-    if (userId != file.userId) {
-      throw new Error('You do not have the permission to delete this file');
-    }
-
-    const ext = getFileExtension(file.name);
-    const filePath = getOriginalFilePath(userId, fileId, ext);
-    await fs.rm(filePath);
-
-    const thumbnailPath = getThumbnailPath(userId, fileId);
-    if (existsSync(thumbnailPath)) {
-      await fs.rm(thumbnailPath);
-    }
-
-    return await prisma.file.delete({
-      where: { id: fileId },
-    });
-  } catch (err) {
-    throw new Error('Failed to delete file');
+  // Validate file existence
+  if (!file) {
+    throw new Error('File does not exist. Ensure fileId is correct.');
   }
+
+  // Ensure user has permission to delete the file
+  if (userId != file.userId) {
+    throw new Error('You do not have the permission to delete this file');
+  }
+
+  const res = [];
+
+  // Build original file path
+  const ext = getFileExtension(file.name);
+  const filePath = getOriginalFilePath(userId, fileId, ext);
+  res.push(filePath);
+
+  // Include thumbnail path if it exists
+  const thumbnailPath = getThumbnailPath(userId, fileId);
+  if (existsSync(thumbnailPath)) {
+    res.push(thumbnailPath);
+  }
+
+  return res;
 }

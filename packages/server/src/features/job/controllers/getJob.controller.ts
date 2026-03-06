@@ -4,28 +4,25 @@ import { catchAsync } from '@server/lib/catchAsync';
 import { generateETag } from '../utils/hash.util';
 import { getJob } from '../services/job.service';
 import { success } from '@server/lib/response';
+import redis from '@shared/redis';
+import { RedisKeys } from '@shared/redis/redisKeys';
 
 export const getJobController = catchAsync(
   async (req: Request, res: Response) => {
     const jobId = idParamSchema.parse(req.params.jobId);
 
     const job = await getJob(req.user.id, jobId);
-    const etag = generateETag(job);
+    const progress = await redis.get(RedisKeys.jobs.progress(job.id));
 
-    if (req.headers['if-none-match'] === etag) {
-      return res.status(304).end();
-    }
-
-    res.setHeader('ETag', etag);
     res.status(200).json(
       success({
         job: {
           id: job.id,
           status: job.status,
-          progress: job.progress,
+          progress: Number(progress) ?? 0,
           result: job.result,
         },
-      })
+      }),
     );
-  }
+  },
 );

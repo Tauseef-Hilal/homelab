@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { HttpError } from '../errors/HttpError';
+import { HttpError } from '@shared/errors/HttpError';
 import z, { ZodError } from 'zod';
 import { error } from '@server/lib/response';
-import { CommonErrorCode } from '@server/errors/CommonErrorCode';
+import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
 
 export function errorHandler(
   err: unknown,

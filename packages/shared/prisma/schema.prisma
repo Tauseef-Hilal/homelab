@@ -13,6 +13,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model SystemStats {
+  id               String @id @default(uuid())
+  totalStorageUsed Int    @default(0)
+}
+
 enum UserRole {
   USER
   ADMIN
@@ -24,6 +29,8 @@ model User {
   email            String             @unique
   username         String
   password         String
+  storageQuota     Int                @default(524288000)
+  storageUsed      Int                @default(0)
   files            File[]
   folders          Folder[]
   createdAt        DateTime           @default(now())
@@ -46,33 +53,37 @@ model RefreshToken {
 }
 
 model Folder {
-  id       String   @id @default(uuid())
+  id       String  @id @default(uuid())
   name     String
   parentId String?
-  parent   Folder?  @relation("FolderHierarchy", fields: [parentId], references: [id])
+
+  parent   Folder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
   children Folder[] @relation("FolderHierarchy")
-  userId   String
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   fullPath String
-  user     User     @relation(fields: [userId], references: [id])
   files    File[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([userId, fullPath])
+  @@index([parentId])
 }
 
 model File {
   id           String     @id @default(uuid())
   name         String
   mimeType     String
-  size         Int // in bytes
+  size         Int
   fullPath     String
   visibility   Visibility @default(private)
   folderId     String
-  folder       Folder     @relation(fields: [folderId], references: [id])
+  folder       Folder     @relation(fields: [folderId], references: [id], onDelete: Cascade)
   userId       String
-  user         User       @relation(fields: [userId], references: [id])
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   hasThumbnail Boolean    @default(false)
 
   createdAt  DateTime     @default(now())
@@ -106,7 +117,6 @@ model Job {
   requestId String
   attempts  Int       @default(0)
   status    JobStatus @default(enqueued)
-  progress  Int       @default(0)
   payload   Json
   result    Json?
   error     String?
