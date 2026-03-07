@@ -104,6 +104,7 @@ The API server acts as the **central orchestration layer**.
 ### Responsibilities
 
 - authentication and authorization
+- rate limiting
 - file metadata management
 - folder hierarchy operations
 - job creation and status tracking
@@ -196,12 +197,162 @@ Authentication uses **JWT access tokens with refresh tokens**.
 
 ### Security Mechanisms
 
+- rate limiting
 - bcrypt password hashing
 - hashed refresh tokens
 - token revocation
 - device metadata tracking
 
 Authorization is enforced using middleware layers within the API server.
+
+### Rate Limiting
+
+Homelab implements **layered rate limiting** to protect the system from abuse while maintaining a smooth user experience. The design separates **infrastructure protection** from **application-level protection**.
+
+#### Architecture
+
+Rate limiting is applied in two layers:
+
+```
+Client
+ ↓
+NGINX
+  global IP protection
+ ↓
+Express
+  requireAuth
+ ↓
+  global user limiter
+ ↓
+  endpoint limiters
+ ↓
+  controller
+```
+
+- **NGINX** handles global IP-based rate limiting at the edge to prevent abusive traffic from reaching the application.
+- **Express middleware** enforces user-level and endpoint-specific limits using Redis.
+
+This layered approach ensures that infrastructure resources (CPU, database, Redis, workers) are protected before expensive application logic runs.
+
+---
+
+#### Algorithm
+
+The API rate limiter uses the **Token Bucket algorithm** implemented through **Redis Lua scripts**.
+
+Key characteristics:
+
+- **Atomic execution** via Lua scripts prevents race conditions.
+- **Token refill over time** allows short bursts of traffic while maintaining average limits.
+- **Redis-based storage** ensures consistency across multiple API instances.
+
+Each request:
+
+1. Loads the bucket state from Redis.
+2. Refills tokens based on elapsed time.
+3. Consumes a token if available.
+4. Rejects the request if the bucket is empty.
+
+Redis keys automatically expire to avoid long-term memory growth.
+
+---
+
+#### Key Structure
+
+Rate limit keys follow a structured naming format:
+
+```
+rate:{scope}:{identifier}:{resource}:{action}
+```
+
+Examples:
+
+```
+rate:user:42:chat:send
+rate:user:42:storage:upload
+rate:email:abc123:auth:login
+```
+
+This structure keeps keys predictable and allows easy grouping by resource or action.
+
+Scopes currently supported:
+
+- `user`
+- `email`
+- `ip`
+
+---
+
+#### Global User Protection
+
+Authenticated requests are protected by a **global per-user rate limit** to prevent runaway clients or abusive scripts.
+
+Policy:
+
+```
+300 requests / minute per user
+```
+
+This is applied automatically after authentication through a shared middleware stack.
+
+---
+
+#### Endpoint Policies
+
+Specific endpoints have stricter limits depending on their cost and security sensitivity.
+
+Authentication:
+
+```
+login            → 5 requests / minute per email
+signup           → 3 requests / minute per IP
+password reset   → 3 requests / hour per email
+```
+
+Chat:
+
+```
+send message     → 60 requests / minute per user
+```
+
+Storage:
+
+```
+list             → 120 requests / minute per user
+upload           → 20 requests / minute per user
+copy             → 5 requests / minute per user
+move             → 5 requests / minute per user
+delete           → 5 requests / minute per user
+download         → 60 requests / minute per user
+```
+
+Operations that trigger filesystem work or background jobs use stricter limits to protect worker resources.
+
+---
+
+#### Middleware Design
+
+Rate limiting is implemented using a **middleware factory** that accepts a policy configuration. Policies define:
+
+- identity scope
+- bucket capacity
+- refill rate
+- resource/action classification
+
+This approach allows policies to be reused across routes while keeping route definitions clean and explicit.
+
+---
+
+#### Design Considerations
+
+Key decisions made during implementation:
+
+- **Edge protection via NGINX** instead of duplicating IP limits in Express.
+- **Token bucket algorithm** to allow bursts while controlling sustained traffic.
+- **Lua scripts** to guarantee atomic Redis updates.
+- **Explicit endpoint policies** instead of tier abstractions for clarity.
+- **Global per-user limiter** to protect the system from abusive authenticated clients.
+- **Structured Redis keys** for maintainability and observability.
 
 ---
 
