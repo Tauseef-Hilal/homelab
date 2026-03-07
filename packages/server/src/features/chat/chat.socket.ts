@@ -3,6 +3,8 @@ import { redisPub, BROADCAST_CHANNEL, redisSub } from './chat.redis';
 import { broadcastMessageSchema } from '@shared/schemas/chat/io.schema';
 import { prisma } from '@shared/prisma';
 import logger from '@shared/logging';
+import { rateLimitCheck } from '@server/lib/rate-limit/rateLimit';
+import { chatSendPolicy } from '@server/lib/rate-limit/policies';
 
 export const registerChatSocket = (io: Server) => {
   // Listen to Redis broadcasts from other servers
@@ -21,9 +23,27 @@ export const registerChatSocket = (io: Server) => {
       'broadcast:send',
       async (msgJson: string, ack: (status: any) => void) => {
         try {
-          // Parse and store into db
-          // TODO: offload storing to a background job
+          // Parse msg
           const message = broadcastMessageSchema.parse(JSON.parse(msgJson));
+
+          if (message.content.length > 1000) {
+            return ack({ success: false, error: 'Message too long' });
+          }
+
+          // Rate limit
+          const { allowed } = await rateLimitCheck(
+            message.authorId,
+            chatSendPolicy,
+          );
+          console.log('rate-limit identifier:', message.authorId);
+          if (!allowed) {
+            return ack({
+              success: false,
+              error: 'Too many messages. Slow down!',
+            });
+          }
+
+          // Store in db
           await prisma.broadcastMessage.create({
             data: {
               id: message.id,
@@ -41,7 +61,7 @@ export const registerChatSocket = (io: Server) => {
         } catch (err: any) {
           ack({ success: false, error: err.message });
         }
-      }
+      },
     );
 
     socket.on('disconnect', () => {

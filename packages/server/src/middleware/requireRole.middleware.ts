@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { UserRole } from '@prisma/client';
-import { HttpError } from '@server/errors/HttpError';
-import { CommonErrorCode } from '@server/errors/CommonErrorCode';
+import { HttpError } from '@shared/errors/HttpError';
+import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
 
 export function requireRole(...roles: UserRole[]) {
   return (req: Request, res: Response, next: NextFunction) => {

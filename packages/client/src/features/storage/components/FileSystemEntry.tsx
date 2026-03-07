@@ -129,7 +129,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({
         }
       }, 1000);
     },
-    onError: (err) => {},
+    onError: (err) => toast.error(err),
   });
 
   const deleteHandler = async () => {
@@ -200,7 +200,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = ({
         }
       }, 1000);
     },
-    onError: (err) => {},
+    onError: (err) => toast.error(err),
   });
 
   const downloadHandler = async () => {

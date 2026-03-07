@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { BroadcastMessage } from '@shared/schemas/chat/io.schema';
 import { toast } from 'sonner';
-import {v4} from "uuid"
+import { v4 } from 'uuid';
 
 export function useMessaging() {
   const { user } = useAuthStore();
@@ -40,9 +40,8 @@ export function useMessaging() {
       'broadcast:send',
       JSON.stringify(message),
       (ack: { success: boolean; message?: string; error?: string }) => {
-        if (ack.success) console.log('Broadcast sent:', ack.message);
-        else toast.error('Failed to send message');
-      }
+        if (ack.error) toast.error(ack.error ?? 'Failed to send message');
+      },
     );
   };
 

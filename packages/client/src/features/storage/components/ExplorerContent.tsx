@@ -91,7 +91,7 @@ const ExplorerContent: React.FC = () => {
         }
       }, 1000);
     },
-    onError: (err) => {},
+    onError: (err) => toast.error(err),
   });
 
   const moveMutation = useMoveItems({
@@ -133,7 +133,7 @@ const ExplorerContent: React.FC = () => {
         }
       }, 1000);
     },
-    onError: (err) => {},
+    onError: (err) => toast.error(err),
   });
 
   const pasteHandler = async () => {

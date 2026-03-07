@@ -105,7 +105,7 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Upload File</DialogTitle>
-          <DialogDescription>Select files to upload</DialogDescription>
+          <DialogDescription>Select files to upload (Max 20)</DialogDescription>
         </DialogHeader>
         <form
           noValidate

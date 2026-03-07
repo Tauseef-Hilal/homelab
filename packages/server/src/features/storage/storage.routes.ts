@@ -11,22 +11,64 @@ import { createFolderController } from './controllers/createFolder.controller';
 import { downloadController } from './controllers/download.controller';
 import { downloadItemsController } from './controllers/downloadItems.controller';
 import { getStatsController } from './controllers/getStats.controller';
+import { rateLimit } from '@server/lib/rate-limit/rateLimit';
+import {
+  globalUserPolicy,
+  storageCopyPolicy,
+  storageDeletePolicy,
+  storageDownloadPolicy,
+  storageListPolicy,
+  storageMovePolicy,
+  uploadPolicy,
+} from '@server/lib/rate-limit/policies';
 
 const router = Router();
+const authProtected = [requireAuth, rateLimit(globalUserPolicy)]
 
-router.get('/stats', requireAuth, getStatsController);
+router.get('/file/:fileId/preview', ...authProtected, previewFileController);
+router.get('/stats', ...authProtected, getStatsController);
+router.get('/list', ...authProtected, rateLimit(storageListPolicy), listController);
 
-router.post('/file', requireAuth, upload.single('file'), uploadFileController);
-router.get('/file/:fileId/preview', previewFileController);
+router.post(
+  '/file',
+  ...authProtected,
+  rateLimit(uploadPolicy),
+  upload.single('file'),
+  uploadFileController,
+);
 
-router.post('/folder', requireAuth, createFolderController);
+router.post(
+  '/folder',
+  ...authProtected,
+  rateLimit(uploadPolicy),
+  createFolderController,
+);
+
+router.post(
+  '/items/copy',
+  ...authProtected,
+  rateLimit(storageCopyPolicy),
+  copyItemsController,
+);
+router.patch(
+  '/items/move',
+  ...authProtected,
+  rateLimit(storageMovePolicy),
+  moveItemsController,
+);
+router.post(
+  '/items/delete',
+  ...authProtected,
+  rateLimit(storageDeletePolicy),
+  deleteItemsController,
+);
+router.post(
+  '/items/download',
+  ...authProtected,
+  rateLimit(storageDownloadPolicy),
+  downloadItemsController,
+);
 
 router.get('/download/:id', downloadController);
-router.get('/list', requireAuth, listController);
-
-router.post('/items/copy', requireAuth, copyItemsController);
-router.patch('/items/move', requireAuth, moveItemsController);
-router.post('/items/delete', requireAuth, deleteItemsController);
-router.post('/items/download', requireAuth, downloadItemsController);
 
 export default router;

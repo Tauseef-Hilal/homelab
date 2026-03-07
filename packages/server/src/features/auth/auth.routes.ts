@@ -9,16 +9,38 @@ import { verifyOtpController } from './controllers/verifyOtp.controller';
 import { changePasswordController } from './controllers/changePassword.controller';
 import { requestChangePasswordController } from './controllers/requestChangePassword.controller';
 import { meController } from './controllers/me.controller';
+import { rateLimit } from '@server/lib/rate-limit/rateLimit';
+import {
+  globalUserPolicy,
+  loginEmailPolicy,
+  passwordResetPolicy,
+  signupPolicy,
+} from '@server/lib/rate-limit/policies';
 
 const router = Router();
+const authProtected = [requireAuth, rateLimit(globalUserPolicy)]
 
-router.post('/signup', extractClientMeta, signupController);
-router.post('/login', extractClientMeta, loginController);
-router.post('/logout', requireAuth, extractClientMeta, logoutController);
-router.post('/refresh', extractClientMeta, refreshController);
+router.post(
+  '/signup',
+  extractClientMeta,
+  rateLimit(signupPolicy),
+  signupController,
+);
+router.post(
+  '/login',
+  extractClientMeta,
+  rateLimit(loginEmailPolicy),
+  loginController,
+);
+router.post(
+  '/forgot-password',
+  rateLimit(passwordResetPolicy),
+  requestChangePasswordController,
+);
+router.post('/logout', extractClientMeta, ...authProtected, logoutController);
 router.patch('/password', changePasswordController);
-router.post('/forgot-password', requestChangePasswordController);
 router.post('/verify-otp', extractClientMeta, verifyOtpController);
+router.post('/refresh', extractClientMeta, refreshController);
 router.get('/me', requireAuth, meController);
 
 export default router;
