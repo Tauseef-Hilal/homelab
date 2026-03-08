@@ -3,6 +3,7 @@ import pino from 'pino';
 import pretty from 'pino-pretty';
 import rfs from 'pino-rotating-file-stream';
 import { env } from '@shared/config/env';
+import { timeStamp } from 'console';
 
 const logDir = env.LOG_DIR_PATH;
 if (!fs.existsSync(logDir)) {
@@ -33,12 +34,18 @@ const logger = pino(
     formatters: {
       level: (label) => ({ level: label }),
     },
+    base: {
+      env: env.NODE_ENV,
+    },
+    timestamp: pino.stdTimeFunctions.epochTime,
   },
-  pino.multistream(streams)
+  pino.multistream(streams),
 );
 
-export function withRequestId(reqId: string) {
-  return logger.child({ reqId });
+export function loggerWithContext(obj: Object) {
+  return logger.child({
+    ...obj,
+  });
 }
 
 export default logger;

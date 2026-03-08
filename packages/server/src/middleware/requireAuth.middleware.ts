@@ -5,7 +5,7 @@ import { verifyAccessToken } from '../lib/jwt';
 export async function requireAuth(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   const authHeader = req.headers.authorization || '';
   if (!authHeader.startsWith('Bearer ')) return throwUnauthorized();
@@ -15,8 +15,8 @@ export async function requireAuth(
 
   try {
     const payload = verifyAccessToken(token);
-    console.log(payload.sub, token)
     req.user = { id: payload.sub, email: payload.email, role: payload.role };
+    req.logger = req.logger.child({ userId: payload.sub });
     next();
   } catch (err) {
     throwUnauthorized();

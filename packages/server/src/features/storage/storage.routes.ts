@@ -23,11 +23,16 @@ import {
 } from '@server/lib/rate-limit/policies';
 
 const router = Router();
-const authProtected = [requireAuth, rateLimit(globalUserPolicy)]
+const authProtected = [requireAuth, rateLimit(globalUserPolicy)];
 
-router.get('/file/:fileId/preview', ...authProtected, previewFileController);
 router.get('/stats', ...authProtected, getStatsController);
-router.get('/list', ...authProtected, rateLimit(storageListPolicy), listController);
+router.get('/file/:fileId/preview', previewFileController);
+router.get(
+  '/list',
+  ...authProtected,
+  rateLimit(storageListPolicy),
+  listController,
+);
 
 router.post(
   '/file',

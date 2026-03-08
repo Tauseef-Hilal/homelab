@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { extractClientMeta } from './middlewares/extractClientMeta.middleware';
+import { extractClientMeta } from '../../middleware/extractClientMeta.middleware';
 import { requireAuth } from '../../middleware/requireAuth.middleware';
 import { signupController } from './controllers/signup.controller';
 import { loginController } from './controllers/login.controller';

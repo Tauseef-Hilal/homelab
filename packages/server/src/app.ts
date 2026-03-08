@@ -11,6 +11,7 @@ import jobRoutes from './features/job/job.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { requestLogger } from './middleware/logging.middleware';
 import { env } from '../../shared/src/config/env';
+import { extractClientMeta } from './middleware/extractClientMeta.middleware';
 
 const app = express();
 
@@ -23,7 +24,10 @@ app.use(
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(extractClientMeta);
 app.use(requestLogger);
+
 app.use(
   '/api/uploads',
   express.static(path.join(process.cwd(), '../../data/uploads')),
