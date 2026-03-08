@@ -74,7 +74,7 @@ export const deleteItems = async ({
     }
 
     // Stop progress updates after processing completes
-    progressInterval.close();
+    clearInterval(progressInterval);
 
     // Delete file and folder records from database in a transaction
     await prisma.$transaction(async (tx) => {

@@ -1,5 +1,3 @@
-import { Prisma, PrismaClient } from '@prisma/client';
-import { DefaultArgs } from '@prisma/client/runtime/library';
 import { SYSTEM_STORAGE_LIMIT } from '@shared/constants/storage.constants';
 import { HttpError } from '@shared/errors/HttpError';
 import { StorageErrorCode } from '@shared/errors/StorageErrorCode';

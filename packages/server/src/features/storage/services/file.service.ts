@@ -18,6 +18,7 @@ import {
   getThumbnailPath,
 } from '@shared/utils/storage.utils';
 import { reserve, release } from '@shared/utils/quota.utils';
+import { StorageErrorCode } from '@shared/errors/StorageErrorCode';
 
 export async function saveFile(
   userId: string,
@@ -29,8 +30,15 @@ export async function saveFile(
     await reserve(userId, file.size);
     const fileMeta = await saveToDisk(file, userId, folderId, visibility);
     return await prisma.file.create({ data: fileMeta });
-  } catch (err) {
-    await release(userId, file.size);
+  } catch (err: any) {
+    console.error(err)
+    if (
+      'code' in err &&
+      err.code !== StorageErrorCode.QUOTA_EXCEEDED &&
+      err.code !== StorageErrorCode.SERVER_LIMIT_EXCEEDED
+    ) {
+      await release(userId, file.size);
+    }
 
     throw err instanceof HttpError
       ? err

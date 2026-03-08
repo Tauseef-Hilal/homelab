@@ -9,12 +9,12 @@ import app from './app';
 const server = http.createServer(app);
 const io = initSocket(server);
 
-server.listen(env.PORT, async () => {
+server.listen(env.PORT, '0.0.0.0', async () => {
   // Load rate limit lua
   await loadScript();
 
   // Setup socketIO
   registerChatSocket(io);
 
-  logger.info(`Server running on ${env.API_BASE_URL}`);
+  logger.info(`Server running on http://0.0.0.0:${env.PORT}`);
 });

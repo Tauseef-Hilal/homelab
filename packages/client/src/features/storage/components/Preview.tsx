@@ -51,7 +51,7 @@ const Preview: React.FC<PreviewProps> = ({ file, open, setOpen }) => {
       className={cx(
         "fixed w-full h-full top-0 left-0",
         "justify-center items-center",
-        "bg-black"
+        "bg-black",
       )}
     >
       <div className="relative max-w-full max-h-full">

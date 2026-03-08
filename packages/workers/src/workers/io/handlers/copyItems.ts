@@ -109,7 +109,7 @@ export const copyItems = async ({
       processed.push(arg);
     }
 
-    progressInterval.close();
+    clearInterval(progressInterval);
 
     // Persist folders and files in a single transaction
     await prisma.$transaction(async (tx) => {

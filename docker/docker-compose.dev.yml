@@ -1,6 +1,31 @@
 version: '3.9'
 
 services:
+
+  migrate:
+    container_name: homelab-migrate
+    build:
+      context: ..
+      dockerfile: ./packages/server/docker/Dockerfile.dev
+      target: dev
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ../packages/shared/.env
+    volumes:
+      - ..:/app
+      - node_modules:/app/node_modules
+      - shared_node_modules:/app/packages/shared/node_modules
+      - pnpm_store:/root/.local/share/pnpm/store
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    command: sh -c "
+        pnpm --filter shared exec prisma migrate deploy &&
+        pnpm --filter shared exec prisma generate 
+      "
+
   server:
     container_name: homelab-server
     restart: unless-stopped
@@ -10,25 +35,24 @@ services:
       target: dev
     ports:
       - "5001:5001"
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
     depends_on:
-      - db
-      - redis
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
     env_file:
       - ../packages/shared/.env
     volumes:
       - ..:/app
-      - /app/node_modules
-      - /app/packages/shared/node_modules
-      - /app/packages/server/node_modules
-    command: sh -c "
-              pnpm --filter shared exec prisma migrate deploy &&
-              pnpm --filter shared exec prisma generate &&
-              pnpm --filter server dev
-            "
-  
+      - node_modules:/app/node_modules
+      - shared_node_modules:/app/packages/shared/node_modules
+      - server_node_modules:/app/packages/server/node_modules
+      - pnpm_store:/root/.local/share/pnpm/store
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    command: pnpm --filter server dev
+
   thumbnail-worker:
     container_name: homelab-thumbnail-worker
     restart: unless-stopped
@@ -37,24 +61,23 @@ services:
       dockerfile: ./packages/workers/docker/thumbnail.Dockerfile.dev
       target: dev
     depends_on:
-      - db
-      - redis
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+    env_file:
+      - ../packages/shared/.env
+    volumes:
+      - ..:/app
+      - node_modules:/app/node_modules
+      - shared_node_modules:/app/packages/shared/node_modules
+      - workers_node_modules:/app/packages/workers/node_modules
+      - pnpm_store:/root/.local/share/pnpm/store
     dns:
       - 8.8.8.8
       - 8.8.4.4
-    env_file:
-      - ../packages/shared/.env
-    volumes: 
-      - ..:/app
-      - /app/node_modules
-      - /app/packages/shared/node_modules
-      - /app/packages/workers/node_modules
-    command: sh -c "
-              pnpm --filter shared exec prisma migrate deploy &&
-              pnpm --filter shared exec prisma generate &&
-              pnpm --filter workers dev:thumbnail
-            "
-  
+    command: pnpm --filter workers dev:thumbnail
+
   io-workers:
     container_name: homelab-io-workers
     restart: unless-stopped
@@ -62,25 +85,24 @@ services:
       context: ..
       dockerfile: ./packages/workers/docker/io.Dockerfile.dev
       target: dev
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+    env_file:
+      - ../packages/shared/.env
+    volumes:
+      - ..:/app
+      - node_modules:/app/node_modules
+      - shared_node_modules:/app/packages/shared/node_modules
+      - workers_node_modules:/app/packages/workers/node_modules
+      - pnpm_store:/root/.local/share/pnpm/store
     dns:
       - 8.8.8.8
       - 8.8.4.4
-    depends_on:
-      - db
-      - redis
-    env_file:
-      - ../packages/shared/.env
-    volumes: 
-      - ..:/app
-      - /app/node_modules
-      - /app/packages/shared/node_modules
-      - /app/packages/workers/node_modules
-    command: sh -c "
-              pnpm --filter shared exec prisma migrate deploy &&
-              pnpm --filter shared exec prisma generate &&
-              pnpm --filter workers dev:io
-            "
-    
+    command: pnpm --filter workers dev:io
+
   client:
     container_name: homelab-client
     restart: unless-stopped
@@ -90,44 +112,55 @@ services:
       target: dev
     ports:
       - "3000:3000"
+    depends_on:
+      server:
+        condition: service_started
+    env_file:
+      - ../packages/shared/.env
+    volumes:
+      - ..:/app
+      - node_modules:/app/node_modules
+      - shared_node_modules:/app/packages/shared/node_modules
+      - client_node_modules:/app/packages/client/node_modules
+      - pnpm_store:/root/.local/share/pnpm/store
     dns:
       - 8.8.8.8
       - 8.8.4.4
-    env_file:
-      - ../packages/shared/.env
-    volumes: 
-      - ..:/app
-      - /app/node_modules
-      - /app/packages/client/node_modules
-      - /app/packages/shared/node_modules
-    command: sh -c "pnpm --filter client dev"
+    command: pnpm --filter client dev
 
   db:
     image: postgres:16
-    restart: unless-stopped
     container_name: homelab-db
+    restart: unless-stopped
     env_file:
       - ../.env
-    volumes:
-      - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-  
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     container_name: homelab-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
     volumes:
       - redisdata:/data
 
 volumes:
   pgdata:
   redisdata:
+
+  node_modules:
+  shared_node_modules:
+  server_node_modules:
+  workers_node_modules:
+  client_node_modules:
+
+  pnpm_store:

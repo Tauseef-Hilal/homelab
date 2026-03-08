@@ -1,0 +1,17 @@
+node_modules
+.pnpm-store
+packages/**/node_modules
+
+.git
+.gitignore
+.vscode
+.devcontainer
+
+dist
+build
+coverage
+
+Dockerfile*
+docker-compose*
+
+.env

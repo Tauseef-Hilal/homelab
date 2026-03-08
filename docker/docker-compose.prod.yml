@@ -1,6 +1,31 @@
-version: '3.9'
+name: homelab
+version: "3.9"
 
 services:
+  # ------------------------
+  # Prisma Migration Runner
+  # ------------------------
+  migrate:
+    container_name: homelab-migrate
+    build:
+      context: ..
+      dockerfile: ./packages/server/docker/Dockerfile.prod
+      target: prod
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ../packages/shared/.env
+    command: >
+      sh -c "
+        pnpm --filter shared exec prisma migrate deploy &&
+        pnpm --filter shared exec prisma generate
+      "
+    restart: "no"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
   # ------------------------
   # Backend API Server
   # ------------------------
@@ -14,18 +39,15 @@ services:
     ports:
       - "5001:5001"
     depends_on:
-      - db
-      - redis
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     env_file:
       - ../packages/shared/.env
     volumes:
       - ../data:/app/data
-    command: >
-      sh -c "
-        pnpm --filter ./packages/shared exec prisma migrate deploy &&
-        pnpm --filter ./packages/shared exec prisma generate &&
-        pnpm --filter ./packages/server run start
-      "
+    command: pnpm --filter server run start
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -41,18 +63,15 @@ services:
       dockerfile: ./packages/workers/docker/thumbnail.Dockerfile.prod
       target: prod
     depends_on:
-      - db
-      - redis
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     env_file:
       - ../packages/shared/.env
     volumes:
       - ../data:/app/data
-    command: >
-      sh -c "
-        pnpm --filter ./packages/shared exec prisma migrate deploy &&
-        pnpm --filter ./packages/shared exec prisma generate &&
-        pnpm --filter ./packages/workers run start:thumbnail
-      "
+    command: pnpm --filter workers run start:thumbnail
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -68,18 +87,15 @@ services:
       dockerfile: ./packages/workers/docker/io.Dockerfile.prod
       target: prod
     depends_on:
-      - db
-      - redis
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     env_file:
       - ../packages/shared/.env
     volumes:
       - ../data:/app/data
-    command: >
-      sh -c "
-        pnpm --filter ./packages/shared exec prisma migrate deploy &&
-        pnpm --filter ./packages/shared exec prisma generate &&
-        pnpm --filter ./packages/workers run start:io
-      "
+    command: pnpm --filter workers run start:io
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -96,18 +112,20 @@ services:
       target: prod
     ports:
       - "3000:3000"
+    depends_on:
+      server:
+        condition: service_started
     env_file:
       - ../packages/client/.env
     volumes:
       - ../data:/app/data
-    command: >
-      sh -c "pnpm --filter ./packages/client run start"
+    command: pnpm --filter client run start
     dns:
       - 8.8.8.8
       - 8.8.4.4
 
   # ------------------------
-  # Database
+  # PostgreSQL Database
   # ------------------------
   db:
     image: postgres:16
