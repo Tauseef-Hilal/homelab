@@ -12,8 +12,17 @@ import { errorHandler } from './middleware/error.middleware';
 import { requestLogger } from './middleware/logging.middleware';
 import { env } from '../../shared/src/config/env';
 import { extractClientMeta } from './middleware/extractClientMeta.middleware';
+import {
+  healthController,
+  readyController,
+} from './infrastructure/health/health.controller';
+import { setupBullBoard } from './infrastructure/queues/bull-board';
+import { requireAuth } from './middleware/requireAuth.middleware';
+import { requireRole } from './middleware/requireRole.middleware';
+import expressBasicAuth from 'express-basic-auth';
 
 const app = express();
+const bullBoard = setupBullBoard();
 
 app.use(
   cors({
@@ -28,11 +37,21 @@ app.use(express.urlencoded({ extended: true }));
 app.use(extractClientMeta);
 app.use(requestLogger);
 
+app.use('/api/uploads', express.static(path.resolve(env.MEDIA_DIR_PATH)));
+
+// Observability endpoints
+app.get('/api/health', healthController);
+app.get('/api/ready', readyController);
 app.use(
-  '/api/uploads',
-  express.static(path.join(process.cwd(), '../../data/uploads')),
+  '/api/admin/queues',
+  expressBasicAuth({
+    users: { admin: env.ADMIN_PASSWORD },
+    challenge: true,
+  }),
+  bullBoard.getRouter(),
 );
 
+// Feature routers
 app.use('/api/auth', authRoutes);
 app.use('/api/storage', storageRoutes);
 app.use('/api/jobs', jobRoutes);

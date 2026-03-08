@@ -4,7 +4,7 @@ import { EmailPayload } from './types';
 
 let transporter: nodemailer.Transporter;
 
-function getTransporter() {
+export function getTransporter() {
   if (!transporter) {
     transporter = nodemailer.createTransport({
       host: env.SMTP_HOST,
@@ -16,6 +16,7 @@ function getTransporter() {
       },
     });
   }
+
   return transporter;
 }
 

@@ -3,8 +3,8 @@ import logger from '@shared/logging';
 import { env } from '@shared/config/env';
 import { registerChatSocket } from './features/chat/chat.socket';
 import { initSocket } from './lib/socket';
-import app from './app';
 import { loadScript } from './lib/rate-limit/loadScript';
+import app from './app';
 
 const server = http.createServer(app);
 const io = initSocket(server);

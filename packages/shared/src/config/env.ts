@@ -23,6 +23,7 @@ const envSchema = z.object({
   LOG_DIR_PATH: z.string().min(1),
   TEMP_DIR_PATH: z.string().min(1),
   TRASH_DIR_PATH: z.string().min(1),
+  ADMIN_PASSWORD: z.string(),
 });
 
 const parsed = envSchema.safeParse(process.env);

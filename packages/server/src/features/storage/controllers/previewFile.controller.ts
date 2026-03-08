@@ -22,7 +22,7 @@ export const previewFileController = catchAsync(
 
       if (!range) {
         res.setHeader('Content-Type', mimeType);
-        res.setHeader('Content-Lenght', fileSize);
+        res.setHeader('Content-Length', fileSize);
         return createReadStream(filePath).pipe(res);
       }
 
