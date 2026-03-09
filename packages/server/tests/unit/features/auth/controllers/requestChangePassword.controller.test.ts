@@ -8,7 +8,7 @@ import * as AuthService from '@server/features/auth/services/auth.service';
 import * as OtpService from '@server/features/auth/services/otp.service';
 import * as jwtUtils from '@server/lib/jwt';
 import { requestChangePasswordController } from '@server/features/auth/controllers/requestChangePassword.controller';
-import { withRequestId } from '@shared/logging';
+import { loggerWithContext } from '@shared/logging';
 import { prisma } from '@shared/prisma';
 import { User } from '@prisma/client';
 
@@ -23,7 +23,7 @@ describe('requestChangePasswordController', () => {
   beforeEach(() => {
     req = {
       id: 'requestId',
-      logger: withRequestId('requestId'),
+      logger: loggerWithContext({requestId: 'requestId'}),
       body: {
         email: mockUser.email,
       },

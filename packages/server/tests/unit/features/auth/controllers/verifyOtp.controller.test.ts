@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from '@shared/prisma';
 import { User } from '@prisma/client';
 import { env } from '@shared/config/env';
-import { HttpError } from '@server/errors/HttpError';
-import { CommonErrorCode } from '@server/errors/CommonErrorCode';
+import { HttpError } from '@shared/errors/HttpError';
+import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
 import { errorHandler } from '@server/middleware/error.middleware';
 import { TfaPurpose } from '@server/features/auth/constants/TfaPurpose';
 import { TfaPayload } from '@server/types/jwt.types';
@@ -13,7 +13,7 @@ import * as JwtUtils from '@server/lib/jwt';
 import * as TokenUtils from '@server/features/auth/utils/token.util';
 import { verifyOtpController } from '@server/features/auth/controllers/verifyOtp.controller';
 import { tokenExpirations } from '@server/constants/token.constants';
-import { withRequestId } from '@shared/logging';
+import { loggerWithContext } from '@shared/logging';
 
 vi.mock('@server/lib/logger');
 vi.mock('@shared/prisma');
@@ -36,7 +36,7 @@ describe('verifyOtpController', () => {
   beforeEach(() => {
     req = {
       id: 'requestId',
-      logger: withRequestId('requestId'),
+      logger: loggerWithContext({requestId: 'requestId'}),
       body: {
         token: mockToken,
         otp: mockOtp,

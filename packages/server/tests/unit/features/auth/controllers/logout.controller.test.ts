@@ -3,7 +3,7 @@ import { logoutController } from '@server/features/auth/controllers/logout.contr
 import { env } from '@shared/config/env';
 import * as AuthService from '@server/features/auth/services/auth.service';
 import * as OtpService from '@server/features/auth/services/otp.service';
-import { withRequestId } from '@shared/logging';
+import { loggerWithContext } from '@shared/logging';
 
 describe('logoutController', () => {
   const mockToken = 'refresh-token';
@@ -15,7 +15,7 @@ describe('logoutController', () => {
   beforeEach(() => {
     req = {
       id: 'requestId',
-      logger: withRequestId('requestId'),
+      logger: loggerWithContext({requestId: 'requestId'}),
       body: {
         logoutAll: false,
       },

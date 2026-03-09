@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '@server/middleware/error.middleware';
 import * as AuthService from '@server/features/auth/services/auth.service';
 import { changePasswordController } from '@server/features/auth/controllers/changePassword.controller';
-import { withRequestId } from '@shared/logging';
+import { loggerWithContext } from '@shared/logging';
 import { AuthErrorCode } from '@server/features/auth/constants/AuthErrorCode';
-import { HttpError } from '@server/errors/HttpError';
+import { HttpError } from '@shared/errors/HttpError';
 
 describe('changePasswordController', () => {
   let req: any;
@@ -15,7 +15,7 @@ describe('changePasswordController', () => {
   beforeEach(() => {
     req = {
       id: 'requestId',
-      logger: withRequestId('requestId'),
+      logger: loggerWithContext({requestId: 'requestId'}),
       body: {
         email: 'user@example.com',
         oldPassword: 'old-password',
