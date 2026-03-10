@@ -1,14 +1,15 @@
 import { Server, Socket } from 'socket.io';
-import { redisPub, BROADCAST_CHANNEL, redisSub } from './chat.redis';
+import { BROADCAST_CHANNEL } from './chat.redis';
 import { broadcastMessageSchema } from '@shared/schemas/chat/io.schema';
 import { prisma } from '@shared/prisma';
 import logger from '@shared/logging';
 import { rateLimitCheck } from '@server/lib/rate-limit/rateLimit';
 import { chatSendPolicy } from '@server/lib/rate-limit/policies';
+import { redisPub, redisSub } from '@shared/redis';
 
 export const registerChatSocket = (io: Server) => {
   // Listen to Redis broadcasts from other servers
-  redisSub.on('message', (channel, message) => {
+  redisSub.on('message', (channel: string, message: string) => {
     if (channel === BROADCAST_CHANNEL) {
       const msg = JSON.parse(message);
       io.emit('broadcast', msg); // emit to all connected clients

@@ -4,6 +4,11 @@
 FROM node:20-slim AS base
 WORKDIR /app
 
+RUN apt-get update -y \
+ && apt-get install -y openssl ca-certificates \
+ && update-ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy dependency files for caching
@@ -13,7 +18,7 @@ COPY packages/client/package.json packages/client/
 COPY packages/shared/package.json packages/shared/
 
 # Install all dependencies (dev + prod)
-RUN pnpm install -r --frozen-lockfile
+RUN pnpm install -r --frozen-lockfile --prod=false
 
 # --------------------------------
 # Build stage
@@ -28,7 +33,6 @@ COPY . .
 RUN pnpm --filter ./packages/shared exec prisma generate
 
 # Build Next.js app
-RUN pnpm install --frozen-lockfile
 RUN pnpm --filter ./packages/client run build
 
 # --------------------------------
@@ -36,6 +40,11 @@ RUN pnpm --filter ./packages/client run build
 # --------------------------------
 FROM node:20-slim AS prod
 WORKDIR /app
+
+RUN apt-get update -y \
+ && apt-get install -y openssl ca-certificates \
+ && update-ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
@@ -49,7 +58,6 @@ COPY --from=build /app/packages/shared/prisma ./packages/shared/prisma/
 
 # Copy Next.js build output and static assets
 COPY --from=build /app/packages/client/.next ./packages/client/.next
-COPY --from=build /app/packages/client/public ./packages/client/public
 COPY --from=build /app/packages/client/next.config.ts ./packages/client/
 
 # Install only production dependencies

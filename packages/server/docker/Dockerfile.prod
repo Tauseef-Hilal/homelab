@@ -4,6 +4,11 @@
 FROM node:20-slim AS base
 WORKDIR /app
 
+RUN apt-get update -y \
+ && apt-get install -y openssl ca-certificates \
+ && update-ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy only dependency files for efficient caching
@@ -35,6 +40,11 @@ RUN pnpm --filter ./packages/server run build
 # --------------------------------
 FROM node:20-slim AS prod
 WORKDIR /app
+
+RUN apt-get update -y \
+ && apt-get install -y openssl ca-certificates \
+ && update-ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 

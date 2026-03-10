@@ -4,25 +4,31 @@
 FROM node:20-slim AS base
 WORKDIR /app
 
-# Enable PNPM & install global tools
+# Install system deps and enable pnpm
+RUN apt-get update -y \
+  && apt-get install -y openssl ca-certificates \
+  && update-ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy root configs early for better caching
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 
-# Install root dependencies (monorepo-aware)
+# Install root deps (workspace layout aware)
 RUN pnpm install
 
 # ------------------------
 # Development stage
 # ------------------------
 FROM base AS dev
-
-# Copy all source code into container
 COPY . .
 
-# Install all workspace dependencies
+# Install workspace dependencies
 RUN pnpm install --recursive
 
-# Start the worker in dev mode (replace with your actual entry command)
-CMD ["pnpm", "--filter", "./packages/workers", "dev:io"]
+# Generate Prisma client
+RUN pnpm --filter shared prisma generate
+
+# Start the server in dev mode
+CMD ["pnpm", "--filter", "workers", "dev:io"]

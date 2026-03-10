@@ -1,10 +1,15 @@
 # --------------------------------
 # Base stage (common to dev/prod)
 # --------------------------------
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 WORKDIR /app
 
-# Enable PNPM & install global tools
+# Install system deps and enable pnpm
+RUN apt-get update -y \
+ && apt-get install -y openssl ca-certificates \
+ && update-ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy root configs early for better caching
@@ -22,5 +27,8 @@ COPY . .
 # Install workspace dependencies
 RUN pnpm install --recursive
 
+# Generate Prisma client
+RUN pnpm --filter shared prisma generate
+
 # Start the server in dev mode
-CMD ["pnpm", "--filter", "./packages/server", "dev"]
+CMD ["pnpm", "--filter", "server", "dev"]

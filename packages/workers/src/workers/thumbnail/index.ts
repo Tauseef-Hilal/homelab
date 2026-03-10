@@ -1,4 +1,4 @@
-import { Worker } from 'bullmq';
+import { ConnectionOptions, Worker } from 'bullmq';
 import { thumbnailProcessor } from './processor';
 import redis from '@shared/redis';
 import { prisma } from '@shared/prisma';
@@ -12,7 +12,7 @@ export const thumbnailWorker = new Worker<
   ThumbnailJobPayload,
   ThumbnailJobResult
 >(queueNames.thumbnailQueueName, thumbnailProcessor, {
-  connection: redis,
+  connection: redis as unknown as ConnectionOptions,
   concurrency: 1,
 });
 

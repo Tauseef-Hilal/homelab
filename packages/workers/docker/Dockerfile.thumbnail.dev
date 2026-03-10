@@ -17,6 +17,9 @@ RUN apt-get update && apt-get install -y \
   poppler-utils \
   bash \
   curl \
+  openssl \
+  ca-certificates \
+  && update-ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 # Enable PNPM
@@ -37,7 +40,10 @@ FROM base AS dev
 COPY . .
 
 # Install workspace deps
-RUN pnpm install --recursive --include=optional && pnpm rebuild sharp
+RUN pnpm install --recursive
+
+# Generate Prisma client
+RUN pnpm --filter shared prisma generate
 
 # Start worker
-CMD ["pnpm", "--filter", "./packages/workers", "dev:thumbnail"]
+CMD ["pnpm", "--filter", "workers", "dev:thumbnail"]

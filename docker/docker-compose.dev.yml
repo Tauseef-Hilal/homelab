@@ -1,4 +1,4 @@
-version: '3.9'
+name: homelab-dev
 
 services:
 
@@ -58,7 +58,7 @@ services:
     restart: unless-stopped
     build:
       context: ..
-      dockerfile: ./packages/workers/docker/thumbnail.Dockerfile.dev
+      dockerfile: ./packages/workers/docker/Dockerfile.thumbnail.dev
       target: dev
     depends_on:
       migrate:
@@ -83,7 +83,7 @@ services:
     restart: unless-stopped
     build:
       context: ..
-      dockerfile: ./packages/workers/docker/io.Dockerfile.dev
+      dockerfile: ./packages/workers/docker/Dockerfile.io.dev
       target: dev
     depends_on:
       migrate:

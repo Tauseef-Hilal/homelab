@@ -1,5 +1,4 @@
-name: homelab
-version: "3.9"
+name: homelab-prod
 
 services:
   # ------------------------
@@ -60,7 +59,7 @@ services:
     restart: unless-stopped
     build:
       context: ..
-      dockerfile: ./packages/workers/docker/thumbnail.Dockerfile.prod
+      dockerfile: ./packages/workers/docker/Dockerfile.thumbnail.prod
       target: prod
     depends_on:
       migrate:
@@ -84,7 +83,7 @@ services:
     restart: unless-stopped
     build:
       context: ..
-      dockerfile: ./packages/workers/docker/io.Dockerfile.prod
+      dockerfile: ./packages/workers/docker/Dockerfile.io.prod
       target: prod
     depends_on:
       migrate:
@@ -112,9 +111,6 @@ services:
       target: prod
     ports:
       - "3000:3000"
-    depends_on:
-      server:
-        condition: service_started
     env_file:
       - ../packages/client/.env
     volumes:

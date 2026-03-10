@@ -7,7 +7,7 @@
     "dev": "nodemon",
     "start": "node src/server.js",
     "test": "npx vitest",
-    "build": "npx tsc && npx tsc-alias && cpy 'src/**/*.lua' dist --parents",
+    "build": "npx tsc && npx tsc-alias && cpy 'src/**/*.lua' dist/packages/server/src/ --parents",
     "generate": "npx prisma generate"
   },
   "keywords": [],

@@ -9,6 +9,22 @@ const redis = new Redis({
   maxRetriesPerRequest: null,
 });
 
+export const redisPub = new Redis({
+  host: env.REDIS_HOST,
+  port: env.REDIS_PORT,
+  password: env.REDIS_PASSWORD,
+  maxRetriesPerRequest: null,
+  db: 0,
+});
+
+export const redisSub = new Redis({
+  host: env.REDIS_HOST,
+  port: env.REDIS_PORT,
+  password: env.REDIS_PASSWORD,
+  maxRetriesPerRequest: null,
+  db: 0,
+});
+
 redis.on('connect', () => console.log('[REDIS] Connected'));
 redis.on('error', (err) => console.error('[REDIS] Error:', err));
 

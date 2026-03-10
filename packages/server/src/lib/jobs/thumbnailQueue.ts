@@ -1,11 +1,11 @@
-import { Queue } from 'bullmq';
+import { ConnectionOptions, Queue } from 'bullmq';
 import { JobPayload, ThumbnailJobPayload } from '@shared/jobs/payload.types';
 import { queueNames } from '@shared/jobs/constants';
 import { enqueueJob } from '../enqueueJob';
 import redis from '@shared/redis';
 
 export const thumbnailQueue = new Queue(queueNames.thumbnailQueueName, {
-  connection: redis,
+  connection: redis as unknown as ConnectionOptions,
 });
 
 export const enqueueThumbnailJob = enqueueJob<ThumbnailJobPayload>(
@@ -19,5 +19,5 @@ export const enqueueThumbnailJob = enqueueJob<ThumbnailJobPayload>(
       removeOnComplete: true,
       removeOnFail: false,
     });
-  }
+  },
 );

@@ -1,4 +1,4 @@
-import { Worker } from 'bullmq';
+import { ConnectionOptions, Worker } from 'bullmq';
 import redis from '@shared/redis';
 import { queueNames } from '@shared/jobs/constants';
 import { fileIOJobProcessor } from './processor';
@@ -9,7 +9,7 @@ import { getJobLogger } from '@workers/utils/logger';
 export const fileIOWorker = new Worker<JobPayload>(
   queueNames.fileIOQueueName,
   fileIOJobProcessor,
-  { connection: redis, concurrency: 10 },
+  { connection: redis as unknown as ConnectionOptions, concurrency: 10 },
 );
 
 fileIOWorker.on('active', async (job, prev) => {

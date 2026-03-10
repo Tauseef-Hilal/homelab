@@ -1,4 +1,4 @@
-import { Queue } from 'bullmq';
+import { ConnectionOptions, Queue } from 'bullmq';
 import {
   CopyJobPayload,
   DeleteJobPayload,
@@ -11,7 +11,7 @@ import { enqueueJob } from '../enqueueJob';
 import redis from '@shared/redis';
 
 export const fileIOQueue = new Queue(queueNames.fileIOQueueName, {
-  connection: redis,
+  connection: redis as unknown as ConnectionOptions,
 });
 
 export const enqueueCopyJob = enqueueJob<CopyJobPayload>(
