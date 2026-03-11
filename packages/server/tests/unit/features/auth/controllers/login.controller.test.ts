@@ -3,7 +3,11 @@ import { User } from '@prisma/client';
 import { loginController } from '@server/features/auth/controllers/login.controller';
 import * as AuthService from '@server/features/auth/services/auth.service';
 import * as OtpService from '@server/features/auth/services/otp.service';
-import { loggerWithContext } from '@shared/logging';
+import { loggerWithContext } from '@homelab/shared/logging';
+import { success } from '@server/lib/response';
+
+vi.mock('@server/features/auth/services/auth.service');
+vi.mock('@server/features/auth/services/otp.service');
 
 describe('loginController', () => {
   const mockUser = { id: '123', email: 'test@example.com' };
@@ -16,7 +20,7 @@ describe('loginController', () => {
   beforeEach(() => {
     req = {
       id: 'requestId',
-      logger: loggerWithContext({requestId: 'requestId'}),
+      logger: loggerWithContext({ requestId: 'requestId' }),
       body: {
         email: 'test@example.com',
         password: 'Test@12345678',
@@ -44,14 +48,17 @@ describe('loginController', () => {
     expect(AuthService.login).toHaveBeenCalledWith(
       req.body.email,
       req.body.password,
-      req.clientMeta
+      req.clientMeta,
     );
     expect(next).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({
-      status: 'success',
-      data: { token: mockToken },
-      message: 'Verify OTP to login',
-    });
+    expect(res.json).toHaveBeenCalledWith(
+      success(
+        {
+          token: mockToken,
+        },
+        'Verify OTP to login',
+      ),
+    );
   });
 });

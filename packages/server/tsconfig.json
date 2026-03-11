@@ -1,12 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
+    "rootDir": ".",
+    "noEmit": true,
     "paths": {
       "@server/*": ["./src/*"]
     }
   },
   "references": [{ "path": "../shared" }],
-  "include": ["src"]
+  "include": ["src", "tests"]
 }

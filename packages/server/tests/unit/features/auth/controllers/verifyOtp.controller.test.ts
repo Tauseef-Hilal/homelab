@@ -1,22 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { prisma } from '@shared/prisma';
+import { prisma } from '@homelab/shared/prisma';
 import { User } from '@prisma/client';
-import { env } from '@shared/config/env';
-import { HttpError } from '@shared/errors/HttpError';
-import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
+import { env } from '@homelab/shared/config';
+import { HttpError, CommonErrorCode } from '@homelab/shared/errors';
 import { errorHandler } from '@server/middleware/error.middleware';
 import { TfaPurpose } from '@server/features/auth/constants/TfaPurpose';
 import { TfaPayload } from '@server/types/jwt.types';
+import { verifyOtpController } from '@server/features/auth/controllers/verifyOtp.controller';
+import { tokenExpirations } from '@server/constants/token.constants';
+import { loggerWithContext } from '@homelab/shared/logging';
+import { success } from '@server/lib/response';
 import * as AuthService from '@server/features/auth/services/auth.service';
 import * as OtpService from '@server/features/auth/services/otp.service';
 import * as JwtUtils from '@server/lib/jwt';
 import * as TokenUtils from '@server/features/auth/utils/token.util';
-import { verifyOtpController } from '@server/features/auth/controllers/verifyOtp.controller';
-import { tokenExpirations } from '@server/constants/token.constants';
-import { loggerWithContext } from '@shared/logging';
 
 vi.mock('@server/lib/logger');
-vi.mock('@shared/prisma');
+vi.mock('@homelab/shared/prisma');
+vi.mock('@server/features/auth/services/auth.service');
+vi.mock('@server/features/auth/services/otp.service');
+vi.mock('@server/lib/jwt');
+vi.mock('@server/features/auth/utils/token.util');
 
 describe('verifyOtpController', () => {
   const mockOtp = '123456';
@@ -36,7 +40,7 @@ describe('verifyOtpController', () => {
   beforeEach(() => {
     req = {
       id: 'requestId',
-      logger: loggerWithContext({requestId: 'requestId'}),
+      logger: loggerWithContext({ requestId: 'requestId' }),
       body: {
         token: mockToken,
         otp: mockOtp,
@@ -60,24 +64,25 @@ describe('verifyOtpController', () => {
   it('should verify OTP and allow password change', async () => {
     vi.spyOn(OtpService, 'verifyOtp').mockResolvedValue();
     vi.spyOn(JwtUtils, 'verifyTfaToken').mockReturnValue(
-      mockTokenPayload as TfaPayload
+      mockTokenPayload as TfaPayload,
     );
 
     await verifyOtpController(req, res, next);
     expect(OtpService.verifyOtp).toHaveBeenCalledWith(
       mockTokenPayload.userId,
-      mockOtp
+      mockOtp,
     );
     expect(next).not.toHaveBeenCalled();
     expect(AuthService.allowPasswordChange).toHaveBeenCalledWith(
-      mockTokenPayload.email
+      mockTokenPayload.email,
     );
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({
-      status: 'success',
-      data: {},
-      message: 'Continue to change password',
-    });
+    expect(res.json).toHaveBeenCalledWith(
+      success(
+        { changePasswordToken: mockToken },
+        'Continue to change password',
+      ),
+    );
   });
 
   it('should verify OTP and login user', async () => {
@@ -86,10 +91,10 @@ describe('verifyOtpController', () => {
     vi.spyOn(OtpService, 'verifyOtp').mockResolvedValue();
     vi.spyOn(TokenUtils, 'storeRefreshToken').mockResolvedValue();
     vi.spyOn(JwtUtils, 'generateAccessToken').mockReturnValue(
-      mockTokens.access
+      mockTokens.access,
     );
     vi.spyOn(JwtUtils, 'generateRefreshToken').mockReturnValue(
-      mockTokens.refresh
+      mockTokens.refresh,
     );
     vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser as User);
     vi.spyOn(JwtUtils, 'verifyTfaToken').mockReturnValue(payload as TfaPayload);
@@ -107,7 +112,7 @@ describe('verifyOtpController', () => {
       prisma,
       mockTokens.refresh,
       mockUser.id,
-      req.clientMeta
+      req.clientMeta,
     );
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.cookie).toHaveBeenCalledWith(
@@ -116,16 +121,19 @@ describe('verifyOtpController', () => {
       {
         httpOnly: true,
         secure: env.NODE_ENV == 'production',
-        sameSite: 'strict',
+        sameSite: env.NODE_ENV == 'production' ? 'none' : 'lax',
         maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
-        path: '/api/auth/refresh',
-      }
+      },
     );
-    expect(res.json).toHaveBeenCalledWith({
-      status: 'success',
-      data: { tokens: { access: mockTokens.access } },
-      message: 'Login successful',
-    });
+    expect(res.json).toHaveBeenCalledWith(
+      success(
+        {
+          user: mockUser,
+          tokens: { access: mockTokens.access },
+        },
+        'Login successful',
+      ),
+    );
   });
 
   it('should throw if otp is invalid', async () => {
@@ -134,11 +142,11 @@ describe('verifyOtpController', () => {
         status: 401,
         code: CommonErrorCode.UNAUTHORIZED,
         message: '',
-      })
+      }),
     );
 
     vi.spyOn(JwtUtils, 'verifyTfaToken').mockReturnValue(
-      mockTokenPayload as TfaPayload
+      mockTokenPayload as TfaPayload,
     );
 
     await verifyOtpController(req, res, next);
@@ -154,7 +162,7 @@ describe('verifyOtpController', () => {
         status: 500,
         code: CommonErrorCode.INTERNAL_SERVER_ERROR,
         message: '',
-      })
+      }),
     );
 
     await verifyOtpController(req, res, next);

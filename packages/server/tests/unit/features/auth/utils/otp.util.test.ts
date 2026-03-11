@@ -1,12 +1,11 @@
-import redis from '@shared/redis';
+import { redis, RedisKeys } from '@homelab/shared/redis';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { RedisKeys } from '@shared/redis/redisKeys';
-import { authConfig } from '@server/features/auth/auth.config';
 import * as otpUtil from '@server/features/auth/utils/otp.util';
 import * as tokenUtil from '@server/features/auth/utils/token.util';
 import { tokenExpirations } from '@server/constants/token.constants';
 
 vi.mock('@server/features/auth/utils/token.util');
+vi.mock('@homelab/shared/redis')
 
 const mockOtp = '123456';
 const mockHashed = 'hashed123';
@@ -34,7 +33,7 @@ describe('setOtp', () => {
       RedisKeys.auth.otp(userId),
       expect.stringContaining(mockHashed),
       'EX',
-      Math.floor(tokenExpirations.OTP_TOKEN_EXPIRY_MS / 1000)
+      Math.floor(tokenExpirations.OTP_TOKEN_EXPIRY_MS / 1000),
     );
   });
 });

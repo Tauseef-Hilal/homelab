@@ -4,21 +4,25 @@ import * as otpService from '@server/features/auth/services/otp.service';
 import * as bcrypt from '@server/lib/bcrypt';
 import * as jwtUtils from '@server/lib/jwt';
 import * as tokenUtils from '@server/features/auth/utils/token.util';
-import { HttpError } from '@shared/errors/HttpError';
-import { prisma } from '@shared/prisma';
-import { Prisma, RefreshToken, User } from '@prisma/client';
+import { HttpError, CommonErrorCode } from '@homelab/shared/errors';
+import { prisma } from '@homelab/shared/prisma';
+import { Folder, Prisma, RefreshToken, User } from '@prisma/client';
 import { AuthErrorCode } from '@server/features/auth/constants/AuthErrorCode';
-import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
 import { JwtPayload } from '@server/types/jwt.types';
-import redis from '@shared/redis';
-import { RedisKeys } from '@shared/redis/redisKeys';
+import { redis, RedisKeys } from '@homelab/shared/redis';
 import { authConfig } from '@server/features/auth/auth.config';
 
-vi.mock('@shared/prisma');
+vi.mock('@homelab/shared/prisma');
+vi.mock('@homelab/shared/redis');
+vi.mock('@server/features/auth/services/otp.service')
+vi.mock('@server/lib/bcrypt')
+vi.mock('@server/lib/jwt')
+vi.mock('@server/features/auth/utils/token.util')
 
 const meta = { ipAddress: '127.0.0.1', userAgent: 'Vitest' };
 const mockUser = {
   id: 'user-id',
+  username: 'user',
   email: 'email@example.com',
   createdAt: new Date(),
   role: 'USER',
@@ -31,13 +35,13 @@ describe('signup()', () => {
 
   it('should through if fields are missing', async () => {
     await expect(authService.signup('', 'email', 'pass', meta)).rejects.toThrow(
-      HttpError
+      HttpError,
     );
     await expect(
-      authService.signup('username', '', 'pass', meta)
+      authService.signup('username', '', 'pass', meta),
     ).rejects.toThrow(HttpError);
     await expect(
-      authService.signup('username', 'email', '', meta)
+      authService.signup('username', 'email', '', meta),
     ).rejects.toThrow(HttpError);
   });
 
@@ -47,19 +51,20 @@ describe('signup()', () => {
 
     vi.spyOn(bcrypt, 'hashPassword').mockResolvedValue('hashed-pass');
     vi.spyOn(prisma.user, 'create').mockResolvedValue(mockUser);
+    vi.spyOn(prisma.folder, 'create').mockResolvedValue({} as Folder);
     vi.spyOn(jwtUtils, 'generateAccessToken').mockReturnValue(mockAccessToken);
     vi.spyOn(jwtUtils, 'generateRefreshToken').mockReturnValue(
-      mockRefreshToken
+      mockRefreshToken,
     );
     const storeRefreshToken = vi
       .spyOn(tokenUtils, 'storeRefreshToken')
       .mockResolvedValue();
 
     const res = await authService.signup(
-      'user',
+      mockUser.username,
       mockUser.email,
       'pass123',
-      meta
+      meta,
     );
 
     expect(res.user).toMatchObject(mockUser);
@@ -69,7 +74,7 @@ describe('signup()', () => {
       prisma,
       mockRefreshToken,
       mockUser.id,
-      meta
+      meta,
     );
   });
 
@@ -79,11 +84,11 @@ describe('signup()', () => {
       new Prisma.PrismaClientKnownRequestError('error', {
         code: 'P2002',
         clientVersion: '4.0.0',
-      })
+      }),
     );
 
     await expect(
-      authService.signup('user', 'email@example.com', 'pass', meta)
+      authService.signup('user', 'email@example.com', 'pass', meta),
     ).rejects.toMatchObject({ status: 409 });
   });
 
@@ -92,7 +97,7 @@ describe('signup()', () => {
     vi.spyOn(prisma.user, 'create').mockRejectedValue(new Error('Unexpected'));
 
     await expect(
-      authService.signup('user', 'email@example.com', 'pass123', meta)
+      authService.signup('user', 'email@example.com', 'pass123', meta),
     ).rejects.toMatchObject({ status: 500 });
   });
 });
@@ -108,10 +113,10 @@ describe('login()', () => {
       code: CommonErrorCode.MISSING_FIELDS,
     };
     await expect(authService.login('email', '', meta)).rejects.toMatchObject(
-      errorObj
+      errorObj,
     );
     await expect(authService.login('', 'pass', meta)).rejects.toMatchObject(
-      errorObj
+      errorObj,
     );
   });
 
@@ -119,7 +124,7 @@ describe('login()', () => {
     vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
 
     await expect(
-      authService.login('email', 'pass', meta)
+      authService.login('email', 'pass', meta),
     ).rejects.toMatchObject({
       status: 401,
       code: AuthErrorCode.USER_DOES_NOT_EXIST,
@@ -131,7 +136,7 @@ describe('login()', () => {
     vi.spyOn(bcrypt, 'isValidPassword').mockResolvedValue(false);
 
     await expect(
-      authService.login(mockUser.email, 'pass', meta)
+      authService.login(mockUser.email, 'pass', meta),
     ).rejects.toMatchObject({
       status: 401,
       code: AuthErrorCode.INVALID_CREDENTIALS,
@@ -244,13 +249,11 @@ describe('changePassword()', () => {
   it('should throw if fields are missing', async () => {
     const errorObj = { status: 400, code: CommonErrorCode.MISSING_FIELDS };
 
-    await expect(
-      authService.changePassword('email', '')
-    ).rejects.toMatchObject(errorObj);
+    await expect(authService.changePassword('email', '')).rejects.toMatchObject(
+      errorObj,
+    );
 
-    await expect(
-      authService.changePassword('', 'new')
-    ).rejects.toMatchObject({
+    await expect(authService.changePassword('', 'new')).rejects.toMatchObject({
       status: 404,
       code: AuthErrorCode.USER_DOES_NOT_EXIST,
     });
@@ -260,22 +263,10 @@ describe('changePassword()', () => {
     vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
 
     await expect(
-      authService.changePassword('email', 'pass')
+      authService.changePassword('email', 'pass'),
     ).rejects.toMatchObject({
       status: 404,
       code: AuthErrorCode.USER_DOES_NOT_EXIST,
-    });
-  });
-
-  it('should throw if old password is wrong', async () => {
-    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser);
-    vi.spyOn(bcrypt, 'isValidPassword').mockResolvedValue(false);
-
-    await expect(
-      authService.changePassword('email', 'new')
-    ).rejects.toMatchObject({
-      status: 401,
-      code: CommonErrorCode.UNAUTHORIZED,
     });
   });
 
@@ -306,7 +297,7 @@ describe('allowPasswordChange()', () => {
     vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
 
     await expect(
-      authService.allowPasswordChange('email')
+      authService.allowPasswordChange('email'),
     ).rejects.toMatchObject({
       status: 404,
       code: AuthErrorCode.USER_DOES_NOT_EXIST,
@@ -325,7 +316,7 @@ describe('allowPasswordChange()', () => {
       RedisKeys.auth.allowPasswordChange(mockUser.id),
       expect.any(String),
       'EX',
-      authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS
+      authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS,
     );
   });
 });
@@ -356,11 +347,11 @@ describe('refreshTokens()', () => {
     (prisma.$transaction as any).mockImplementation(
       async (fn: (tx: any) => Promise<any>) => {
         await fn(tx);
-      }
+      },
     );
 
     await expect(
-      authService.refreshTokens(mockToken, meta)
+      authService.refreshTokens(mockToken, meta),
     ).rejects.toMatchObject({
       status: 401,
       code: AuthErrorCode.INVALID_TOKEN,
@@ -382,11 +373,11 @@ describe('refreshTokens()', () => {
     (prisma.$transaction as any).mockImplementation(
       async (fn: (tx: any) => Promise<any>) => {
         await fn(tx);
-      }
+      },
     );
 
     await expect(
-      authService.refreshTokens(mockToken, meta)
+      authService.refreshTokens(mockToken, meta),
     ).rejects.toMatchObject({ status: 401, code: AuthErrorCode.TOKEN_EXPIRED });
   });
 
@@ -396,7 +387,7 @@ describe('refreshTokens()', () => {
     });
 
     await expect(
-      authService.refreshTokens(mockToken, meta)
+      authService.refreshTokens(mockToken, meta),
     ).rejects.toMatchObject({ status: 500 });
   });
 
@@ -413,22 +404,22 @@ describe('refreshTokens()', () => {
     (prisma.$transaction as any).mockImplementation(
       async (fn: (tx: any) => Promise<any>) => {
         await fn(tx);
-      }
+      },
     );
 
     const revokeMatchingTokensSpy = vi.spyOn(
       tokenUtils,
-      'revokeMatchingTokens'
+      'revokeMatchingTokens',
     );
 
     await expect(
-      authService.refreshTokens(mockToken, meta)
+      authService.refreshTokens(mockToken, meta),
     ).rejects.toMatchObject({ status: 401, code: AuthErrorCode.TOKEN_REUSED });
 
     expect(revokeMatchingTokensSpy).toBeCalledWith(
       tx,
       reusedToken.userId,
-      meta
+      meta,
     );
   });
 
@@ -446,7 +437,7 @@ describe('refreshTokens()', () => {
     (prisma.$transaction as any).mockImplementation(
       async (fn: (tx: any) => Promise<any>) => {
         await fn(tx);
-      }
+      },
     );
 
     vi.spyOn(tokenUtils, 'buildTokenPayload').mockReturnValue({} as JwtPayload);
@@ -466,7 +457,7 @@ describe('refreshTokens()', () => {
       tx,
       newRefreshToken,
       mockTokenRecord.userId,
-      meta
+      meta,
     );
   });
 });

@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { env } from '@shared/config/env';
+import { env } from '@homelab/shared/config';
 import { errorHandler } from '@server/middleware/error.middleware';
-import * as AuthService from '@server/features/auth/services/auth.service';
 import { refreshController } from '@server/features/auth/controllers/refresh.controller';
 import { tokenExpirations } from '@server/constants/token.constants';
-import { loggerWithContext } from '@shared/logging';
+import { loggerWithContext } from '@homelab/shared/logging';
+import * as AuthService from '@server/features/auth/services/auth.service';
+import { success } from '@server/lib/response';
+
+vi.mock('@server/features/auth/services/auth.service');
 
 describe('refreshController', () => {
   const mockTokens = { access: 'access-token', refresh: 'refresh-token' };
@@ -17,7 +20,7 @@ describe('refreshController', () => {
   beforeEach(() => {
     req = {
       id: 'requestId',
-      logger: loggerWithContext({requestId: 'requestId'}),
+      logger: loggerWithContext({ requestId: 'requestId' }),
       user: {
         id: 'user-123',
         email: 'user@example.com',
@@ -48,7 +51,7 @@ describe('refreshController', () => {
 
     expect(AuthService.refreshTokens).toHaveBeenCalledWith(
       mockOldToken,
-      req.clientMeta
+      req.clientMeta,
     );
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.cookie).toHaveBeenCalledWith(
@@ -57,15 +60,13 @@ describe('refreshController', () => {
       {
         httpOnly: true,
         secure: env.NODE_ENV == 'production',
-        sameSite: 'strict',
+        sameSite: env.NODE_ENV == 'production' ? 'none' : 'lax',
         maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
-        path: '/api/auth/refresh',
-      }
+      },
     );
-    expect(res.json).toHaveBeenCalledWith({
-      status: 'success',
-      data: { tokens: { access: mockTokens.access } },
-    });
+    expect(res.json).toHaveBeenCalledWith(
+      success({ tokens: { access: mockTokens.access } }),
+    );
   });
 
   it('should throw if refresh token is missing', async () => {

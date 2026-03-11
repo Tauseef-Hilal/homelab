@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { env } from '@homelab/shared/config';
 import { logoutController } from '@server/features/auth/controllers/logout.controller';
-import { env } from '@shared/config/env';
+import { loggerWithContext } from '@homelab/shared/logging';
 import * as AuthService from '@server/features/auth/services/auth.service';
-import * as OtpService from '@server/features/auth/services/otp.service';
-import { loggerWithContext } from '@shared/logging';
+import { success } from '@server/lib/response';
+
+vi.mock('@server/features/auth/services/auth.service');
 
 describe('logoutController', () => {
   const mockToken = 'refresh-token';
@@ -15,7 +17,7 @@ describe('logoutController', () => {
   beforeEach(() => {
     req = {
       id: 'requestId',
-      logger: loggerWithContext({requestId: 'requestId'}),
+      logger: loggerWithContext({ requestId: 'requestId' }),
       body: {
         logoutAll: false,
       },
@@ -32,31 +34,25 @@ describe('logoutController', () => {
     };
 
     next = vi.fn();
-
-    vi.spyOn(OtpService, 'sendOtp').mockResolvedValue();
-    vi.spyOn(AuthService, 'logout').mockResolvedValue();
   });
 
   it('should logout successfully', async () => {
     await logoutController(req, res, next);
 
     expect(AuthService.logout).toHaveBeenCalledWith(
-      mockToken,
+      req.cookies.refreshToken,
       req.clientMeta,
-      req.body.logoutAll
+      req.body.logoutAll,
     );
     expect(next).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.clearCookie).toHaveBeenCalledWith('refreshToken', {
       httpOnly: true,
       secure: env.NODE_ENV == 'production',
-      sameSite: 'strict',
-      path: '/api/auth/refresh',
+      sameSite: env.NODE_ENV == 'production' ? 'none' : 'lax',
     });
-    expect(res.json).toHaveBeenCalledWith({
-      status: 'success',
-      data: {},
-      message: 'Logged out successfully',
-    });
+    expect(res.json).toHaveBeenCalledWith(
+      success({}, 'Logged out successfully'),
+    );
   });
 });

@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import nodemailer from 'nodemailer';
 import { sendEmail, sendOtpEmail } from '@server/lib/email/email.service';
-import { env } from '@shared/config/env';
+import { env } from '@homelab/shared/config';
 
 vi.mock('nodemailer');
 vi.mock('@server/config/env', () => ({
@@ -51,7 +51,7 @@ describe('sendEmail', () => {
         to: 'fail@example.com',
         subject: 'Fail Test',
         html: '<p>fail</p>',
-      })
+      }),
     ).rejects.toThrow('Failed to send email');
   });
 });

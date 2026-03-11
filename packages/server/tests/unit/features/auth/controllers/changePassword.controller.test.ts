@@ -1,11 +1,16 @@
-import redis from '@shared/redis';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '@server/middleware/error.middleware';
-import * as AuthService from '@server/features/auth/services/auth.service';
 import { changePasswordController } from '@server/features/auth/controllers/changePassword.controller';
-import { loggerWithContext } from '@shared/logging';
+import { loggerWithContext } from '@homelab/shared/logging';
 import { AuthErrorCode } from '@server/features/auth/constants/AuthErrorCode';
-import { HttpError } from '@shared/errors/HttpError';
+import { HttpError } from '@homelab/shared/errors';
+import { TfaPayload } from '@server/types/jwt.types';
+import * as AuthService from '@server/features/auth/services/auth.service';
+import * as Jwt from '@server/lib/jwt';
+import { success } from '@server/lib/response';
+
+vi.mock('@server/features/auth/services/auth.service');
+vi.mock('@server/lib/jwt');
 
 describe('changePasswordController', () => {
   let req: any;
@@ -15,10 +20,9 @@ describe('changePasswordController', () => {
   beforeEach(() => {
     req = {
       id: 'requestId',
-      logger: loggerWithContext({requestId: 'requestId'}),
+      logger: loggerWithContext({ requestId: 'requestId' }),
       body: {
-        email: 'user@example.com',
-        oldPassword: 'old-password',
+        token: 'asdf-as-dfsad-fsa-df-sa',
         newPassword: 'new-password',
       },
       clientMeta: { ipAddress: '127.0.0.1', userAgent: 'Vitest' },
@@ -35,13 +39,13 @@ describe('changePasswordController', () => {
   });
 
   it('should throw if user has not verified OTP', async () => {
-    vi.spyOn(redis, 'get').mockResolvedValue(null);
+    vi.spyOn(Jwt, 'verifyTfaToken').mockResolvedValue({} as TfaPayload);
     vi.spyOn(AuthService, 'changePassword').mockRejectedValue(
       new HttpError({
         status: 403,
         code: AuthErrorCode.OTP_VERIFICATION_REQUIRED,
         message: 'OTP verification required to change password',
-      })
+      }),
     );
 
     await changePasswordController(req, res, next);
@@ -50,22 +54,22 @@ describe('changePasswordController', () => {
   });
 
   it('should successfully change password if user has verified OTP', async () => {
-    vi.spyOn(redis, 'get').mockResolvedValue('true');
+    const mockEmail = 'email@example.com';
+    vi.spyOn(Jwt, 'verifyTfaToken').mockReturnValue({
+      email: mockEmail,
+    } as TfaPayload);
     vi.spyOn(AuthService, 'changePassword').mockResolvedValue();
 
     await changePasswordController(req, res, next);
 
     expect(AuthService.changePassword).toHaveBeenCalledWith(
-      req.body.email,
-      req.body.oldPassword,
-      req.body.newPassword
+      mockEmail,
+      req.body.newPassword,
     );
 
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({
-      status: 'success',
-      data: {},
-      message: 'Password changed successfully',
-    });
+    expect(res.json).toHaveBeenCalledWith(
+      success({}, 'Password changed successfully'),
+    );
   });
 });

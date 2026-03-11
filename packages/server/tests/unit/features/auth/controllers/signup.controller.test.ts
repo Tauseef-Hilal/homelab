@@ -1,10 +1,13 @@
-import * as AuthService from '@server/features/auth/services/auth.service';
-import { env } from '@shared/config/env';
+import { env } from '@homelab/shared/config';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { User } from '@prisma/client';
 import { signupController } from '@server/features/auth/controllers/signup.controller';
 import { tokenExpirations } from '@server/constants/token.constants';
-import { loggerWithContext } from '@shared/logging';
+import { loggerWithContext } from '@homelab/shared/logging';
+import * as AuthService from '@server/features/auth/services/auth.service';
+import { success } from '@server/lib/response';
+
+vi.mock('@server/features/auth/services/auth.service');
 
 describe('signupController', () => {
   const mockUser = { id: '123', email: 'test@example.com' };
@@ -20,7 +23,7 @@ describe('signupController', () => {
   beforeEach(() => {
     req = {
       id: 'requestId',
-      logger: loggerWithContext({requestId: 'requestId'}),
+      logger: loggerWithContext({ requestId: 'requestId' }),
       body: {
         username: 'testuser',
         email: 'test@example.com',
@@ -50,7 +53,7 @@ describe('signupController', () => {
       req.body.username,
       req.body.email,
       req.body.password,
-      req.clientMeta
+      req.clientMeta,
     );
 
     expect(next).not.toHaveBeenCalled();
@@ -61,21 +64,19 @@ describe('signupController', () => {
       {
         httpOnly: true,
         secure: env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: env.NODE_ENV == 'production' ? 'none' : 'lax',
         maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
-        path: '/api/auth/refresh',
-      }
+      },
     );
 
-    expect(res.json).toHaveBeenCalledWith({
-      status: 'success',
-      data: {
-        user: mockUser,
-        tokens: {
-          access: mockTokens.access,
+    expect(res.json).toHaveBeenCalledWith(
+      success(
+        {
+          user: mockUser,
+          tokens: { access: mockTokens.access },
         },
-      },
-      message: 'Signup successful',
-    });
+        'Signup successful',
+      ),
+    );
   });
 });

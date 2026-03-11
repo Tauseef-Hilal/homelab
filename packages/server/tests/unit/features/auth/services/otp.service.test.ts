@@ -1,6 +1,5 @@
-import redis from '@shared/redis';
-import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { RedisKeys } from '@shared/redis/redisKeys';
+import { redis, RedisKeys } from '@homelab/shared/redis';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { authConfig } from '@server/features/auth/auth.config';
 import * as otpService from '@server/features/auth/services/otp.service';
 import * as otpUtil from '@server/features/auth/utils/otp.util';
@@ -9,6 +8,7 @@ import * as emailService from '@server/lib/email/email.service';
 import { tokenExpirations } from '@server/constants/token.constants';
 
 vi.mock('@server/features/auth/utils/token.util');
+vi.mock('@homelab/shared/redis');
 
 const mockOtp = '123456';
 const mockHashed = 'hashed123';
@@ -31,7 +31,7 @@ describe('sendOtp', () => {
     expect(setOtpSpy).toHaveBeenCalled();
     expect(sendEmailSpy).toHaveBeenCalledWith(
       'test@example.com',
-      expect.stringMatching(/^\d{6}$/)
+      expect.stringMatching(/^\d{6}$/),
     );
   });
 });
@@ -44,7 +44,7 @@ describe('verifyOtp', () => {
     vi.spyOn(otpUtil, 'getOtp').mockResolvedValueOnce(null);
 
     await expect(otpService.verifyOtp(userId, mockOtp)).rejects.toThrow(
-      'OTP expired or invalid'
+      'OTP expired or invalid',
     );
   });
 
@@ -57,7 +57,7 @@ describe('verifyOtp', () => {
     vi.spyOn(otpUtil, 'getOtp').mockResolvedValueOnce(data);
 
     await expect(otpService.verifyOtp(userId, mockOtp)).rejects.toThrow(
-      'Maximum OTP attempts exceeded'
+      'Maximum OTP attempts exceeded',
     );
     expect(redisDel).toHaveBeenCalled();
   });
@@ -71,14 +71,14 @@ describe('verifyOtp', () => {
     vi.spyOn(otpUtil, 'getOtp').mockResolvedValueOnce(data);
 
     await expect(otpService.verifyOtp(userId, 'wrong')).rejects.toThrow(
-      'Incorrect OTP'
+      'Incorrect OTP',
     );
 
     expect(redisSet).toHaveBeenCalledWith(
       RedisKeys.auth.otp(userId),
       expect.stringContaining('"attempts":2'),
       'EX',
-      Math.floor(tokenExpirations.OTP_TOKEN_EXPIRY_MS / 1000)
+      Math.floor(tokenExpirations.OTP_TOKEN_EXPIRY_MS / 1000),
     );
   });
 

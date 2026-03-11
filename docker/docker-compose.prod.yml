@@ -13,7 +13,7 @@ services:
       db:
         condition: service_healthy
     env_file:
-      - ../packages/shared/.env.prod.local
+      - ../.env.production
     command: >
       sh -c "
         pnpm --filter shared exec prisma migrate deploy &&
@@ -41,7 +41,7 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - ../packages/shared/.env.prod.local
+      - ../.env.production
     volumes:
       - ../data:/app/data
     command: pnpm --filter server run start
@@ -64,7 +64,7 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - ../packages/shared/.env.prod.local
+      - ../.env.production
     volumes:
       - ../data:/app/data
     command: pnpm --filter workers run start:thumbnail
@@ -87,7 +87,7 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - ../packages/shared/.env.prod.local
+      - ../.env.production
     volumes:
       - ../data:/app/data
     command: pnpm --filter workers run start:io
@@ -123,7 +123,7 @@ services:
     image: postgres:16
     restart: unless-stopped
     env_file:
-      - ../packages/shared/.env.prod.local
+      - ../.env.production
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:

@@ -10,7 +10,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@server': path.resolve(__dirname, 'src'),
-      '@shared': path.resolve(__dirname, '../shared/src'),
+      '@homelab/shared': path.resolve(__dirname, '../shared/src'),
     },
   },
 });

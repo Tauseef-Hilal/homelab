@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "description": "Backend code for homelab",
   "scripts": {
-    "dev": "nodemon",
-    "start": "node dist/server.js",
+    "dev": "NODE_ENV=development nodemon",
+    "start": "NODE_ENV=production node dist/server.js",
     "test": "vitest",
-    "build": "tsc -b && tsc-alias && cp -r lua dist/lua"
+    "build": "tsc -b tsconfig.build.json && tsc-alias -p tsconfig.build.json"
   },
   "keywords": [],
   "author": "Tauseef Tantary",

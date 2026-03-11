@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "description": "",
   "scripts": {
-    "dev:thumbnail": "nodemon --config nodemon.thumbnail.json",
-    "dev:io": "nodemon --config nodemon.io.json",
-    "start:thumbnail": "node dist/workers/thumbnail/index.js",
-    "start:io": "node dist/workers/io/index.js",
+    "dev:thumbnail": "NODE_ENV=development nodemon --config nodemon.thumbnail.json",
+    "dev:io": "NODE_ENV=development nodemon --config nodemon.io.json",
+    "start:thumbnail": "NODE_ENV=production node dist/workers/thumbnail/index.js",
+    "start:io": "NODE_ENV=production node dist/workers/io/index.js",
     "build": "tsc -b && tsc-alias"
   },
   "keywords": [],
