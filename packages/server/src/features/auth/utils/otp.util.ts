@@ -1,6 +1,5 @@
-import redis from '@shared/redis';
+import { redis, RedisKeys } from '@homelab/shared/redis';
 import { OtpPayload } from '../types/otp.types';
-import { RedisKeys } from '@shared/redis/redisKeys';
 import { hashTokenSync } from '../utils/token.util';
 import { tokenExpirations } from '@server/constants/token.constants';
 
@@ -12,7 +11,7 @@ export const generateOtp = (): string => {
 export const setOtp = async (
   userId: string,
   code: string,
-  expiresIn = tokenExpirations.OTP_TOKEN_EXPIRY_MS
+  expiresIn = tokenExpirations.OTP_TOKEN_EXPIRY_MS,
 ) => {
   const payload: OtpPayload = {
     code: hashTokenSync(code),
@@ -23,7 +22,7 @@ export const setOtp = async (
     RedisKeys.auth.otp(userId),
     JSON.stringify(payload),
     'EX',
-    Math.floor(expiresIn / 1000)
+    Math.floor(expiresIn / 1000),
   );
 };
 

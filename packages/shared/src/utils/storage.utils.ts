@@ -2,10 +2,10 @@ import fs from 'fs/promises';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { createWriteStream } from 'fs';
-import { env } from '@shared/config/env';
-import { mediaConstants } from '@shared/constants/media.constants';
+import { env } from '@homelab/shared/config';
+import { mediaConstants } from '@homelab/shared/constants';
 import path from 'path';
-import { prisma } from '@shared/prisma';
+import { prisma } from '@homelab/shared/prisma';
 import { Folder } from '@prisma/client';
 
 export function getFileNameWithoutExtension(name: string) {

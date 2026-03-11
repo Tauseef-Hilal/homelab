@@ -1,8 +1,8 @@
-import { BroadcastMessage } from "@shared/schemas/chat/io.schema";
+import { ioSchemas } from "@homelab/shared/schemas/chat";
 import UserAvatar from "./UserAvatar";
 
 interface MessageViewProps {
-  message: BroadcastMessage;
+  message: ioSchemas.BroadcastMessage;
 }
 
 const MessageView: React.FC<MessageViewProps> = ({ message }) => {

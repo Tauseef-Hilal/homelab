@@ -1,25 +1,21 @@
 import fs from 'fs';
-import { prisma } from '@shared/prisma';
+import { prisma } from '@homelab/shared/prisma';
 import { Folder } from '@prisma/client';
 import {
   ensureFolderExists,
   ensureUserIsOwner,
   resolveFolderName,
 } from '../utils/folder.util';
-import { getFileExtension, pathJoin } from '../utils/file.util';
-import {
-  getOriginalFilePath,
-  getTempFilePath,
-  getThumbnailPath,
-} from '@shared/utils/storage.utils';
-import { HttpError } from '@shared/errors/HttpError';
-import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
+import { pathJoin } from '../utils/file.util';
+import { getTempFilePath } from '@homelab/shared/utils';
+import { HttpError } from '@homelab/shared/errors';
+import { CommonErrorCode } from '@homelab/shared/errors';
 import { randomUUID } from 'crypto';
 
 export async function createFolder(
   userId: string,
   folderName: string,
-  parentId: string | null
+  parentId: string | null,
 ) {
   let parent: Folder | null = null;
 
@@ -37,7 +33,7 @@ export async function createFolder(
       userId,
     },
     folderName,
-    parentId
+    parentId,
   );
 
   return await prisma.folder.create({

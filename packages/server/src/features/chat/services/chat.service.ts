@@ -1,4 +1,4 @@
-import { prisma } from '@shared/prisma';
+import { prisma } from '@homelab/shared/prisma';
 export async function getBroadcastMessages(
   cursorId?: string,
   cursorSentAt?: string,

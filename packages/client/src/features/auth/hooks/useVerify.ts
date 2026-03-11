@@ -1,9 +1,8 @@
 import { AxiosError } from 'axios';
 import { useMutation } from '@tanstack/react-query';
 import { verify } from '../api/verify';
-import { VerifyOtpResponse } from '@shared/schemas/auth/response/auth.schema';
-import { ServerError } from '@shared/types/error';
-import { VerifyOtpInput } from '@shared/schemas/auth/request/auth.schema';
+import { ServerError } from '@homelab/shared/types';
+import { requestSchemas, responseSchemas } from '@homelab/shared/schemas/auth';
 import { useRouter } from 'next/navigation';
 import useAuthStore from '../stores/auth.store';
 
@@ -18,9 +17,9 @@ export function useVerifyOtp(options: UseVerifyOtpOptions) {
   const setAccessToken = useAuthStore((state) => state.setAccessToken);
 
   return useMutation<
-    VerifyOtpResponse,
+    responseSchemas.VerifyOtpResponse,
     AxiosError<ServerError>,
-    VerifyOtpInput
+    requestSchemas.VerifyOtpInput
   >({
     mutationFn: verify,
     onSuccess: (data) => {

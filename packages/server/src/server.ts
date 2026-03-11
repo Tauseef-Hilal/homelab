@@ -1,6 +1,6 @@
 import http from 'http';
-import logger from '@shared/logging';
-import { env } from '@shared/config/env';
+import { env } from '@homelab/shared/config';
+import { logger } from '@homelab/shared/logging';
 import { registerChatSocket } from './features/chat/chat.socket';
 import { initSocket } from './lib/socket';
 import { loadScript } from './lib/rate-limit/loadScript';

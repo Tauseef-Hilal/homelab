@@ -1,18 +1,24 @@
-import { CopyItemsOutput } from '@shared/schemas/storage/response.schema';
-import { CopyItemsInput } from '@shared/schemas/storage/request.schema';
-import { ServerError } from '@shared/types/error';
+import {
+  requestSchemas,
+  responseSchemas,
+} from '@homelab/shared/schemas/storage';
+import { ServerError } from '@homelab/shared/types';
 import { useMutation } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { copyItems } from '../api/copyItems';
 import { toast } from 'sonner';
 
 export type UseCopyItemsOptions = {
-  onSuccess: (data: CopyItemsOutput) => void;
+  onSuccess: (data: responseSchemas.CopyItemsOutput) => void;
   onError: (error: string) => void;
 };
 
 export function useCopyItems(options: UseCopyItemsOptions) {
-  return useMutation<CopyItemsOutput, AxiosError<ServerError>, CopyItemsInput>({
+  return useMutation<
+    responseSchemas.CopyItemsOutput,
+    AxiosError<ServerError>,
+    requestSchemas.CopyItemsInput
+  >({
     mutationFn: copyItems,
     onSuccess: options.onSuccess,
     onError: (error) => {

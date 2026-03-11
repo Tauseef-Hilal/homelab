@@ -1,5 +1,5 @@
 import { JobStatus } from '@prisma/client';
-import { prisma } from '@shared/prisma';
+import { prisma } from '@homelab/shared/prisma';
 
 export async function updateJob(
   jobId: string,

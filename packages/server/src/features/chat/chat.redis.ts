@@ -1,5 +1,5 @@
-import logger from '@shared/logging';
-import { redisSub } from '@shared/redis';
+import logger from '@homelab/shared/logging';
+import { redisSub } from '@homelab/shared/redis';
 
 export const BROADCAST_CHANNEL = 'broadcast:global';
 

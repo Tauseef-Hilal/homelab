@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import redis from '@shared/redis';
+import { redis } from '@homelab/shared/redis';
 
 export let tokenBucketSha: string | null = null;
 
@@ -10,7 +10,7 @@ export async function loadScript() {
   }
 
   const script = fs.readFileSync(
-    path.join(__dirname, 'tokenBucket.lua'),
+    path.join(process.cwd(), 'lua/tokenBucket.lua'),
     'utf8',
   );
 

@@ -1,7 +1,7 @@
-import { SYSTEM_STORAGE_LIMIT } from '@shared/constants/storage.constants';
-import { HttpError } from '@shared/errors/HttpError';
-import { StorageErrorCode } from '@shared/errors/StorageErrorCode';
-import { prisma } from '@shared/prisma';
+import { SYSTEM_STORAGE_LIMIT } from '@homelab/shared/constants';
+import { HttpError } from '@homelab/shared/errors';
+import { StorageErrorCode } from '@homelab/shared/errors';
+import { prisma } from '@homelab/shared/prisma';
 
 export async function reserve(userId: string, size: number) {
   await prisma.$transaction(async (tx) => {

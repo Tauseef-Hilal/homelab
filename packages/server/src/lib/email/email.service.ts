@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { env } from '@shared/config/env';
+import { env } from '@homelab/shared/config';
 import { EmailPayload } from './types';
 
 let transporter: nodemailer.Transporter;

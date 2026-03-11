@@ -1,11 +1,10 @@
 import axios from '@client/lib/api';
-import { LoginInput } from '@shared/schemas/auth/request/auth.schema';
-import {
-  LoginResponse,
-  loginSchema,
-} from '@shared/schemas/auth/response/auth.schema';
+import { requestSchemas, responseSchemas } from '@homelab/shared/schemas/auth';
 
-export async function login(data: LoginInput) {
-  const res = await axios.post<LoginResponse>('/auth/login', data);
-  return loginSchema.parse(res.data);
+export async function login(data: requestSchemas.LoginInput) {
+  const res = await axios.post<responseSchemas.LoginResponse>(
+    '/auth/login',
+    data,
+  );
+  return responseSchemas.loginSchema.parse(res.data);
 }

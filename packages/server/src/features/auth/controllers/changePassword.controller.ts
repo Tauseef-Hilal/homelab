@@ -1,13 +1,13 @@
 import { Request, Response } from 'express';
 import { catchAsync } from '@server/lib/catchAsync';
-import { changePasswordSchema } from '@shared/schemas/auth/request/auth.schema';
-import * as AuthService from '../services/auth.service';
+import { requestSchemas } from '@homelab/shared/schemas/auth';
 import { success } from '@server/lib/response';
 import { verifyTfaToken } from '@server/lib/jwt';
+import * as AuthService from '../services/auth.service';
 
 export const changePasswordController = catchAsync(
   async (req: Request, res: Response) => {
-    const { token, newPassword } = changePasswordSchema.parse(
+    const { token, newPassword } = requestSchemas.changePasswordSchema.parse(
       req.body
     );
 

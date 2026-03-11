@@ -1,7 +1,7 @@
 import path from 'path';
-import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
-import { HttpError } from '@shared/errors/HttpError';
-import { prisma } from '@shared/prisma';
+import { CommonErrorCode } from '@homelab/shared/errors';
+import { HttpError } from '@homelab/shared/errors';
+import { prisma } from '@homelab/shared/prisma';
 
 export function getFileExtension(filename: string): string {
   const ext = path.extname(filename || '').toLowerCase();

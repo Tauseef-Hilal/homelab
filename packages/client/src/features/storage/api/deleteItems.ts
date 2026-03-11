@@ -1,8 +1,10 @@
 import api from '@client/lib/api';
-import { DeleteItemsInput } from '@shared/schemas/storage/request.schema';
-import { deleteItemsSchema } from '@shared/schemas/storage/response.schema';
+import {
+  requestSchemas,
+  responseSchemas,
+} from '@homelab/shared/schemas/storage';
 
-export async function deleteItems(data: DeleteItemsInput) {
+export async function deleteItems(data: requestSchemas.DeleteItemsInput) {
   const res = await api.post('/storage/items/delete', data);
-  return deleteItemsSchema.parse(res.data);
+  return responseSchemas.deleteItemsSchema.parse(res.data);
 }

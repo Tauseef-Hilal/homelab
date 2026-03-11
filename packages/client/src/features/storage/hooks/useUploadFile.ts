@@ -1,20 +1,22 @@
-import { UploadFileResponse } from '@shared/schemas/storage/response.schema';
 import { useMutation } from '@tanstack/react-query';
 import { uploadFile } from '../api/uploadFile';
 import { AxiosError } from 'axios';
-import { ServerError } from '@shared/types/error';
-import { UploadFileInput } from '@shared/schemas/storage/request.schema';
+import { ServerError } from '@homelab/shared/types';
+import {
+  requestSchemas,
+  responseSchemas,
+} from '@homelab/shared/schemas/storage';
 
 export type UseUploadFileOptions = {
-  onSuccess: (data: UploadFileResponse) => void;
+  onSuccess: (data: responseSchemas.UploadFileResponse) => void;
   onError: (file: File) => void;
 };
 
 export function useUploadFile(options: UseUploadFileOptions) {
   return useMutation<
-    UploadFileResponse,
+    responseSchemas.UploadFileResponse,
     AxiosError<ServerError>,
-    UploadFileInput
+    requestSchemas.UploadFileInput
   >({
     mutationFn: uploadFile,
     onSuccess: options.onSuccess,

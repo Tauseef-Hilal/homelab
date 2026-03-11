@@ -25,8 +25,7 @@ RUN apt-get update && apt-get install -y \
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
 # Copy dependency manifests
-COPY pnpm-workspace.yaml ./
-COPY package.json pnpm-lock.yaml ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/workers/package.json packages/workers/
 COPY packages/shared/package.json packages/shared/
 
@@ -44,10 +43,10 @@ WORKDIR /app
 COPY . .
 
 # Generate prisma client
-RUN pnpm --filter ./packages/shared exec prisma generate
+RUN pnpm --filter shared generate
 
 # Build workers
-RUN pnpm --filter ./packages/workers run build
+RUN pnpm --filter workers build
 
 
 # --------------------------------
@@ -78,9 +77,10 @@ COPY --from=build /app/package.json ./
 COPY --from=build /app/pnpm-lock.yaml ./
 COPY --from=build /app/pnpm-workspace.yaml ./
 
-COPY --from=build /app/packages/workers/dist ./
+COPY --from=build /app/packages/workers/dist ./packages/workers/dist/
 COPY --from=build /app/packages/workers/package.json ./packages/workers/
 
+COPY --from=build /app/packages/shared/dist ./packages/shared/dist/
 COPY --from=build /app/packages/shared/package.json ./packages/shared/
 COPY --from=build /app/packages/shared/prisma ./packages/shared/prisma
 
@@ -88,7 +88,7 @@ COPY --from=build /app/packages/shared/prisma ./packages/shared/prisma
 RUN pnpm install --prod --frozen-lockfile
 
 # Generate prisma client
-RUN pnpm --filter ./packages/shared exec prisma generate
+RUN pnpm --filter shared generate
 
 # Start worker
-CMD ["pnpm", "--filter", "./packages/workers", "run", "start:thumbnail"]
+CMD ["pnpm", "--filter", "workers", "start:thumbnail"]

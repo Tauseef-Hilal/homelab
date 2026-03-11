@@ -1,7 +1,7 @@
 import api from '@client/lib/api';
-import { getStatsSchema } from '@shared/schemas/storage/response.schema';
+import { responseSchemas } from '@homelab/shared/schemas/storage';
 
 export async function getStats() {
   const res = await api.get(`/storage/stats`);
-  return getStatsSchema.parse(res.data);
+  return responseSchemas.getStatsSchema.parse(res.data);
 }

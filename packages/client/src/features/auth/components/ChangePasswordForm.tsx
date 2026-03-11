@@ -3,10 +3,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  ChangePasswordInput,
-  changePasswordSchema,
-} from "@shared/schemas/auth/request/auth.schema";
+import { requestSchemas, responseSchemas } from "@homelab/shared/schemas/auth";
 import { useChangePassword } from "../hooks/useChangePassword";
 import { mapServerFieldErrors } from "../utils/fieldErrors";
 import FormField from "@client/components/FormField";
@@ -24,7 +21,7 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ token }) => {
     setError,
     formState: { errors, isSubmitting },
   } = useForm({
-    resolver: zodResolver(changePasswordSchema),
+    resolver: zodResolver(requestSchemas.changePasswordSchema),
     defaultValues: { token },
   });
 
@@ -33,7 +30,8 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ token }) => {
     onFieldError: (errors) => mapServerFieldErrors(errors, setError),
   });
 
-  const onSubmit = (data: ChangePasswordInput) => mutation.mutate(data);
+  const onSubmit = (data: requestSchemas.ChangePasswordInput) =>
+    mutation.mutate(data);
   const fieldClassName = "bg-neutral-100 h-12 w-full shadow-none border-0";
 
   return (

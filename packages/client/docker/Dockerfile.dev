@@ -30,7 +30,7 @@ COPY . .
 RUN pnpm install --recursive
 
 # Generate Prisma client
-RUN pnpm --filter shared prisma generate
+RUN pnpm --filter shared generate
 
 # Expose client port (optional but good)
 EXPOSE 3000

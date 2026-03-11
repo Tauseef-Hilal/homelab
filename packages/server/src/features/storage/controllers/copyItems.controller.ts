@@ -1,15 +1,17 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { copyItemsSchema } from '@shared/schemas/storage/request.schema';
+import { requestSchemas } from '@homelab/shared/schemas/storage';
 import { enqueueCopyJob } from '@server/lib/jobs/fileIOQueue';
-import { jobNames } from '@shared/jobs/constants';
+import { jobNames } from '@homelab/shared/jobs';
 import { success } from '@server/lib/response';
-import { prisma } from '@shared/prisma';
+import { prisma } from '@homelab/shared/prisma';
 import { ensureFolderExists, ensureUserIsOwner } from '../utils/folder.util';
 
 export const copyItemsController = catchAsync(
   async (req: Request, res: Response) => {
-    const { destinationFolderId, items } = copyItemsSchema.parse(req.body);
+    const { destinationFolderId, items } = requestSchemas.copyItemsSchema.parse(
+      req.body,
+    );
 
     const targetFolder = await prisma.folder.findUnique({
       where: { id: destinationFolderId },
@@ -31,5 +33,5 @@ export const copyItemsController = catchAsync(
     res
       .status(200)
       .json(success({ job: { id: job.id } }, 'Copying items in progress'));
-  }
+  },
 );

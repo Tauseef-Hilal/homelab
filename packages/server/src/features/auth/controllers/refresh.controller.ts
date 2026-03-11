@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
 import { catchAsync } from '@server/lib/catchAsync';
-import * as AuthService from '../services/auth.service';
-import { env } from '@shared/config/env';
+import { env } from '@homelab/shared/config';
 import { throwUnauthorized } from '../utils/error.util';
 import { tokenExpirations } from '@server/constants/token.constants';
 import { success } from '@server/lib/response';
+import * as AuthService from '../services/auth.service';
 
 export const refreshController = catchAsync(
   async (req: Request, res: Response) => {

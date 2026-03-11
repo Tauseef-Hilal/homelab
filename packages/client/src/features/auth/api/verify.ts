@@ -1,11 +1,10 @@
 import axios from '@client/lib/api';
-import { VerifyOtpInput } from '@shared/schemas/auth/request/auth.schema';
-import {
-  VerifyOtpResponse,
-  verifyOtpSchema,
-} from '@shared/schemas/auth/response/auth.schema';
+import { requestSchemas, responseSchemas } from '@homelab/shared/schemas/auth';
 
-export async function verify(data: VerifyOtpInput) {
-  const res = await axios.post<VerifyOtpResponse>('/auth/verify-otp', data);
-  return verifyOtpSchema.parse(res.data);
+export async function verify(data: requestSchemas.VerifyOtpInput) {
+  const res = await axios.post<responseSchemas.VerifyOtpResponse>(
+    '/auth/verify-otp',
+    data,
+  );
+  return responseSchemas.verifyOtpSchema.parse(res.data);
 }

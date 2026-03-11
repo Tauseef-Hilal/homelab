@@ -5,7 +5,7 @@ import { ForkKnifeCrossedIcon, Loader2Icon } from "lucide-react";
 import useDriveStore from "../stores/driveStore";
 import FileSystemEntry from "./FileSystemEntry";
 import { cx } from "class-variance-authority";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ContextMenu,
   ContextMenuContent,

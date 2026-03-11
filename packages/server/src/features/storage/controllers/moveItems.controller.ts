@@ -1,13 +1,15 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { moveItemsSchema } from '@shared/schemas/storage/request.schema';
+import { requestSchemas } from '@homelab/shared/schemas/storage';
 import { enqueueMoveJob } from '@server/lib/jobs/fileIOQueue';
-import { jobNames } from '@shared/jobs/constants';
+import { jobNames } from '@homelab/shared/jobs';
 import { success } from '@server/lib/response';
 
 export const moveItemsController = catchAsync(
   async (req: Request, res: Response) => {
-    const { destinationFolderId, items } = moveItemsSchema.parse(req.body);
+    const { destinationFolderId, items } = requestSchemas.moveItemsSchema.parse(
+      req.body,
+    );
 
     const job = await enqueueMoveJob(jobNames.moveJobName, {
       items,
@@ -20,5 +22,5 @@ export const moveItemsController = catchAsync(
     res
       .status(200)
       .json(success({ job: { id: job.id } }, 'Moving items in progress'));
-  }
+  },
 );

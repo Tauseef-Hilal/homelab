@@ -1,18 +1,24 @@
-import { DeleteItemsOutput } from '@shared/schemas/storage/response.schema';
-import { DeleteItemsInput } from '@shared/schemas/storage/request.schema';
-import { ServerError } from '@shared/types/error';
+import {
+  requestSchemas,
+  responseSchemas,
+} from '@homelab/shared/schemas/storage';
+import { ServerError } from '@homelab/shared/types';
 import { useMutation } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { deleteItems } from '../api/deleteItems';
 import { toast } from 'sonner';
 
 export type UseDeleteItemsOptions = {
-  onSuccess: (data: DeleteItemsOutput) => void;
+  onSuccess: (data: responseSchemas.DeleteItemsOutput) => void;
   onError: (error: string) => void;
 };
 
 export function useDeleteItems(options: UseDeleteItemsOptions) {
-  return useMutation<DeleteItemsOutput, AxiosError<ServerError>, DeleteItemsInput>({
+  return useMutation<
+    responseSchemas.DeleteItemsOutput,
+    AxiosError<ServerError>,
+    requestSchemas.DeleteItemsInput
+  >({
     mutationFn: deleteItems,
     onSuccess: options.onSuccess,
     onError: (error) => {

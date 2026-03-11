@@ -1,8 +1,7 @@
 import { ConnectionOptions, Worker } from 'bullmq';
-import redis from '@shared/redis';
-import { queueNames } from '@shared/jobs/constants';
+import { redis } from '@homelab/shared/redis';
+import { queueNames, JobPayload } from '@homelab/shared/jobs';
 import { fileIOJobProcessor } from './processor';
-import { JobPayload } from '@shared/jobs/payload.types';
 import { updateJob } from '../../utils/db';
 import { getJobLogger } from '@workers/utils/logger';
 

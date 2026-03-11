@@ -1,4 +1,4 @@
-import { RateLimitPolicy } from '@server/types/rate';
+import { RateLimitPolicy } from '@homelab/shared/types';
 
 /*
 |--------------------------------------------------------------------------

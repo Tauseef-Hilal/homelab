@@ -1,11 +1,10 @@
 import api from '@client/lib/api';
-import { ChangePasswordInput } from '@shared/schemas/auth/request/auth.schema';
-import {
-  ChangePasswordResponse,
-  changePasswordSchema,
-} from '@shared/schemas/auth/response/auth.schema';
+import { requestSchemas, responseSchemas } from '@homelab/shared/schemas/auth';
 
-export async function changePassword(data: ChangePasswordInput) {
-  const res = await api.patch<ChangePasswordResponse>('/auth/password', data);
-  return changePasswordSchema.parse(res.data);
+export async function changePassword(data: requestSchemas.ChangePasswordInput) {
+  const res = await api.patch<responseSchemas.ChangePasswordResponse>(
+    '/auth/password',
+    data,
+  );
+  return responseSchemas.changePasswordSchema.parse(res.data);
 }

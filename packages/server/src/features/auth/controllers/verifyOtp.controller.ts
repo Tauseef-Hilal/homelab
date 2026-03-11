@@ -1,31 +1,31 @@
 import { Request, Response } from 'express';
 import { catchAsync } from '@server/lib/catchAsync';
-import { verifyOtpSchema } from '@shared/schemas/auth/request/auth.schema';
+import { requestSchemas } from '@homelab/shared/schemas/auth';
 import {
   generateAccessToken,
   generateRefreshToken,
   verifyTfaToken,
-} from '../../../lib/jwt';
-import * as OtpService from '../services/otp.service';
-import * as AuthService from '../services/auth.service';
+} from '@server/lib/jwt';
 import { TfaPurpose } from '../constants/TfaPurpose';
-import { prisma } from '@shared/prisma';
-import { HttpError } from '@shared/errors/HttpError';
+import { prisma } from '@homelab/shared/prisma';
+import { HttpError } from '@homelab/shared/errors';
 import { AuthErrorCode } from '../constants/AuthErrorCode';
 import { buildTokenPayload, storeRefreshToken } from '../utils/token.util';
 import { TokenMeta } from '../../../types/jwt.types';
-import { env } from '@shared/config/env';
 import { tokenExpirations } from '@server/constants/token.constants';
 import { success } from '@server/lib/response';
+import { env } from '@homelab/shared/config';
+import * as OtpService from '../services/otp.service';
+import * as AuthService from '../services/auth.service';
 
 export const verifyOtpController = catchAsync(
   async (req: Request, res: Response) => {
-    const { token, otp } = verifyOtpSchema.parse(req.body);
+    const { token, otp } = requestSchemas.verifyOtpSchema.parse(req.body);
     const { email, userId, purpose } = verifyTfaToken(token);
 
     await OtpService.verifyOtp(userId, otp);
     await handleOtpPurpose[purpose](res, email, req.clientMeta ?? {}, token);
-  }
+  },
 );
 
 const handleOtpPurpose = {
@@ -33,7 +33,7 @@ const handleOtpPurpose = {
     res: Response,
     email: string,
     meta: TokenMeta,
-    token: string
+    token: string,
   ) => {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
@@ -73,8 +73,8 @@ const handleOtpPurpose = {
             },
             tokens: { access: accessToken },
           },
-          'Login successful'
-        )
+          'Login successful',
+        ),
       );
   },
 
@@ -82,13 +82,13 @@ const handleOtpPurpose = {
     res: Response,
     userId: string,
     meta: TokenMeta,
-    token: string
+    token: string,
   ) => {
     await AuthService.allowPasswordChange(userId);
     return res
       .status(200)
       .json(
-        success({ changePasswordToken: token }, 'Continue to change password')
+        success({ changePasswordToken: token }, 'Continue to change password'),
       );
   },
 };

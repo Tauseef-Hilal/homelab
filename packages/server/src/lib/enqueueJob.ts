@@ -1,5 +1,5 @@
-import { prisma } from '@shared/prisma';
-import { JobPayload } from '@shared/jobs/payload.types';
+import { prisma } from '@homelab/shared/prisma';
+import { JobPayload } from '@homelab/shared/jobs';
 
 export const enqueueJob =
   <T extends JobPayload>(

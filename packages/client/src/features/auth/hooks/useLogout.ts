@@ -1,11 +1,10 @@
+import { AxiosError } from 'axios';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import useAuthStore from '../stores/auth.store';
 import { logout } from '../api/logout';
 import { useRouter } from 'next/navigation';
-import { LogoutResponse } from '@shared/schemas/auth/response/auth.schema';
-import { AxiosError } from 'axios';
-import { ServerError } from '@shared/types/error';
-import { LogoutInput } from '@shared/schemas/auth/request/auth.schema';
+import { ServerError } from '@homelab/shared/types';
+import { requestSchemas, responseSchemas } from '@homelab/shared/schemas/auth';
 
 export type UseLogoutOptions = {
   onError: (msg: string) => void;
@@ -16,7 +15,11 @@ export function useLogout(options: UseLogoutOptions) {
   const clearAuthState = useAuthStore((state) => state.logout);
   const router = useRouter();
 
-  return useMutation<LogoutResponse, AxiosError<ServerError>, LogoutInput>({
+  return useMutation<
+    responseSchemas.LogoutResponse,
+    AxiosError<ServerError>,
+    requestSchemas.LogoutInput
+  >({
     mutationFn: logout,
     onSuccess: () => {
       clearAuthState();

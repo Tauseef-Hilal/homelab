@@ -12,8 +12,7 @@ RUN apt-get update -y \
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy dependency files for caching
-COPY pnpm-workspace.yaml ./
-COPY package.json pnpm-lock.yaml ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/client/package.json packages/client/
 COPY packages/shared/package.json packages/shared/
 
@@ -30,10 +29,11 @@ WORKDIR /app
 COPY . .
 
 # Generate Prisma client
-RUN pnpm --filter ./packages/shared exec prisma generate
+RUN pnpm --filter shared generate
 
 # Build Next.js app
-RUN pnpm --filter ./packages/client run build
+RUN pnpm --filter shared build
+RUN pnpm --filter client build
 
 # --------------------------------
 # Runtime stage (minimal)
@@ -49,12 +49,15 @@ RUN apt-get update -y \
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy only necessary files from build
+COPY --from=build /app/packages/client/package.json ./packages/client/
+
+COPY --from=build /app/packages/shared/package.json ./packages/shared/
+COPY --from=build /app/packages/shared/dist ./packages/shared/dist/
+COPY --from=build /app/packages/shared/prisma ./packages/shared/prisma/
+
 COPY --from=build /app/package.json ./
 COPY --from=build /app/pnpm-workspace.yaml ./
 COPY --from=build /app/pnpm-lock.yaml ./
-COPY --from=build /app/packages/client/package.json ./packages/client/
-COPY --from=build /app/packages/shared/package.json ./packages/shared/
-COPY --from=build /app/packages/shared/prisma ./packages/shared/prisma/
 
 # Copy Next.js build output and static assets
 COPY --from=build /app/packages/client/.next ./packages/client/.next
@@ -64,10 +67,10 @@ COPY --from=build /app/packages/client/next.config.ts ./packages/client/
 RUN pnpm install -r --prod --frozen-lockfile
 
 # Generate Prisma client again (it must exist at runtime)
-RUN pnpm --filter ./packages/shared exec prisma generate
+RUN pnpm --filter shared generate
 
 # Expose Next.js port
 EXPOSE 3000
 
 # Start Next.js app
-CMD ["pnpm", "--filter", "./packages/client", "run", "start"]
+CMD ["pnpm", "--filter", "client", "start"]

@@ -1,12 +1,12 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
 import { createReadStream } from 'fs';
-import { idParamSchema } from '@shared/schemas/storage/request.schema';
+import { requestSchemas } from '@homelab/shared/schemas/storage';
 import { validateLinkAndGetDownloadMeta } from '../services/folder.service';
 
 export const downloadController = catchAsync(
   async (req: Request, res: Response) => {
-    const id = idParamSchema.parse(req.params.id);
+    const id = requestSchemas.idParamSchema.parse(req.params.id);
 
     const { filePath, fileName } = await validateLinkAndGetDownloadMeta(
       id

@@ -8,10 +8,7 @@ import {
   DialogTitle,
 } from "@client/components/ui/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  UploadFileInput,
-  uploadFileSchema,
-} from "@shared/schemas/storage/request.schema";
+import { requestSchemas } from "@homelab/shared/schemas/storage";
 import { useForm } from "react-hook-form";
 import { useUploadFile } from "../hooks/useUploadFile";
 import { Input } from "@client/components/ui/input";
@@ -26,7 +23,7 @@ import { useState } from "react";
 import { Button } from "@client/components/ui/button";
 import { Progress } from "@client/components/ui/progress";
 import { useBatchMutation } from "../hooks/useBatchMutation";
-import { UploadFileResponse } from "@shared/schemas/storage/response.schema";
+import { UploadFileResponse } from "@homelab/shared/schemas/storage/response.schema";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface UploadDialogProps {
@@ -46,15 +43,15 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
   const [ranOnce, setRanOnce] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [visibility, setVisibility] =
-    useState<UploadFileInput["visibility"]>("public");
+    useState<requestSchemas.UploadFileInput["visibility"]>("public");
 
   const {
     handleSubmit,
     register,
     formState: { isSubmitting },
-  } = useForm<UploadFileInput>({
+  } = useForm<requestSchemas.UploadFileInput>({
     defaultValues: { folderId, visibility },
-    resolver: zodResolver(uploadFileSchema),
+    resolver: zodResolver(requestSchemas.uploadFileSchema),
   });
 
   const mutation = useUploadFile({
@@ -63,7 +60,7 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
   });
 
   const { isPending, mutate, retry, failed, setFailed, progress } =
-    useBatchMutation<UploadFileInput, UploadFileResponse>({
+    useBatchMutation<requestSchemas.UploadFileInput, UploadFileResponse>({
       mutationFn: mutation.mutateAsync,
       onSuccess: () => {
         refetch();
@@ -72,7 +69,7 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
       delay: 1000,
     });
 
-  const onSubmit = async (data: UploadFileInput) => {
+  const onSubmit = async (data: requestSchemas.UploadFileInput) => {
     data.folderId = folderId;
     setRanOnce(true);
 
@@ -87,7 +84,7 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
       formData.append("file", file);
       formData.append("folderId", data.folderId ?? "");
       formData.append("visibility", data.visibility);
-      return formData as any as UploadFileInput;
+      return formData as any as requestSchemas.UploadFileInput;
     });
 
     mutate(inputs);
@@ -125,7 +122,9 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
             value={visibility}
             defaultValue="public"
             onValueChange={(value) =>
-              setVisibility(value as UploadFileInput["visibility"])
+              setVisibility(
+                value as requestSchemas.UploadFileInput["visibility"],
+              )
             }
             {...register("visibility")}
           >

@@ -10,15 +10,13 @@ import chatRoutes from './features/chat/chat.routes';
 import jobRoutes from './features/job/job.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { requestLogger } from './middleware/logging.middleware';
-import { env } from '../../shared/src/config/env';
+import { env } from '@homelab/shared/config';
 import { extractClientMeta } from './middleware/extractClientMeta.middleware';
 import {
   healthController,
   readyController,
 } from './infrastructure/health/health.controller';
 import { setupBullBoard } from './infrastructure/queues/bull-board';
-import { requireAuth } from './middleware/requireAuth.middleware';
-import { requireRole } from './middleware/requireRole.middleware';
 import expressBasicAuth from 'express-basic-auth';
 
 const app = express();

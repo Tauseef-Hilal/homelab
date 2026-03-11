@@ -1,10 +1,12 @@
 import api from '@client/lib/api';
-import { UploadFileInput } from '@shared/schemas/storage/request.schema';
-import { uploadFileSchema } from '@shared/schemas/storage/response.schema';
+import {
+  requestSchemas,
+  responseSchemas,
+} from '@homelab/shared/schemas/storage';
 
-export async function uploadFile(data: UploadFileInput) {
+export async function uploadFile(data: requestSchemas.UploadFileInput) {
   const res = await api.post('/storage/file', data, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return uploadFileSchema.parse(res.data);
+  return responseSchemas.uploadFileSchema.parse(res.data);
 }

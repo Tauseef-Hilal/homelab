@@ -1,5 +1,5 @@
-import { env } from '@shared/config/env';
-import logger from '@shared/logging';
+import { env } from '@homelab/shared/config';
+import logger from '@homelab/shared/logging';
 import { Server as HTTPServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
 

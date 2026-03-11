@@ -2,12 +2,12 @@ import path from 'path';
 import fs from 'fs/promises';
 import { randomUUID } from 'crypto';
 import { createWriteStream, existsSync } from 'fs';
-import { prisma } from '@shared/prisma';
-import { HttpError } from '@shared/errors/HttpError';
+import { prisma } from '@homelab/shared/prisma';
+import { HttpError } from '@homelab/shared/errors';
 import { Visibility } from '@prisma/client';
 import { pipeline } from 'stream/promises';
 import { Readable } from 'stream';
-import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
+import { CommonErrorCode, StorageErrorCode } from '@homelab/shared/errors';
 import {
   resolveFileName,
   getFileExtension,
@@ -16,9 +16,9 @@ import {
 import {
   getOriginalFilePath,
   getThumbnailPath,
-} from '@shared/utils/storage.utils';
-import { reserve, release } from '@shared/utils/quota.utils';
-import { StorageErrorCode } from '@shared/errors/StorageErrorCode';
+  reserve,
+  release,
+} from '@homelab/shared/utils';
 
 export async function saveFile(
   userId: string,

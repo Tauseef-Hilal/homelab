@@ -3,8 +3,8 @@ import path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 import sharp from 'sharp';
 import { spawn } from 'child_process';
-import { getThumbnailPath } from '@shared/utils/storage.utils';
-import { ThumbnailJobPayload } from '@shared/jobs/payload.types';
+import { getThumbnailPath } from '@homelab/shared/utils';
+import { ThumbnailJobPayload } from '@homelab/shared/jobs';
 
 export const generateThumbnail = async ({
   fileId,
@@ -32,7 +32,7 @@ export const generateThumbnail = async ({
         path.join(outputDir, `${fileId}-pdf`),
       ]);
       child.on('close', (code) =>
-        code === 0 ? resolve(0) : reject(new Error('PDF convert error'))
+        code === 0 ? resolve(0) : reject(new Error('PDF convert error')),
       );
     });
 

@@ -1,8 +1,8 @@
 import { Request } from 'express';
 import multer, { FileFilterCallback } from 'multer';
 import allowedMimeTypes from './mimetypes';
-import { HttpError } from '@shared/errors/HttpError';
-import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
+import { HttpError } from '@homelab/shared/errors';
+import { CommonErrorCode } from '@homelab/shared/errors';
 import { MAX_FILE_SIZE } from '@server/features/storage/constants/limits';
 
 const storage = multer.memoryStorage();
@@ -10,7 +10,7 @@ const storage = multer.memoryStorage();
 const fileFilter = (
   _: Request,
   file: Express.Multer.File,
-  cb: FileFilterCallback
+  cb: FileFilterCallback,
 ) => {
   if (allowedMimeTypes.has(file.mimetype)) cb(null, true);
   else
@@ -19,7 +19,7 @@ const fileFilter = (
         status: 415,
         code: CommonErrorCode.UNSUPPORTED_MEDIA_TYPE,
         message: 'Unsupported file type',
-      })
+      }),
     );
 };
 

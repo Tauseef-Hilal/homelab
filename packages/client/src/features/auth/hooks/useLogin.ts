@@ -1,9 +1,8 @@
 import { AxiosError } from 'axios';
 import { useMutation } from '@tanstack/react-query';
 import { login } from '../api/login';
-import { LoginResponse } from '@shared/schemas/auth/response/auth.schema';
-import { ServerError } from '@shared/types/error';
-import { LoginInput } from '@shared/schemas/auth/request/auth.schema';
+import { requestSchemas, responseSchemas } from '@homelab/shared/schemas/auth';
+import { ServerError } from '@homelab/shared/types';
 import { useRouter } from 'next/navigation';
 
 export type UseLoginOptions = {
@@ -14,7 +13,11 @@ export type UseLoginOptions = {
 export function useLogin(options: UseLoginOptions) {
   const router = useRouter();
 
-  return useMutation<LoginResponse, AxiosError<ServerError>, LoginInput>({
+  return useMutation<
+    responseSchemas.LoginResponse,
+    AxiosError<ServerError>,
+    requestSchemas.LoginInput
+  >({
     mutationFn: login,
     onSuccess: (data) => {
       router.push(`/auth/verification?token=${data.token}`);

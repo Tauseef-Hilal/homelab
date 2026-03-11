@@ -1,13 +1,13 @@
 import { NextFunction, Request, Response } from 'express';
 import { catchAsync } from '@server/lib/catchAsync';
-import { loginSchema } from '@shared/schemas/auth/request/auth.schema';
+import { requestSchemas } from '@homelab/shared/schemas/auth';
+import { success } from '@server/lib/response';
 import * as AuthService from '../services/auth.service';
 import * as OtpService from '../services/otp.service';
-import { success } from '@server/lib/response';
 
 export const loginController = catchAsync(
   async (req: Request, res: Response, _: NextFunction) => {
-    const { email, password } = loginSchema.parse(req.body);
+    const { email, password } = requestSchemas.loginSchema.parse(req.body);
 
     const { token, user } = await AuthService.login(
       email,

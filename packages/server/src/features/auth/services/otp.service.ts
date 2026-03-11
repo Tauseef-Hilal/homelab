@@ -1,7 +1,6 @@
-import redis from '@shared/redis';
+import { redis, RedisKeys } from '@homelab/shared/redis';
 import { authConfig } from '../auth.config';
 import { throwUnauthorized } from '../utils/error.util';
-import { RedisKeys } from '@shared/redis/redisKeys';
 import { hashTokenSync } from '../utils/token.util';
 import { sendOtpEmail } from '@server/lib/email/email.service';
 import { deleteOtp, generateOtp, getOtp, setOtp } from '../utils/otp.util';
@@ -16,7 +15,7 @@ export const sendOtp = async (userId: string, email: string) => {
 
 export const verifyOtp = async (
   userId: string,
-  inputCode: string
+  inputCode: string,
 ): Promise<void> => {
   const data = await getOtp(userId);
   if (!data) return throwUnauthorized('OTP expired or invalid');
@@ -36,7 +35,7 @@ export const verifyOtp = async (
       RedisKeys.auth.otp(userId),
       JSON.stringify(data),
       'EX',
-      Math.floor(tokenExpirations.OTP_TOKEN_EXPIRY_MS / 1000)
+      Math.floor(tokenExpirations.OTP_TOKEN_EXPIRY_MS / 1000),
     );
 
     return throwUnauthorized('Incorrect OTP');

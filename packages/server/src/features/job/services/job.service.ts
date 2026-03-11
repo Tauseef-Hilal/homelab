@@ -1,6 +1,6 @@
-import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
-import { HttpError } from '@shared/errors/HttpError';
-import { prisma } from '@shared/prisma';
+import { CommonErrorCode } from '@homelab/shared/errors';
+import { HttpError } from '@homelab/shared/errors';
+import { prisma } from '@homelab/shared/prisma';
 
 export async function getJob(userId: string, jobId: string) {
   const job = await prisma.job.findUnique({

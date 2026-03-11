@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
-import { loggerWithContext } from '@shared/logging';
+import { loggerWithContext } from '@homelab/shared/logging';
 
 export function requestLogger(req: Request, res: Response, next: NextFunction) {
   const startTime = Date.now();

@@ -1,13 +1,25 @@
 {
-  "name": "shared",
+  "name": "@homelab/shared",
   "version": "0.1.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "keywords": [],
   "author": "Tauseef Tantary",
   "license": "MIT",
   "scripts": {
-    "build": "npx tsc && npx tsc-alias"
+    "build": "tsc -b && tsc-alias",
+    "generate": "prisma generate"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./dist/*/index.d.ts",
+      "require": "./dist/*/index.js"
+    }
   },
   "devDependencies": {
     "@types/fluent-ffmpeg": "^2.1.27",

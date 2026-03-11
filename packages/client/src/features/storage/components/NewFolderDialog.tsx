@@ -8,13 +8,9 @@ import {
   DialogTitle,
 } from "@client/components/ui/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  CreateFolderInput,
-  createFolderSchema,
-} from "@shared/schemas/storage/request.schema";
+import { requestSchemas } from "@homelab/shared/schemas/storage";
 import { useForm } from "react-hook-form";
 import { useCreateFolder } from "../hooks/useCreateFolder";
-import useDriveStore from "../stores/driveStore";
 import { toast } from "sonner";
 
 interface NewFolderDialogProps {
@@ -28,26 +24,26 @@ const NewFolderDialog: React.FC<NewFolderDialogProps> = ({
   parentId,
   open,
   setOpen,
-  refetch
+  refetch,
 }) => {
   const {
     register,
     handleSubmit,
     formState: { isSubmitting, errors },
-  } = useForm<CreateFolderInput>({
+  } = useForm<requestSchemas.CreateFolderInput>({
     defaultValues: { parentId },
-    resolver: zodResolver(createFolderSchema),
+    resolver: zodResolver(requestSchemas.createFolderSchema),
   });
 
   const { mutate, isPending } = useCreateFolder({
     onSuccess: (data) => {
-      refetch()
+      refetch();
       setOpen(false);
     },
     onError: () => toast("Failed to create folder!"),
   });
 
-  const onSubmit = (data: CreateFolderInput) => {
+  const onSubmit = (data: requestSchemas.CreateFolderInput) => {
     data.parentId = parentId;
     mutate(data);
   };

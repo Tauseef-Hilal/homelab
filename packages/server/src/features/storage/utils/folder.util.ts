@@ -1,11 +1,11 @@
 import { Folder } from '@prisma/client';
-import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
-import { HttpError } from '@shared/errors/HttpError';
-import { prisma } from '@shared/prisma';
+import { CommonErrorCode } from '@homelab/shared/errors';
+import { HttpError } from '@homelab/shared/errors';
+import { prisma } from '@homelab/shared/prisma';
 
 export function ensureFolderExists(
   folder: Folder | null,
-  errMsg: string = 'Folder does not exist'
+  errMsg: string = 'Folder does not exist',
 ) {
   if (!folder) {
     throw new HttpError({
@@ -19,7 +19,7 @@ export function ensureFolderExists(
 export function ensureUserIsOwner(
   folder: Folder,
   userId: string,
-  errMsg: string = 'You do not have the permission to perform this action'
+  errMsg: string = 'You do not have the permission to perform this action',
 ) {
   if (folder.userId != userId) {
     throw new HttpError({
@@ -38,7 +38,7 @@ export async function resolveFolderName(
   },
   newName: string,
   targetFolderId: string | null,
-  copy: boolean = false
+  copy: boolean = false,
 ) {
   const existingFolders = await prisma.folder.findMany({
     where: { parentId: targetFolderId, userId: folder.userId },
@@ -46,7 +46,7 @@ export async function resolveFolderName(
   });
 
   const existingFolderNames = existingFolders.map((f) =>
-    f.id != folder.id || copy ? f.name : ''
+    f.id != folder.id || copy ? f.name : '',
   );
 
   let n = 1;

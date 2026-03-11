@@ -3,16 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "tsc -b packages/*",
-    "dev": "ts-node "
+    "build": "pnpm -r build",
+    "clean": "rm -rf packages/*/dist packages/client/.next packages/*/*.tsbuildinfo dist coverage",
+    "removeDeps": "rm -rf node_modules packages/*/node_modules"
   },
   "devDependencies": {
-    "typescript": "^5.8.3",
     "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0"
+    "typescript": "^5.8.3"
   },
   "keywords": [],
   "author": "Tauseef Tantary",
   "license": "MIT",
-  "packageManager": "pnpm@10.13.1+sha512.37ebf1a5c7a30d5fabe0c5df44ee8da4c965ca0c5af3dbab28c3a1681b70a256218d05c81c9c0dcf767ef6b8551eb5b960042b9ed4300c59242336377e01cfad"
+  "packageManager": "pnpm@10.13.1"
 }

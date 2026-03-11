@@ -1,8 +1,10 @@
 import api from '@client/lib/api';
-import { DownloadItemsInput } from '@shared/schemas/storage/request.schema';
-import { downloadItemsSchema } from '@shared/schemas/storage/response.schema';
+import {
+  requestSchemas,
+  responseSchemas,
+} from '@homelab/shared/schemas/storage';
 
-export async function downloadItems(data: DownloadItemsInput) {
+export async function downloadItems(data: requestSchemas.DownloadItemsInput) {
   const res = await api.post('/storage/items/download', data);
-  return downloadItemsSchema.parse(res.data);
+  return responseSchemas.downloadItemsSchema.parse(res.data);
 }

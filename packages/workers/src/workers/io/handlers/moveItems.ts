@@ -1,9 +1,7 @@
 import { Folder } from '@prisma/client';
-import { MoveJobPayload } from '@shared/jobs/payload.types';
-import { MoveJobResult } from '@shared/jobs/result.types';
-import { prisma } from '@shared/prisma';
-import redis from '@shared/redis';
-import { RedisKeys } from '@shared/redis/redisKeys';
+import { MoveJobPayload, MoveJobResult } from '@homelab/shared/jobs';
+import { prisma } from '@homelab/shared/prisma';
+import { redis, RedisKeys } from '@homelab/shared/redis';
 import {
   ensureFolderExists,
   ensureUserIsOwner,
@@ -11,7 +9,7 @@ import {
   pathJoin,
   resolveFileName,
   resolveFolderName,
-} from '@shared/utils/storage.utils';
+} from '@homelab/shared/utils';
 import { validateFolderCopyPaths } from '@workers/utils/storage';
 
 export const moveItems = async ({

@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "esModuleInterop": true,
+    "noImplicitAny": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "strict": true
+  },
+  "ts-node": {
+    "compilerOptions": {
+      "module": "nodenext"
+    },
+    "require": ["tsconfig-paths/register"]
+  },
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { env } from '@shared/config/env';
+import { env } from '@homelab/shared/config';
 import { JwtPayload, TfaPayload } from '../types/jwt.types';
 import { tokenExpirations } from '@server/constants/token.constants';
 

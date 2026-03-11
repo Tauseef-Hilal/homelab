@@ -1,11 +1,11 @@
-import { GetStatsOutput } from '@shared/schemas/storage/response.schema';
+import { responseSchemas } from '@homelab/shared/schemas/storage';
 import { useQuery } from '@tanstack/react-query';
 import { getStats } from '../api/getStats';
 import { AxiosError } from 'axios';
-import { ServerError } from '@shared/types/error';
+import { ServerError } from '@homelab/shared/types';
 
 export function useGetStats() {
-  return useQuery<GetStatsOutput, AxiosError<ServerError>>({
+  return useQuery<responseSchemas.GetStatsOutput, AxiosError<ServerError>>({
     queryKey: ['stats'],
     queryFn: () => getStats(),
   });

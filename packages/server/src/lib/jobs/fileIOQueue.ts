@@ -5,10 +5,10 @@ import {
   JobPayload,
   MoveJobPayload,
   ZipJobPayload,
-} from '@shared/jobs/payload.types';
-import { queueNames } from '@shared/jobs/constants';
+  queueNames,
+} from '@homelab/shared/jobs/';
 import { enqueueJob } from '../enqueueJob';
-import redis from '@shared/redis';
+import { redis } from '@homelab/shared/redis';
 
 export const fileIOQueue = new Queue(queueNames.fileIOQueueName, {
   connection: redis as unknown as ConnectionOptions,
@@ -21,7 +21,7 @@ export const enqueueCopyJob = enqueueJob<CopyJobPayload>(
       removeOnComplete: true,
       removeOnFail: true,
     });
-  }
+  },
 );
 
 export const enqueueMoveJob = enqueueJob<MoveJobPayload>(
@@ -31,7 +31,7 @@ export const enqueueMoveJob = enqueueJob<MoveJobPayload>(
       removeOnComplete: true,
       removeOnFail: true,
     });
-  }
+  },
 );
 
 export const enqueueDeleteJob = enqueueJob<DeleteJobPayload>(
@@ -41,7 +41,7 @@ export const enqueueDeleteJob = enqueueJob<DeleteJobPayload>(
       removeOnComplete: true,
       removeOnFail: true,
     });
-  }
+  },
 );
 
 export const enqueueZipJob = enqueueJob<ZipJobPayload>(
@@ -51,5 +51,5 @@ export const enqueueZipJob = enqueueJob<ZipJobPayload>(
       removeOnComplete: true,
       removeOnFail: true,
     });
-  }
+  },
 );

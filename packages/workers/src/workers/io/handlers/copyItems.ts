@@ -4,9 +4,8 @@ import { unlink } from 'fs/promises';
 
 import { File, Visibility } from '@prisma/client';
 
-import { prisma } from '@shared/prisma';
-import redis from '@shared/redis';
-import { RedisKeys } from '@shared/redis/redisKeys';
+import { prisma } from '@homelab/shared/prisma';
+import { redis, RedisKeys } from '@homelab/shared/redis';
 
 import {
   copyFileOnDisk,
@@ -17,18 +16,18 @@ import {
   pathJoin,
   resolveFileName,
   resolveFolderName,
-} from '@shared/utils/storage.utils';
+  calculateSize,
+  reserve,
+  release,
+} from '@homelab/shared/utils/';
 
-import { calculateSize, reserve, release } from '@shared/utils/quota.utils';
-
-import { HttpError } from '@shared/errors/HttpError';
-import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
-import { StorageErrorCode } from '@shared/errors/StorageErrorCode';
+import { HttpError } from '@homelab/shared/errors';
+import { CommonErrorCode } from '@homelab/shared/errors';
+import { StorageErrorCode } from '@homelab/shared/errors';
 
 import { validateFolderCopyPaths } from '@workers/utils/storage';
 
-import { CopyJobPayload } from '@shared/jobs/payload.types';
-import { CopyJobResult } from '@shared/jobs/result.types';
+import { CopyJobPayload, CopyJobResult } from '@homelab/shared/jobs/';
 
 type FileMeta = {
   id: string;

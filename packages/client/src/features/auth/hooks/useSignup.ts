@@ -1,11 +1,10 @@
 import { AxiosError } from 'axios';
 import { useMutation } from '@tanstack/react-query';
-import { SignupResponse } from '@shared/schemas/auth/response/auth.schema';
-import { ServerError } from '@shared/types/error';
-import { SignupInput } from '@shared/schemas/auth/request/auth.schema';
-import useAuthStore from '../stores/auth.store';
 import { signup } from '../api/signup';
 import { useRouter } from 'next/navigation';
+import { ServerError } from '@homelab/shared/types';
+import { requestSchemas, responseSchemas } from '@homelab/shared/schemas/auth';
+import useAuthStore from '../stores/auth.store';
 
 export type UseSignupOptions = {
   onFieldError: (errors: Record<string, string[]>) => void;
@@ -17,7 +16,11 @@ export function useSignup(options: UseSignupOptions) {
   const setUser = useAuthStore((state) => state.setUser);
   const setAccessToken = useAuthStore((state) => state.setAccessToken);
 
-  return useMutation<SignupResponse, AxiosError<ServerError>, SignupInput>({
+  return useMutation<
+    responseSchemas.SignupResponse,
+    AxiosError<ServerError>,
+    requestSchemas.SignupInput
+  >({
     mutationFn: signup,
     onSuccess: (data) => {
       setUser(data.user);

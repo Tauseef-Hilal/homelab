@@ -1,13 +1,14 @@
 import { Request, Response } from 'express';
 import { catchAsync } from '@server/lib/catchAsync';
-import { env } from '@shared/config/env';
-import * as AuthService from '../services/auth.service';
+import { env } from '@homelab/shared/config';
 import { success } from '@server/lib/response';
-import { logoutSchema } from '@shared/schemas/auth/request/auth.schema';
+import { requestSchemas } from '@homelab/shared/schemas/auth';
+import * as AuthService from '../services/auth.service';
+
 
 export const logoutController = catchAsync(
   async (req: Request, res: Response) => {
-    const { logoutAll } = logoutSchema.parse(req.body);
+    const { logoutAll } = requestSchemas.logoutSchema.parse(req.body);
     const refreshToken = req.cookies.refreshToken;
 
     await AuthService.logout(

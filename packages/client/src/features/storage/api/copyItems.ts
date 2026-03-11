@@ -1,8 +1,10 @@
 import api from '@client/lib/api';
-import { CopyItemsInput } from '@shared/schemas/storage/request.schema';
-import { copyItemsSchema } from '@shared/schemas/storage/response.schema';
+import {
+  requestSchemas,
+  responseSchemas,
+} from '@homelab/shared/schemas/storage';
 
-export async function copyItems(data: CopyItemsInput) {
+export async function copyItems(data: requestSchemas.CopyItemsInput) {
   const res = await api.post('/storage/items/copy', data);
-  return copyItemsSchema.parse(res.data);
+  return responseSchemas.copyItemsSchema.parse(res.data);
 }

@@ -1,11 +1,10 @@
 import api from '@client/lib/api';
-import { LogoutInput } from '@shared/schemas/auth/request/auth.schema';
-import {
-  LogoutResponse,
-  logoutSchema,
-} from '@shared/schemas/auth/response/auth.schema';
+import { requestSchemas, responseSchemas } from '@homelab/shared/schemas/auth';
 
-export async function logout(data: LogoutInput) {
-  const res = await api.post<LogoutResponse>('/auth/logout', data);
-  return logoutSchema.parse(res.data);
+export async function logout(data: requestSchemas.LogoutInput) {
+  const res = await api.post<responseSchemas.LogoutResponse>(
+    '/auth/logout',
+    data,
+  );
+  return responseSchemas.logoutSchema.parse(res.data);
 }

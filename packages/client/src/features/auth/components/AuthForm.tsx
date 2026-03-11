@@ -3,14 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { mapServerFieldErrors } from "../utils/fieldErrors";
-import {
-  LoginInput,
-  loginSchema,
-  RequestChangePasswordInput,
-  requestChangePasswordSchema,
-  SignupInput,
-  signupSchema,
-} from "@shared/schemas/auth/request/auth.schema";
+import { requestSchemas, responseSchemas } from "@homelab/shared/schemas/auth";
 import FormField from "@client/components/FormField";
 import { useState } from "react";
 import { Button } from "@client/components/ui/button";
@@ -29,12 +22,15 @@ export function AuthForm({ formType: defaultFormType }: AuthFormProps) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [formType, setFormType] = useState(defaultFormType);
 
-  type FormValues = LoginInput | SignupInput | RequestChangePasswordInput;
+  type FormValues =
+    | requestSchemas.LoginInput
+    | requestSchemas.SignupInput
+    | requestSchemas.RequestChangePasswordInput;
 
   const schemas: Record<FormType, any> = {
-    login: loginSchema,
-    signup: signupSchema,
-    verification: requestChangePasswordSchema,
+    login: requestSchemas.loginSchema,
+    signup: requestSchemas.signupSchema,
+    verification: requestSchemas.requestChangePasswordSchema,
   };
 
   const mutations = {
@@ -99,13 +95,15 @@ export function AuthForm({ formType: defaultFormType }: AuthFormProps) {
         error={errors.email?.message}
       />
 
-      {formType != "verification" && <FormField
-        className={fieldClassName}
-        placeholder="Password"
-        type="password"
-        registration={register("password")}
-        error={"password" in errors ? errors.password?.message : undefined}
-      />}
+      {formType != "verification" && (
+        <FormField
+          className={fieldClassName}
+          placeholder="Password"
+          type="password"
+          registration={register("password")}
+          error={"password" in errors ? errors.password?.message : undefined}
+        />
+      )}
 
       {formType != "signup" && (
         <div className="flex flex-col w-full">

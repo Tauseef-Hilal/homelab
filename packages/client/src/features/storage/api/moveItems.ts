@@ -1,8 +1,10 @@
 import api from '@client/lib/api';
-import { MoveItemsInput } from '@shared/schemas/storage/request.schema';
-import { moveItemsSchema } from '@shared/schemas/storage/response.schema';
+import {
+  requestSchemas,
+  responseSchemas,
+} from '@homelab/shared/schemas/storage';
 
-export async function moveItems(data: MoveItemsInput) {
+export async function moveItems(data: requestSchemas.MoveItemsInput) {
   const res = await api.patch('/storage/items/move', data);
-  return moveItemsSchema.parse(res.data);
+  return responseSchemas.moveItemsSchema.parse(res.data);
 }

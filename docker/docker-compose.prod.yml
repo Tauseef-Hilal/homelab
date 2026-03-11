@@ -5,7 +5,6 @@ services:
   # Prisma Migration Runner
   # ------------------------
   migrate:
-    container_name: homelab-migrate
     build:
       context: ..
       dockerfile: ./packages/server/docker/Dockerfile.prod
@@ -14,7 +13,7 @@ services:
       db:
         condition: service_healthy
     env_file:
-      - ../packages/shared/.env
+      - ../packages/shared/.env.prod.local
     command: >
       sh -c "
         pnpm --filter shared exec prisma migrate deploy &&
@@ -29,7 +28,6 @@ services:
   # Backend API Server
   # ------------------------
   server:
-    container_name: homelab-server
     restart: unless-stopped
     build:
       context: ..
@@ -43,7 +41,7 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - ../packages/shared/.env
+      - ../packages/shared/.env.prod.local
     volumes:
       - ../data:/app/data
     command: pnpm --filter server run start
@@ -55,7 +53,6 @@ services:
   # Thumbnail Worker
   # ------------------------
   thumbnail-worker:
-    container_name: homelab-thumbnail-worker
     restart: unless-stopped
     build:
       context: ..
@@ -67,7 +64,7 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - ../packages/shared/.env
+      - ../packages/shared/.env.prod.local
     volumes:
       - ../data:/app/data
     command: pnpm --filter workers run start:thumbnail
@@ -79,7 +76,6 @@ services:
   # IO Worker
   # ------------------------
   io-workers:
-    container_name: homelab-io-workers
     restart: unless-stopped
     build:
       context: ..
@@ -91,7 +87,7 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - ../packages/shared/.env
+      - ../packages/shared/.env.prod.local
     volumes:
       - ../data:/app/data
     command: pnpm --filter workers run start:io
@@ -103,16 +99,16 @@ services:
   # Frontend Client
   # ------------------------
   client:
-    container_name: homelab-client
     restart: unless-stopped
     build:
       context: ..
       dockerfile: ./packages/client/docker/Dockerfile.prod
       target: prod
+      network: host
     ports:
       - "3000:3000"
     env_file:
-      - ../packages/client/.env
+      - ../packages/client/.env.production
     volumes:
       - ../data:/app/data
     command: pnpm --filter client run start
@@ -125,10 +121,9 @@ services:
   # ------------------------
   db:
     image: postgres:16
-    container_name: homelab-db
     restart: unless-stopped
     env_file:
-      - ../.env
+      - ../packages/shared/.env.prod.local
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -147,7 +142,6 @@ services:
   # ------------------------
   redis:
     image: redis:7-alpine
-    container_name: homelab-redis
     restart: unless-stopped
     ports:
       - "6379:6379"

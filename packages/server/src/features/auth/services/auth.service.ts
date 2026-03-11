@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
-import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
-import { HttpError } from '@shared/errors/HttpError';
-import { prisma } from '@shared/prisma';
+import { CommonErrorCode } from '@homelab/shared/errors';
+import { HttpError } from '@homelab/shared/errors';
+import { prisma } from '@homelab/shared/prisma';
 import { hashPassword, isValidPassword } from '@server/lib/bcrypt';
 import {
   buildTokenPayload,
@@ -14,17 +14,15 @@ import {
   generateRefreshToken,
   generateTfaToken,
   verifyRefreshToken,
-} from '../../../lib/jwt';
+} from '@server/lib/jwt';
 import {
   throwExpiredToken,
   throwInvalidToken,
   throwTokenReused,
-  throwUnauthorized,
 } from '../utils/error.util';
 import { AuthErrorCode } from '../constants/AuthErrorCode';
-import { TokenMeta } from '../../../types/jwt.types';
-import redis from '@shared/redis';
-import { RedisKeys } from '@shared/redis/redisKeys';
+import { TokenMeta } from '@server/types/jwt.types';
+import { redis, RedisKeys } from '@homelab/shared/redis';
 import { authConfig } from '../auth.config';
 import { TfaPurpose } from '../constants/TfaPurpose';
 import * as OtpService from '../services/otp.service';
@@ -37,7 +35,7 @@ export async function signup(
   username: string,
   email: string,
   password: string,
-  meta: TokenMeta
+  meta: TokenMeta,
 ) {
   if (!username || !email || !password)
     throw new HttpError({
@@ -137,7 +135,7 @@ export async function login(email: string, password: string, meta: TokenMeta) {
 export async function logout(
   token: string,
   meta: TokenMeta,
-  logoutAll = false
+  logoutAll = false,
 ) {
   verifyRefreshToken(token);
   const storedToken = await prisma.refreshToken.findUnique({
@@ -187,7 +185,7 @@ export async function changePassword(email: string, newPassword: string) {
   }
 
   const canProceed = await redis.get(
-    RedisKeys.auth.allowPasswordChange(user.id)
+    RedisKeys.auth.allowPasswordChange(user.id),
   );
 
   if (!canProceed) {
@@ -235,14 +233,14 @@ export async function allowPasswordChange(email: string) {
   await OtpService.sendOtp(user.id, user.email);
 
   const expiresAt = String(
-    Date.now() + authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS * 1000
+    Date.now() + authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS * 1000,
   );
 
   await redis.set(
     RedisKeys.auth.allowPasswordChange(user.id),
     expiresAt,
     'EX',
-    authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS
+    authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS,
   );
 
   return token;

@@ -1,6 +1,6 @@
 import { timeout } from '@server/lib/timeout';
 import { HealthCheckResult } from '@server/types/health';
-import { prisma } from '@shared/prisma';
+import { prisma } from '@homelab/shared/prisma';
 
 export async function checkPostgres(): Promise<HealthCheckResult> {
   try {

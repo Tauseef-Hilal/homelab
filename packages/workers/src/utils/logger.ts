@@ -1,6 +1,6 @@
 import { Job } from 'bullmq';
-import { JobPayload } from '@shared/jobs/payload.types';
-import { loggerWithContext } from '@shared/logging';
+import { JobPayload } from '@homelab/shared/jobs';
+import { loggerWithContext } from '@homelab/shared/logging';
 
 export function getJobLogger(
   service: 'io-worker' | 'thumbnail-worker',

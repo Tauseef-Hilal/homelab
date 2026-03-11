@@ -1,6 +1,6 @@
-import { MeResponse } from '@shared/schemas/auth/response/auth.schema';
+import { responseSchemas } from '@homelab/shared/schemas/auth';
 
-export type User = MeResponse['user'];
+export type User = responseSchemas.MeResponse['user'];
 
 export interface AuthState {
   accessToken: string | null;

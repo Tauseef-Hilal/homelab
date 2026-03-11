@@ -1,27 +1,26 @@
 import { create } from 'zustand';
 import {
-  CreateFolderResponse,
-  ListDirectoryResponse,
-} from '@shared/schemas/storage/response.schema';
-import { UploadFileResponse } from '@shared/schemas/storage/response.schema';
+  requestSchemas,
+  responseSchemas,
+} from '@homelab/shared/schemas/storage';
 import { Entry, File, Folder } from '../types/storage.types';
 import { isFolder } from '@client/lib/utils';
 
 type DriveState = {
   inputPath: string;
   path: string;
-  stack: ListDirectoryResponse['folder'][];
+  stack: responseSchemas.ListDirectoryResponse['folder'][];
   stackIdx: number;
   selectedItems: Entry[];
   clipboard: { type: 'copy' | 'move'; items: Entry[] };
   setPath: (path: string) => void;
   setInputPath: (path: string) => void;
-  push: (folder: ListDirectoryResponse['folder']) => void;
+  push: (folder: responseSchemas.ListDirectoryResponse['folder']) => void;
   clearStack: () => void;
   moveBackward: () => void;
   moveForward: () => void;
-  addFolder: (folder: CreateFolderResponse['folder']) => void;
-  addFile: (file: UploadFileResponse['file']) => void;
+  addFolder: (folder: responseSchemas.CreateFolderResponse['folder']) => void;
+  addFile: (file: responseSchemas.UploadFileResponse['file']) => void;
   renameFile: (fileId: string, newName: string) => void;
   selectItem: (item: File | Folder) => void;
   deselectItem: (item: File | Folder) => void;
@@ -88,7 +87,7 @@ const useDriveStore = create<DriveState>((set, getState) => ({
 
       if (currentFolder) {
         currentFolder.files = currentFolder.files.map((file) =>
-          file.id == fileId ? { ...file, name: newName } : file
+          file.id == fileId ? { ...file, name: newName } : file,
         );
       }
 
@@ -110,7 +109,7 @@ const useDriveStore = create<DriveState>((set, getState) => ({
   deselectItem: (item: File | Folder) => {
     set((state) => {
       const newSelectedItems = state.selectedItems.filter(
-        (i) => i.id != item.id
+        (i) => i.id != item.id,
       );
       return { ...state, selectedItems: newSelectedItems };
     });
@@ -124,10 +123,10 @@ const useDriveStore = create<DriveState>((set, getState) => ({
       const selection: Entry[] = [];
 
       folder.children.forEach((child) =>
-        selection.push({ id: child.id, type: 'folder' })
+        selection.push({ id: child.id, type: 'folder' }),
       );
       folder.files.forEach((file) =>
-        selection.push({ id: file.id, type: 'file' })
+        selection.push({ id: file.id, type: 'file' }),
       );
 
       return { ...state, selectedItems: selection };

@@ -1,11 +1,10 @@
 import { ConnectionOptions, Worker } from 'bullmq';
 import { thumbnailProcessor } from './processor';
-import redis from '@shared/redis';
-import { prisma } from '@shared/prisma';
+import { redis } from '@homelab/shared/redis';
+import { prisma } from '@homelab/shared/prisma';
 import { updateJob } from '../../utils/db';
-import { ThumbnailJobPayload } from '@shared/jobs/payload.types';
-import { ThumbnailJobResult } from '@shared/jobs/result.types';
-import { queueNames } from '@shared/jobs/constants';
+import { ThumbnailJobPayload, ThumbnailJobResult } from '@homelab/shared/jobs';
+import { queueNames } from '@homelab/shared/jobs';
 import { getJobLogger } from '@workers/utils/logger';
 
 export const thumbnailWorker = new Worker<

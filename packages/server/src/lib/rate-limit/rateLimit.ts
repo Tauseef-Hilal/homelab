@@ -1,9 +1,9 @@
-import redis from '@shared/redis';
+import { redis, RedisKeys } from '@homelab/shared/redis';
 import { NextFunction, Request, Response } from 'express';
 import { loadScript, tokenBucketSha } from './loadScript';
 import { error } from '../response';
-import { RedisKeys } from '@shared/redis/redisKeys';
-import { RateLimitPolicy } from '@server/types/rate';
+import { RateLimitPolicy } from '@homelab/shared/types';
+
 export async function rateLimitCheck(
   identifier: string,
   policy: RateLimitPolicy,

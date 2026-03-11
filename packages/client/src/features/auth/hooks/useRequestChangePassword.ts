@@ -1,10 +1,9 @@
+import { AxiosError } from 'axios';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { requestChangePassword } from '../api/requestChangePassword';
-import { RequestChangePasswordResponse } from '@shared/schemas/auth/response/auth.schema';
-import { ServerError } from '@shared/types/error';
-import { AxiosError } from 'axios';
-import { RequestChangePasswordInput } from '@shared/schemas/auth/request/auth.schema';
+import { ServerError } from '@homelab/shared/types';
+import { requestSchemas, responseSchemas } from '@homelab/shared/schemas/auth';
 
 export interface UseRequestChangePasswordOptions {
   onGlobalError: (err: string) => void;
@@ -16,9 +15,9 @@ export function useRequestChangePassword(
   const router = useRouter();
 
   return useMutation<
-    RequestChangePasswordResponse,
+    responseSchemas.RequestChangePasswordResponse,
     AxiosError<ServerError>,
-    RequestChangePasswordInput
+    requestSchemas.RequestChangePasswordInput
   >({
     mutationFn: requestChangePassword,
     onSuccess: (data) => {

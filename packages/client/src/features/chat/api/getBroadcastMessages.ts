@@ -1,12 +1,11 @@
 import api from '@client/lib/api';
-import { GetBroadcastMessagesInput } from '@shared/schemas/chat/request.schema';
-import { getBroadcastMessagesSchema } from '@shared/schemas/chat/response.schema';
+import { requestSchemas, responseSchemas } from '@homelab/shared/schemas/chat';
 
 export async function getBroadcastMessages({
   cursorId,
   cursorSentAt,
   limit,
-}: GetBroadcastMessagesInput) {
+}: requestSchemas.GetBroadcastMessagesInput) {
   const params = new URLSearchParams();
 
   if (limit) params.set('limit', String(limit));
@@ -18,5 +17,5 @@ export async function getBroadcastMessages({
   const url = `/chat/broadcast${params.toString() ? `?${params}` : ''}`;
   const res = await api(url);
 
-  return getBroadcastMessagesSchema.parse(res.data);
+  return responseSchemas.getBroadcastMessagesSchema.parse(res.data);
 }

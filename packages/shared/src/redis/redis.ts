@@ -1,0 +1,31 @@
+import Redis from 'ioredis';
+import { env } from '@homelab/shared/config';
+
+export const redis = new Redis({
+  host: env.REDIS_HOST,
+  port: env.REDIS_PORT,
+  password: env.REDIS_PASSWORD,
+  db: 0,
+  maxRetriesPerRequest: null,
+});
+
+export const redisPub = new Redis({
+  host: env.REDIS_HOST,
+  port: env.REDIS_PORT,
+  password: env.REDIS_PASSWORD,
+  maxRetriesPerRequest: null,
+  db: 0,
+});
+
+export const redisSub = new Redis({
+  host: env.REDIS_HOST,
+  port: env.REDIS_PORT,
+  password: env.REDIS_PASSWORD,
+  maxRetriesPerRequest: null,
+  db: 0,
+});
+
+redis.on('connect', () => console.log('[REDIS] Connected'));
+redis.on('error', (err) => console.error('[REDIS] Error:', err));
+
+export default redis;

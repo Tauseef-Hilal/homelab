@@ -2,8 +2,7 @@ import fs from 'fs';
 import pino from 'pino';
 import pretty from 'pino-pretty';
 import rfs from 'pino-rotating-file-stream';
-import { env } from '@shared/config/env';
-import { timeStamp } from 'console';
+import { env } from '@homelab/shared/config';
 
 const logDir = env.LOG_DIR_PATH;
 if (!fs.existsSync(logDir)) {
@@ -28,7 +27,7 @@ const streams: pino.StreamEntry[] = [
   },
 ];
 
-const logger = pino(
+export const logger = pino(
   {
     level: env.NODE_ENV == 'development' ? 'debug' : 'info',
     formatters: {

@@ -1,11 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { listDirectory } from '../api/listDirectory';
 import { AxiosError } from 'axios';
-import { ServerError } from '@shared/types/error';
-import { ListDirectoryResponse } from '@shared/schemas/storage/response.schema';
+import { ServerError } from '@homelab/shared/types';
+import { responseSchemas } from '@homelab/shared/schemas/storage';
 
 export function useListDirectory(path: string, enabled: boolean) {
-  return useQuery<ListDirectoryResponse, AxiosError<ServerError>>({
+  return useQuery<
+    responseSchemas.ListDirectoryResponse,
+    AxiosError<ServerError>
+  >({
     queryKey: ['listDirectory', path],
     queryFn: () => listDirectory(path),
     enabled,

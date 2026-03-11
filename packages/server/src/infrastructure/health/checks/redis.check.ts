@@ -1,6 +1,6 @@
 import { timeout } from '@server/lib/timeout';
 import { HealthCheckResult } from '@server/types/health';
-import redis from '@shared/redis';
+import { redis } from '@homelab/shared/redis';
 
 export async function checkRedis(): Promise<HealthCheckResult> {
   try {

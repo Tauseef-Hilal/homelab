@@ -1,18 +1,24 @@
-import { DownloadItemsOutput } from '@shared/schemas/storage/response.schema';
-import { DownloadItemsInput } from '@shared/schemas/storage/request.schema';
-import { ServerError } from '@shared/types/error';
+import {
+  requestSchemas,
+  responseSchemas,
+} from '@homelab/shared/schemas/storage';
+import { ServerError } from '@homelab/shared/types';
 import { useMutation } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { downloadItems } from '../api/downloadItems';
 import { toast } from 'sonner';
 
 export type UseDownloadItemsOptions = {
-  onSuccess: (data: DownloadItemsOutput) => void;
+  onSuccess: (data: responseSchemas.DownloadItemsOutput) => void;
   onError: (error: string) => void;
 };
 
 export function useDownloadItems(options: UseDownloadItemsOptions) {
-  return useMutation<DownloadItemsOutput, AxiosError<ServerError>, DownloadItemsInput>({
+  return useMutation<
+    responseSchemas.DownloadItemsOutput,
+    AxiosError<ServerError>,
+    requestSchemas.DownloadItemsInput
+  >({
     mutationFn: downloadItems,
     onSuccess: options.onSuccess,
     onError: (error) => {

@@ -28,7 +28,7 @@ COPY . .
 RUN pnpm install --recursive
 
 # Generate Prisma client
-RUN pnpm --filter shared prisma generate
+RUN pnpm --filter shared generate
 
 # Start the server in dev mode
 CMD ["pnpm", "--filter", "workers", "dev:io"]

@@ -3,13 +3,13 @@
 import useAuthStore from '@client/features/auth/stores/auth.store';
 import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { BroadcastMessage } from '@shared/schemas/chat/io.schema';
+import { ioSchemas } from '@homelab/shared/schemas/chat';
 import { toast } from 'sonner';
 import { v4 } from 'uuid';
 
 export function useMessaging() {
   const { user } = useAuthStore();
-  const [messages, setMessages] = useState<BroadcastMessage[]>([]);
+  const [messages, setMessages] = useState<ioSchemas.BroadcastMessage[]>([]);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export function useMessaging() {
   const sendMessage = (content: string) => {
     if (!socketRef.current || !user) return;
 
-    const message: BroadcastMessage = {
+    const message: ioSchemas.BroadcastMessage = {
       id: v4(),
       content,
       authorId: user.id,

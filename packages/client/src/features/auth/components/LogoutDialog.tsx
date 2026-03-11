@@ -11,10 +11,7 @@ import {
   DialogTrigger,
 } from "@client/components/ui/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  LogoutInput,
-  logoutSchema,
-} from "@shared/schemas/auth/request/auth.schema";
+import { requestSchemas, responseSchemas } from "@homelab/shared/schemas/auth";
 import { Controller, useForm } from "react-hook-form";
 import { useLogout } from "../hooks/useLogout";
 import { useState } from "react";
@@ -31,7 +28,9 @@ export const LogoutDialog: React.FC<LogoutDialogProps> = ({}) => {
     control,
     handleSubmit,
     formState: { isSubmitting },
-  } = useForm<LogoutInput>({ resolver: zodResolver(logoutSchema) });
+  } = useForm<requestSchemas.LogoutInput>({
+    resolver: zodResolver(requestSchemas.logoutSchema),
+  });
 
   const mutation = useLogout({
     onError: (msg) => setErrorMsg(msg),

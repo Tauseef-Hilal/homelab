@@ -1,28 +1,9 @@
 {
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "CommonJS",
-    "moduleResolution": "node",
-    "outDir": "dist",
-    "rootDir": ".",
-    "esModuleInterop": true,
-    "noImplicitAny": true,
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "baseUrl": ".",
-    "paths": {
-      "@client/*": ["packages/client/src/*"],
-      "@server/*": ["packages/server/src/*"],
-      "@workers/*": ["packages/workers/src/*"],
-      "@shared/*": ["packages/shared/src/*"]
-    }
-  },
-  "ts-node": {
-    "compilerOptions": {
-      "module": "CommonJS"
-    },
-    "require": ["tsconfig-paths/register"]
-  },
-  "exclude": ["node_modules", "dist"]
+  "files": [],
+  "references": [
+    {"path": "./packages/shared" },
+    {"path": "./packages/server" },
+    {"path": "./packages/workers" },
+    {"path": "./packages/client" }
+  ]
 }

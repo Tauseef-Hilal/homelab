@@ -1,7 +1,7 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
 import { success } from '@server/lib/response';
-import { getStatsForUser } from '@shared/utils/quota.utils';
+import { getStatsForUser } from '@homelab/shared/utils';
 
 export const getStatsController = catchAsync(
   async (req: Request, res: Response) => {

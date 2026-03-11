@@ -2,14 +2,12 @@
   "name": "workers",
   "version": "0.1.0",
   "description": "",
-  "main": "index.js",
   "scripts": {
     "dev:thumbnail": "nodemon --config nodemon.thumbnail.json",
     "dev:io": "nodemon --config nodemon.io.json",
-    "start:thumbnail": "node src/workers/thumbnail/index.js",
-    "start:io": "node src/workers/io/index.js",
-    "test": "npx vitest",
-    "build": "npx tsc && npx tsc-alias"
+    "start:thumbnail": "node dist/workers/thumbnail/index.js",
+    "start:io": "node dist/workers/io/index.js",
+    "build": "tsc -b && tsc-alias"
   },
   "keywords": [],
   "author": "Tauseef Tantary",
@@ -21,7 +19,7 @@
     "bullmq": "^5.56.9",
     "fluent-ffmpeg": "^2.1.3",
     "pdf-poppler": "^0.2.1",
-    "shared": "*",
+    "@homelab/shared": "workspace:*",
     "sharp": "^0.34.3"
   },
   "devDependencies": {

@@ -1,20 +1,22 @@
+import { AxiosError } from 'axios';
 import { useMutation } from '@tanstack/react-query';
 import { createFolder } from '../api/createFolder';
-import { CreateFolderResponse } from '@shared/schemas/storage/response.schema';
-import { AxiosError } from 'axios';
-import { ServerError } from '@shared/types/error';
-import { CreateFolderInput } from '@shared/schemas/storage/request.schema';
+import { ServerError } from '@homelab/shared/types';
+import {
+  requestSchemas,
+  responseSchemas,
+} from '@homelab/shared/schemas/storage';
 
 export type UseCreateFolderOptions = {
-  onSuccess: (data: CreateFolderResponse) => void;
+  onSuccess: (data: responseSchemas.CreateFolderResponse) => void;
   onError: (err: string) => void;
 };
 
 export function useCreateFolder(options: UseCreateFolderOptions) {
   return useMutation<
-    CreateFolderResponse,
+    responseSchemas.CreateFolderResponse,
     AxiosError<ServerError>,
-    CreateFolderInput
+    requestSchemas.CreateFolderInput
   >({
     mutationFn: createFolder,
     onSuccess: (data) => options.onSuccess(data),

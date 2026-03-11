@@ -1,6 +1,6 @@
 import { timeout } from '@server/lib/timeout';
 import { HealthCheckResult } from '@server/types/health';
-import { env } from '@shared/config/env';
+import { env } from '@homelab/shared/config';
 import fs from 'fs/promises';
 import path from 'path';
 

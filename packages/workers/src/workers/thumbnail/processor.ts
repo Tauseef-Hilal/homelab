@@ -1,12 +1,13 @@
 import { Job } from 'bullmq';
-import { ThumbnailJobPayload } from '@shared/jobs/payload.types';
-import { ThumbnailJobResult } from '@shared/jobs/result.types';
-import { jobNames } from '@shared/jobs/constants';
+import {
+  ThumbnailJobPayload,
+  ThumbnailJobResult,
+  jobNames,
+} from '@homelab/shared/jobs';
 import { generateThumbnail } from './handlers/generateThumbnail';
 
-
 export const thumbnailProcessor = async (
-  job: Job<ThumbnailJobPayload, ThumbnailJobResult>
+  job: Job<ThumbnailJobPayload, ThumbnailJobResult>,
 ): Promise<ThumbnailJobResult> => {
   switch (job.name) {
     case jobNames.thumbnailJobName:

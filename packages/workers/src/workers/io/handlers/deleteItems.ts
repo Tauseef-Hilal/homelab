@@ -1,22 +1,22 @@
-import { env } from '@shared/config/env';
-import { HttpError } from '@shared/errors/HttpError';
-import { CommonErrorCode } from '@shared/errors/CommonErrorCode';
-import { DeleteJobPayload } from '@shared/jobs/payload.types';
-import { DeleteJobResult } from '@shared/jobs/result.types';
-import { prisma } from '@shared/prisma';
-import { calculateSize, release } from '@shared/utils/quota.utils';
+import path from 'path';
+import fs from 'fs/promises';
+import { existsSync } from 'fs';
+import { env } from '@homelab/shared/config';
+import { HttpError } from '@homelab/shared/errors/';
+import { CommonErrorCode } from '@homelab/shared/errors/';
+import { DeleteJobPayload, DeleteJobResult } from '@homelab/shared/jobs';
+
+import { prisma } from '@homelab/shared/prisma';
 import {
+  calculateSize,
+  release,
   ensureFolderExists,
   ensureUserIsOwner,
   getFileExtension,
   getOriginalFilePath,
   getThumbnailPath,
-} from '@shared/utils/storage.utils';
-import { existsSync } from 'fs';
-import fs from 'fs/promises';
-import path from 'path';
-import redis from '@shared/redis';
-import { RedisKeys } from '@shared/redis/redisKeys';
+} from '@homelab/shared/utils';
+import { redis, RedisKeys } from '@homelab/shared/redis';
 
 export const deleteItems = async ({
   prismaJobId,

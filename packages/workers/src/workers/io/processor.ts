@@ -5,8 +5,8 @@ import {
   JobPayload,
   MoveJobPayload,
   ZipJobPayload,
-} from '@shared/jobs/payload.types';
-import { jobNames } from '@shared/jobs/constants';
+  jobNames,
+} from '@homelab/shared/jobs';
 import { copyItems } from './handlers/copyItems';
 import { moveItems } from './handlers/moveItems';
 import { deleteItems } from './handlers/deleteItems';

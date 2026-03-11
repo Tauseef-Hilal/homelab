@@ -1,6 +1,6 @@
 import fs from 'fs';
-import { ZipJobPayload } from '@shared/jobs/payload.types';
-import { prisma } from '@shared/prisma';
+import { ZipJobPayload, ZipJobResult } from '@homelab/shared/jobs';
+import { prisma } from '@homelab/shared/prisma';
 import { randomUUID } from 'crypto';
 import {
   ensureFolderExists,
@@ -8,15 +8,13 @@ import {
   getFileExtension,
   getOriginalFilePath,
   getTempFilePath,
-} from '@shared/utils/storage.utils';
+} from '@homelab/shared/utils';
 import archiver, { Archiver } from 'archiver';
-import { ZipJobResult } from '@shared/jobs/result.types';
 import path from 'path';
 import { zipConstants } from '@workers/constants/zip.constants';
 import { updateJob } from '@workers/utils/db';
-import { env } from '@shared/config/env';
-import redis from '@shared/redis';
-import { RedisKeys } from '@shared/redis/redisKeys';
+import { env } from '@homelab/shared/config';
+import { redis, RedisKeys } from '@homelab/shared/redis';
 
 export const zipItems = async ({
   prismaJobId,

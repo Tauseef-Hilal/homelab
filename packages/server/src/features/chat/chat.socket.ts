@@ -1,11 +1,11 @@
 import { Server, Socket } from 'socket.io';
 import { BROADCAST_CHANNEL } from './chat.redis';
-import { broadcastMessageSchema } from '@shared/schemas/chat/io.schema';
-import { prisma } from '@shared/prisma';
-import logger from '@shared/logging';
+import { ioSchemas } from '@homelab/shared/schemas/chat';
+import { prisma } from '@homelab/shared/prisma';
 import { rateLimitCheck } from '@server/lib/rate-limit/rateLimit';
 import { chatSendPolicy } from '@server/lib/rate-limit/policies';
-import { redisPub, redisSub } from '@shared/redis';
+import { redisPub, redisSub } from '@homelab/shared/redis';
+import logger from '@homelab/shared/logging';
 
 export const registerChatSocket = (io: Server) => {
   // Listen to Redis broadcasts from other servers
@@ -25,7 +25,9 @@ export const registerChatSocket = (io: Server) => {
       async (msgJson: string, ack: (status: any) => void) => {
         try {
           // Parse msg
-          const message = broadcastMessageSchema.parse(JSON.parse(msgJson));
+          const message = ioSchemas.broadcastMessageSchema.parse(
+            JSON.parse(msgJson),
+          );
 
           if (message.content.length > 1000) {
             return ack({ success: false, error: 'Message too long' });

@@ -3,7 +3,6 @@ name: homelab-dev
 services:
 
   migrate:
-    container_name: homelab-migrate
     build:
       context: ..
       dockerfile: ./packages/server/docker/Dockerfile.dev
@@ -12,7 +11,7 @@ services:
       db:
         condition: service_healthy
     env_file:
-      - ../packages/shared/.env
+      - ../packages/shared/.env.dev.local
     volumes:
       - ..:/app
       - node_modules:/app/node_modules
@@ -27,7 +26,6 @@ services:
       "
 
   server:
-    container_name: homelab-server
     restart: unless-stopped
     build:
       context: ..
@@ -41,7 +39,7 @@ services:
       redis:
         condition: service_started
     env_file:
-      - ../packages/shared/.env
+      - ../packages/shared/.env.dev.local
     volumes:
       - ..:/app
       - node_modules:/app/node_modules
@@ -54,7 +52,6 @@ services:
     command: pnpm --filter server dev
 
   thumbnail-worker:
-    container_name: homelab-thumbnail-worker
     restart: unless-stopped
     build:
       context: ..
@@ -66,7 +63,7 @@ services:
       redis:
         condition: service_started
     env_file:
-      - ../packages/shared/.env
+      - ../packages/shared/.env.dev.local
     volumes:
       - ..:/app
       - node_modules:/app/node_modules
@@ -79,7 +76,6 @@ services:
     command: pnpm --filter workers dev:thumbnail
 
   io-workers:
-    container_name: homelab-io-workers
     restart: unless-stopped
     build:
       context: ..
@@ -91,7 +87,7 @@ services:
       redis:
         condition: service_started
     env_file:
-      - ../packages/shared/.env
+      - ../packages/shared/.env.dev.local
     volumes:
       - ..:/app
       - node_modules:/app/node_modules
@@ -104,7 +100,6 @@ services:
     command: pnpm --filter workers dev:io
 
   client:
-    container_name: homelab-client
     restart: unless-stopped
     build:
       context: ..
@@ -116,7 +111,7 @@ services:
       server:
         condition: service_started
     env_file:
-      - ../packages/shared/.env
+      - ../packages/shared/.env.dev.local
     volumes:
       - ..:/app
       - node_modules:/app/node_modules
@@ -130,10 +125,9 @@ services:
 
   db:
     image: postgres:16
-    container_name: homelab-db
     restart: unless-stopped
     env_file:
-      - ../.env
+      - ../packages/shared/.env.dev.local
     ports:
       - "5432:5432"
     volumes:
@@ -146,7 +140,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: homelab-redis
     restart: unless-stopped
     ports:
       - "6379:6379"

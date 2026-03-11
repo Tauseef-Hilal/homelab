@@ -1,21 +1,18 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
 import { createReadStream } from 'fs';
-import {
-  idParamSchema,
-  previewFileQuerySchema,
-} from '@shared/schemas/storage/request.schema';
+import { requestSchemas } from '@homelab/shared/schemas/storage';
 import { getFileMeta } from '../services/file.service';
 import { verifyAccessToken } from '@server/lib/jwt';
 import { throwUnauthorized } from '@server/features/auth/utils/error.util';
 
 export const previewFileController = catchAsync(
   async (req: Request, res: Response) => {
-    const { token } = previewFileQuerySchema.parse(req.query);
+    const { token } = requestSchemas.previewFileQuerySchema.parse(req.query);
     try {
       const { sub } = verifyAccessToken(token);
 
-      const fileId = idParamSchema.parse(req.params.fileId);
+      const fileId = requestSchemas.idParamSchema.parse(req.params.fileId);
       const range = req.headers.range;
 
       const { filePath, fileSize, mimeType } = await getFileMeta(sub, fileId);
@@ -49,5 +46,5 @@ export const previewFileController = catchAsync(
     } catch (err) {
       throwUnauthorized();
     }
-  }
+  },
 );

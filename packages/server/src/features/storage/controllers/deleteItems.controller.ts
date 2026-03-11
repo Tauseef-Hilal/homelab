@@ -1,13 +1,13 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { deleteItemsSchema } from '@shared/schemas/storage/request.schema';
+import { requestSchemas } from '@homelab/shared/schemas/storage';
 import { enqueueDeleteJob } from '@server/lib/jobs/fileIOQueue';
-import { jobNames } from '@shared/jobs/constants';
+import { jobNames } from '@homelab/shared/jobs';
 import { success } from '@server/lib/response';
 
 export const deleteItemsController = catchAsync(
   async (req: Request, res: Response) => {
-    const { items } = deleteItemsSchema.parse(req.body);
+    const { items } = requestSchemas.deleteItemsSchema.parse(req.body);
 
     const job = await enqueueDeleteJob(jobNames.deleteJobName, {
       items,

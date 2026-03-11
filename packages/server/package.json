@@ -2,13 +2,11 @@
   "name": "server",
   "version": "0.1.0",
   "description": "Backend code for homelab",
-  "main": "index.js",
   "scripts": {
     "dev": "nodemon",
-    "start": "node src/server.js",
-    "test": "npx vitest",
-    "build": "npx tsc && npx tsc-alias && cpy 'src/**/*.lua' dist/packages/server/src/ --parents",
-    "generate": "npx prisma generate"
+    "start": "node dist/server.js",
+    "test": "vitest",
+    "build": "tsc -b && tsc-alias && cp -r lua dist/lua"
   },
   "keywords": [],
   "author": "Tauseef Tantary",
@@ -28,7 +26,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.5",
-    "shared": "*",
+    "@homelab/shared": "workspace:*",
     "socket.io": "^4.8.1",
     "vitest": "^3.2.4",
     "zod": "^4.0.5"

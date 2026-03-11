@@ -1,5 +1,6 @@
-import { ListDirectoryResponse } from '@shared/schemas/storage/response.schema';
+import { responseSchemas } from '@homelab/shared/schemas/storage';
 
-export type Folder = ListDirectoryResponse['folder']['children'][0];
-export type File = ListDirectoryResponse['folder']['files'][0];
+export type Folder =
+  responseSchemas.ListDirectoryResponse['folder']['children'][0];
+export type File = responseSchemas.ListDirectoryResponse['folder']['files'][0];
 export type Entry = { id: string; type: 'file' | 'folder' };

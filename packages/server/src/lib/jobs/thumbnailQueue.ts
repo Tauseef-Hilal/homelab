@@ -1,8 +1,11 @@
 import { ConnectionOptions, Queue } from 'bullmq';
-import { JobPayload, ThumbnailJobPayload } from '@shared/jobs/payload.types';
-import { queueNames } from '@shared/jobs/constants';
+import {
+  JobPayload,
+  ThumbnailJobPayload,
+  queueNames,
+} from '@homelab/shared/jobs';
 import { enqueueJob } from '../enqueueJob';
-import redis from '@shared/redis';
+import { redis } from '@homelab/shared/redis';
 
 export const thumbnailQueue = new Queue(queueNames.thumbnailQueueName, {
   connection: redis as unknown as ConnectionOptions,
