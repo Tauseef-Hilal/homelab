@@ -1,291 +1,297 @@
 "use client";
 
-import { FaFile, FaFolder } from "react-icons/fa6";
-import { File, Folder } from "../types/storage.types";
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { memo, useState, useCallback } from "react";
+import { cx } from "class-variance-authority";
+import { FaFile, FaFolder } from "react-icons/fa6";
+import { IoCheckmarkCircle } from "react-icons/io5";
+
+import { File, Folder } from "../types/storage.types";
 import Preview from "./Preview";
+import Rename from "./Rename";
+
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@client/components/ui/context-menu";
-import { cx } from "class-variance-authority";
+
 import { useSelect } from "../hooks/useSelect";
 import { isFolder } from "@client/lib/utils";
-import useDriveStore from "../stores/driveStore";
-import { useDeleteItems } from "../hooks/useDeleteItems";
-import { toast } from "sonner";
-import { getJob } from "../api/getJob";
-import { useDownloadItems } from "../hooks/useDownloadItems";
-import Rename from "./Rename";
 import { useLongPress } from "@client/hooks/useLongPress";
-import { useQueryClient } from "@tanstack/react-query";
+import { env } from "@client/config/env";
+
+import useDriveStore from "../stores/drive.store";
+import { useDownloadMutation } from "../hooks/useDownloadMutation";
+import { useDeleteMutation } from "../hooks/useDeleteMutation";
 
 interface FileSystemEntryProps {
   child: File | Folder;
-  refetch: () => void;
+  parentPath: string;
 }
 
-const FileSystemEntry: React.FC<FileSystemEntryProps> = ({
-  child,
-  refetch,
-}) => {
-  const queryClient = useQueryClient();
-  const [showPreview, setShowPreview] = useState(false);
-  const [showRename, setShowRename] = useState(false);
-  const { selectedItems, isSelected, onSelect, selectItem } = useSelect();
-  const { setPath, setClipboard, deselectAll } = useDriveStore();
+const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
+  ({ child, parentPath }) => {
+    const [showPreview, setShowPreview] = useState(false);
+    const [showRename, setShowRename] = useState(false);
 
-  const thumbnailUrl = `${process.env.NEXT_PUBLIC_API_URL}/uploads/${child.userId}/thumbnails/${child.id}.webp`;
+    const { selectedItems, isSelected, onSelect, selectItem } = useSelect();
 
-  const { onTouchStart, onTouchEnd } = useLongPress<HTMLDivElement>((e) => {
-    e.currentTarget.dispatchEvent(
-      new MouseEvent("contextmenu", {
-        bubbles: false,
-        clientX: e.touches[0].clientX ?? 0,
-        clientY: e.touches[0].clientY ?? 0,
-      }),
-    );
-  });
+    const setClipboard = useDriveStore((s) => s.setClipboard);
+    const deselectAll = useDriveStore((s) => s.deselectAll);
+    const navigate = useDriveStore((s) => s.navigate);
+    const viewMode = useDriveStore((s) => s.viewMode);
 
-  const clickHandler = () => {
-    if (selectedItems.length > 0) {
-      onSelect(child);
-      return;
-    }
+    const folder = isFolder(child);
+    const selected = isSelected(child);
+    const isGrid = viewMode === "grid";
 
-    if (isFolder(child)) {
-      setPath(child.fullPath);
-    } else {
-      setShowPreview(true);
-    }
-  };
+    const thumbnailUrl = `${env.API_URL}/uploads/${child.userId}/thumbnails/${child.id}.webp`;
 
-  const copyHandler = () => {
-    if (isSelected(child)) {
-      setClipboard({ type: "copy", items: selectedItems });
-      return deselectAll();
-    }
+    const entryItem = {
+      id: child.id,
+      type: folder ? "folder" : ("file" as "folder" | "file"),
+    };
 
-    setClipboard({
-      type: "copy",
-      items: [{ id: child.id, type: isFolder(child) ? "folder" : "file" }],
-    });
-    deselectAll();
-  };
-
-  const cutHandler = () => {
-    if (isSelected(child)) {
-      setClipboard({ type: "move", items: selectedItems });
-      return deselectAll();
-    }
-
-    setClipboard({
-      type: "move",
-      items: [{ id: child.id, type: isFolder(child) ? "folder" : "file" }],
-    });
-    deselectAll();
-  };
-
-  const deleteMutation = useDeleteItems({
-    onSuccess: (data) => {
-      const toastId = `toast-${data.job.id}`;
-      toast.loading("Delete job enqueued", { id: toastId });
-
-      const interval = setInterval(async () => {
-        try {
-          const jobRes = await getJob(data.job.id);
-          const status = jobRes.job.status;
-
-          switch (status) {
-            case "completed":
-              toast.success("Files deleted successfully", { id: toastId });
-              queryClient.invalidateQueries({ queryKey: ["stats"] });
-              clearInterval(interval);
-              refetch();
-              break;
-
-            case "processing":
-              toast.loading(`Deleting files: ${jobRes.job.progress}%`, {
-                id: toastId,
-              });
-              break;
-
-            case "failed":
-              toast.error("Some files failed to delete", { id: toastId });
-              clearInterval(interval);
-              refetch();
-              break;
-
-            default:
-              toast.loading("Delete job enqueued", { id: toastId });
-              break;
-          }
-        } catch {
-          toast.error("Failed to fetch job status", { id: toastId });
-          clearInterval(interval);
-        }
-      }, 1000);
-    },
-    onError: (err) => toast.error(err),
-  });
-
-  const deleteHandler = async () => {
-    if (isSelected(child)) {
-      deleteMutation.mutate({
-        items: selectedItems,
+    const { onTouchStart, onTouchEnd, onTouchMove } =
+      useLongPress<HTMLDivElement>((x, y) => {
+        const el = document.elementFromPoint(x, y);
+        el?.dispatchEvent(
+          new MouseEvent("contextmenu", {
+            bubbles: true,
+            clientX: x,
+            clientY: y,
+          }),
+        );
       });
 
-      return deselectAll();
-    }
+    /* ---------- Click logic ---------- */
 
-    deleteMutation.mutate({
-      items: [{ id: child.id, type: isFolder(child) ? "folder" : "file" }],
-    });
-  };
+    const clickHandler = useCallback(() => {
+      if (selectedItems.length > 0) {
+        onSelect(child);
+        return;
+      }
 
-  const downloadZip = async (url: string) => {
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "download.zip";
+      if (folder) navigate(child.fullPath);
+      else setShowPreview(true);
+    }, [selectedItems.length, child, folder]);
 
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+    const doubleClickHandler = useCallback(() => {
+      if (folder) navigate(child.fullPath);
+      else setShowPreview(true);
+    }, [child, folder]);
 
-  const downloadMutation = useDownloadItems({
-    onSuccess: (data) => {
-      const toastId = `toast-${data.job.id}`;
-      toast.loading("Zipping items for download", { id: toastId });
+    /* ---------- Clipboard ---------- */
 
-      const interval = setInterval(async () => {
-        try {
-          const jobRes = await getJob(data.job.id);
-          const status = jobRes.job.status;
-          const result = jobRes.job.result;
+    const copyHandler = () => {
+      setClipboard({
+        type: "copy",
+        items: selected ? selectedItems : [entryItem],
+      });
+      deselectAll();
+    };
 
-          switch (status) {
-            case "completed":
-              toast.success("Starting download", { id: toastId });
-              clearInterval(interval);
+    const cutHandler = () => {
+      setClipboard({
+        type: "move",
+        items: selected ? selectedItems : [entryItem],
+      });
+      deselectAll();
+    };
 
-              if (result) {
-                downloadZip((result as { downloadLink: string }).downloadLink);
-              }
+    /* ---------- Download/Delete ---------- */
 
-              break;
+    const downloadZip = (url: string) => {
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "download.zip";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
 
-            case "processing":
-              toast.loading(`Zipping items: ${jobRes.job.progress}%`, {
-                id: toastId,
-              });
-              break;
+    const downloadMutation = useDownloadMutation(downloadZip);
+    const deleteMutation = useDeleteMutation(parentPath);
 
-            case "failed":
-              toast.error("Failed to create zip", { id: toastId });
-              clearInterval(interval);
-              refetch();
-              break;
-
-            default:
-              toast.loading("Download job enqueued", { id: toastId });
-              break;
-          }
-        } catch {
-          toast.error("Failed to fetch job status", { id: toastId });
-          clearInterval(interval);
-        }
-      }, 1000);
-    },
-    onError: (err) => toast.error(err),
-  });
-
-  const downloadHandler = async () => {
-    if (isSelected(child)) {
+    const downloadHandler = () => {
       downloadMutation.mutate({
-        items: selectedItems,
+        items: selected ? selectedItems : [entryItem],
       });
+      deselectAll();
+    };
 
-      return deselectAll();
-    }
+    const deleteHandler = () => {
+      deleteMutation.mutate({
+        items: selected ? selectedItems : [entryItem],
+      });
+      deselectAll();
+    };
 
-    downloadMutation.mutate({
-      items: [{ id: child.id, type: isFolder(child) ? "folder" : "file" }],
-    });
-  };
+    /* ---------- Helpers ---------- */
 
-  return (
-    <div>
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <div
-            key={child.id}
-            onTouchStart={onTouchStart}
-            onTouchEnd={onTouchEnd}
-            onClick={clickHandler}
-            className={cx(
-              "p-4 w-20 flex flex-col items-center justify-start gap-2",
-              isSelected(child) && "bg-blue-400 rounded",
-            )}
-          >
-            {isFolder(child) ? (
-              <>
-                <FaFolder size={56} className="text-yellow-400" />
-                <p className="text-sm truncate w-full text-center">
-                  {child.name}
-                </p>
-              </>
-            ) : (
-              <>
-                {child.hasThumbnail ? (
-                  <Image
-                    width={56}
-                    height={56}
-                    src={thumbnailUrl}
-                    alt="Thumbnail"
-                    className="object-cover h-[56px] w-[56px] rounded"
-                  />
-                ) : (
-                  <FaFile size={56} className="text-neutral-200" />
-                )}
+    const size =
+      !folder && "size" in child && child.size
+        ? `${(child.size / 1024).toFixed(1)} KB`
+        : "-";
 
-                <p className="text-sm truncate w-full text-center">
-                  {child.name}
-                </p>
-              </>
-            )}
-          </div>
-        </ContextMenuTrigger>
+    const modified =
+      "updatedAt" in child
+        ? new Date(child.updatedAt).toLocaleDateString()
+        : "-";
 
-        <ContextMenuContent>
-          <ContextMenuItem onClick={() => setShowRename(true)}>
-            Rename
-          </ContextMenuItem>
-          <ContextMenuItem onClick={() => selectItem(child)}>
-            Select
-          </ContextMenuItem>
-          <ContextMenuItem onClick={copyHandler}>Copy</ContextMenuItem>
-          <ContextMenuItem onClick={cutHandler}>Cut</ContextMenuItem>
-          <ContextMenuItem onClick={downloadHandler}>Download</ContextMenuItem>
-          <ContextMenuItem onClick={deleteHandler}>Delete</ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenu>
+    /* ================================================= */
+    /* ================= GRID VIEW ===================== */
+    /* ================================================= */
 
-      <Rename
-        open={showRename}
-        setOpen={setShowRename}
-        item={child}
-        refetch={refetch}
-      />
+    const gridView = (
+      <div
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onTouchMove={onTouchMove}
+        onClick={clickHandler}
+        onDoubleClick={doubleClickHandler}
+        className={cx(
+          "relative group",
+          "flex flex-col items-center justify-start",
+          "gap-2 p-3 w-[110px]",
+          "rounded-lg cursor-pointer",
+          "transition-colors",
+          "hover:bg-muted",
+          selected && "bg-primary/10",
+        )}
+      >
+        {selected && (
+          <IoCheckmarkCircle
+            className="absolute top-1 right-1 text-primary"
+            size={18}
+          />
+        )}
 
-      {!isFolder(child) && (
-        <Preview open={showPreview} setOpen={setShowPreview} file={child} />
-      )}
-    </div>
-  );
-};
+        <div className="flex items-center justify-center h-[60px]">
+          {folder ? (
+            <FaFolder size={50} className="text-yellow-400" />
+          ) : child.hasThumbnail ? (
+            <Image
+              unoptimized
+              width={60}
+              height={60}
+              src={thumbnailUrl}
+              alt={child.name}
+              className="object-cover rounded-md h-[60px] w-[60px]"
+            />
+          ) : (
+            <FaFile size={50} className="text-muted-foreground" />
+          )}
+        </div>
+
+        <p className="text-xs text-center leading-tight line-clamp-2 break-words">
+          {child.name}
+        </p>
+      </div>
+    );
+
+    /* ================================================= */
+    /* ================= LIST VIEW ===================== */
+    /* ================================================= */
+
+    const listView = (
+      <div
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onTouchMove={onTouchMove}
+        onClick={clickHandler}
+        onDoubleClick={doubleClickHandler}
+        className={cx(
+          "relative grid grid-cols-[auto_1fr_120px_160px] items-center",
+          "px-3 py-2 gap-3 rounded-md cursor-pointer",
+          "hover:bg-muted/60",
+          selected && "bg-primary/10",
+        )}
+      >
+        {selected && (
+          <IoCheckmarkCircle
+            size={18}
+            className="absolute right-3 text-primary"
+          />
+        )}
+
+        <div className="flex items-center justify-center">
+          {folder ? (
+            <FaFolder size={20} className="text-yellow-400" />
+          ) : child.hasThumbnail ? (
+            <Image
+              unoptimized
+              width={28}
+              height={28}
+              src={thumbnailUrl}
+              alt={child.name}
+              className="object-cover rounded-md"
+            />
+          ) : (
+            <FaFile size={20} className="text-muted-foreground" />
+          )}
+        </div>
+
+        <p className="truncate text-sm font-medium">{child.name}</p>
+
+        <span className="text-sm text-muted-foreground text-right">{size}</span>
+
+        <span className="text-sm text-muted-foreground text-right">
+          {modified}
+        </span>
+      </div>
+    );
+
+    /* ================================================= */
+
+    return (
+      <>
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            {isGrid ? gridView : listView}
+          </ContextMenuTrigger>
+
+          <ContextMenuContent>
+            <ContextMenuItem onClick={() => setShowRename(true)}>
+              Rename
+            </ContextMenuItem>
+
+            <ContextMenuItem onClick={() => selectItem(child)}>
+              Select
+            </ContextMenuItem>
+
+            <ContextMenuItem onClick={copyHandler}>Copy</ContextMenuItem>
+
+            <ContextMenuItem onClick={cutHandler}>Cut</ContextMenuItem>
+
+            <ContextMenuItem onClick={downloadHandler}>
+              Download
+            </ContextMenuItem>
+
+            <ContextMenuItem onClick={deleteHandler}>Delete</ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+
+        <Rename
+          open={showRename}
+          setOpen={setShowRename}
+          item={child}
+          parentPath={child.fullPath.substring(
+            0,
+            child.fullPath.lastIndexOf("/"),
+          )}
+        />
+
+        {!folder && (
+          <Preview open={showPreview} setOpen={setShowPreview} file={child} />
+        )}
+      </>
+    );
+  },
+);
+
+FileSystemEntry.displayName = "FileSystemEntry";
 
 export default FileSystemEntry;

@@ -30,7 +30,7 @@ const VerificationForm: React.FC<VerificationFormProps> = ({ token }) => {
     register,
     handleSubmit,
     setError,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     setValue,
   } = useForm<{ otp: string; token: string }>({
     resolver: zodResolver(schema),
@@ -44,18 +44,26 @@ const VerificationForm: React.FC<VerificationFormProps> = ({ token }) => {
     onGlobalError: (msg: string) => setErrorMsg(msg),
   });
 
-  const onSubmit = (data: z.infer<typeof schema>) => mutation.mutate(data);
+  const onSubmit = (data: z.infer<typeof schema>) => {
+    setErrorMsg("");
+    mutation.mutate(data);
+  };
 
   return (
     <form
-      className="flex flex-col gap-2 w-full px-10"
+      className="flex flex-col gap-6 w-full max-w-md mx-auto px-6 py-8"
       onSubmit={handleSubmit(onSubmit)}
       noValidate
     >
-      <div className="flex flex-col items-center gap-4">
-        <Label htmlFor="otp-input" className="text-md font-bold">
-          Please enter the OTP sent to your email
+      <div className="flex flex-col items-center gap-4 text-center">
+        <Label htmlFor="otp-input" className="text-lg font-semibold">
+          Enter OTP
         </Label>
+
+        <p className="text-sm text-muted-foreground">
+          Please enter the 6-digit code sent to your email
+        </p>
+
         <InputOTP
           id="otp-input"
           maxLength={6}
@@ -70,7 +78,9 @@ const VerificationForm: React.FC<VerificationFormProps> = ({ token }) => {
             <InputOTPSlot index={1} />
             <InputOTPSlot index={2} />
           </InputOTPGroup>
+
           <InputOTPSeparator />
+
           <InputOTPGroup>
             <InputOTPSlot index={3} />
             <InputOTPSlot index={4} />
@@ -79,16 +89,11 @@ const VerificationForm: React.FC<VerificationFormProps> = ({ token }) => {
         </InputOTP>
       </div>
 
-      <p className="text-center text-sm text-red-500 h-8">
-        {errors.otp && errors.otp.message}
-        {errorMsg && !errors.otp && errorMsg}
+      <p className="text-center text-sm text-destructive min-h-[20px]">
+        {errors.otp?.message || errorMsg}
       </p>
 
-      <Button
-        disabled={isSubmitting || mutation.isPending}
-        type="submit"
-        className="cursor-pointer"
-      >
+      <Button disabled={mutation.isPending} type="submit" className="h-11">
         Verify
       </Button>
     </form>

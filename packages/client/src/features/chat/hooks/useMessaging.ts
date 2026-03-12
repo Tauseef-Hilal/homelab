@@ -1,6 +1,6 @@
 'use client';
 
-import useAuthStore from '@client/features/auth/stores/auth.store';
+import useAuthStore from '@client/stores/auth.store';
 import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { ioSchemas } from '@homelab/shared/schemas/chat';
@@ -45,5 +45,5 @@ export function useMessaging() {
     );
   };
 
-  return { messages, setMessages, sendMessage };
+  return { messages, setMessages, sendMessage, currentUserId: user?.id };
 }

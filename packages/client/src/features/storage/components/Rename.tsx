@@ -1,172 +1,143 @@
 "use client";
 
-import { File, Folder } from "../types/storage.types";
-import Image from "next/image";
-import { cx } from "class-variance-authority";
-import { IoIosCheckmarkCircle, IoIosCloseCircle } from "react-icons/io";
-import { FaFile } from "react-icons/fa6";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@client/components/ui/dialog";
+
 import { Input } from "@client/components/ui/input";
-import { useEffect, useState } from "react";
+import { Button } from "@client/components/ui/button";
+
+import { File, Folder } from "../types/storage.types";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
-import { isFolder } from "@client/lib/utils";
-import z from "zod";
+
 import { useMoveItems } from "../hooks/useMoveItems";
-import { getJob } from "../api/getJob";
+import { isFolder } from "@client/lib/utils";
+
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+
+import z from "zod";
+import { useEffect } from "react";
 
 interface RenameProps {
   item: File | Folder;
   open: boolean;
   setOpen: (open: boolean) => void;
-  refetch: () => void;
+  parentPath: string;
 }
 
 const schema = z.object({
   name: z
     .string()
-    .min(1, "Folder name can't be empty")
+    .min(1, "Name cannot be empty")
     .max(255, "Name too long")
     .refine(
-      (name) =>
-        !name.includes(".") && !name.includes("/") && !name.includes("\\"),
-      "Name cannot include dots or slashes"
+      (name) => !/[./\\]/.test(name),
+      "Name cannot contain dots or slashes",
     ),
 });
 
 type RenameInput = z.infer<typeof schema>;
 
-const Rename: React.FC<RenameProps> = ({ item, open, setOpen, refetch }) => {
-  const ext = item.name.split(".").at(-1);
-  const [name, setName] = useState(item.name.replace(`.${ext}`, ""));
-  const thumbnailUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/uploads/${item.userId}/thumbnails/${item.id}.webp`;
+const RenameDialog: React.FC<RenameProps> = ({
+  item,
+  open,
+  setOpen,
+  parentPath,
+}) => {
+  const queryClient = useQueryClient();
 
-  useEffect(() => setName(item.name.replace(`.${ext}`, "")), [open]);
+  const ext = item.name.includes(".") ? item.name.split(".").pop() : undefined;
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<{ name: string }>({
+  const baseName = ext ? item.name.slice(0, -(ext.length + 1)) : item.name;
+
+  const form = useForm<RenameInput>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      name: baseName,
+    },
   });
+
+  useEffect(() => {
+    form.reset({ name: baseName });
+  }, [item, open]);
 
   const mutation = useMoveItems({
-    onSuccess: ({ job }) => {
-      const toastId = `toast-${job.id}`;
-      toast.loading(`Renaming ${item.name} to ${name}`, { id: toastId });
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["listDirectory", parentPath],
+      });
 
-      const interval = setInterval(async () => {
-        try {
-          const jobRes = await getJob(job.id);
-          const status = jobRes.job.status;
-
-          switch (status) {
-            case "completed":
-              toast.success(`Renamed ${item.name} to ${name}`, { id: toastId });
-              clearInterval(interval);
-              setOpen(false);
-              refetch();
-              break;
-
-            case "processing":
-              toast.loading(`Renaming ${item.name} to ${name}`, {
-                id: toastId,
-              });
-              break;
-
-            case "failed":
-              toast.error("Failed to rename", { id: toastId });
-              clearInterval(interval);
-              refetch();
-              break;
-
-            default:
-              toast.loading("Move job enqueued", { id: toastId });
-              break;
-          }
-        } catch {
-          toast.error("Failed to fetch job status", { id: toastId });
-          clearInterval(interval);
-        }
-      }, 1000);
+      toast.success("Renamed successfully");
+      setOpen(false);
     },
-    onError: (err) => {
-      toast(err);
-    },
+
+    onError: () => toast.error("Rename failed"),
   });
 
-  const onSubmit = (data: RenameInput) =>
+  const onSubmit = (data: RenameInput) => {
+    const newName = ext ? `${data.name}.${ext}` : data.name;
+
     mutation.mutate({
       destinationFolderId: isFolder(item) ? item.parentId : undefined,
       items: [
         {
           id: item.id,
-          newName: data.name,
+          newName,
           type: isFolder(item) ? "folder" : "file",
         },
       ],
     });
+  };
 
   return (
-    <div
-      style={{ display: open ? "flex" : "none" }}
-      className={cx(
-        "fixed z-10 w-full h-full top-0 left-0",
-        "justify-center items-center",
-        "bg-black/70 backdrop-blur-xs"
-      )}
-    >
-      <div className="fixed z-20 w-full h-full top-0 left-0 flex flex-col items-center justify-center gap-4">
-        {!isFolder(item) && item.hasThumbnail ? (
-          <Image
-            width={150}
-            height={150}
-            src={thumbnailUrl}
-            alt="Thumbnail"
-            className="object-cover h-[150px] w-[150px] rounded"
-          />
-        ) : (
-          <FaFile size={56} className="text-neutral-150" />
-        )}
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="sm:max-w-[420px]">
+        <DialogHeader>
+          <DialogTitle>Rename</DialogTitle>
+        </DialogHeader>
+
         <form
           noValidate
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col items-center"
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-4"
         >
-          <p className="text-sm text-red-500">
-            {errors.name && errors.name.message}
-          </p>
-          <div className="flex items-center">
-            <Input
-              type="text"
-              value={name}
-              className="bg-white"
-              {...register("name", {
-                onChange: (e) => setName(e.target.value),
-              })}
-            />
-            <div className="flex items-center">
-              <IoIosCloseCircle
-                size={36}
-                className="right-0 top-0 rounded-full shadow text-red-500"
-                onClick={() => setOpen(false)}
-              />
-              <button type="submit" disabled={mutation.isPending}>
-                <IoIosCheckmarkCircle
-                  size={36}
-                  className={cx(
-                    "right-0 top-0 rounded-full shadow text-green-500",
-                    mutation.isPending && "animate-spin"
-                  )}
-                />
-              </button>
-            </div>
+          <div className="flex items-center gap-2">
+            <Input autoFocus {...form.register("name")} className="flex-1" />
+
+            {ext && (
+              <span className="text-sm text-muted-foreground">.{ext}</span>
+            )}
           </div>
+
+          {form.formState.errors.name && (
+            <p className="text-sm text-red-500">
+              {form.formState.errors.name.message}
+            </p>
+          )}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </Button>
+
+            <Button type="submit" disabled={mutation.isPending}>
+              Rename
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
-export default Rename;
+export default RenameDialog;

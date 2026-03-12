@@ -1,5 +1,5 @@
 import { AxiosError } from 'axios';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFolder } from '../api/createFolder';
 import { ServerError } from '@homelab/shared/types';
 import {
@@ -13,13 +13,18 @@ export type UseCreateFolderOptions = {
 };
 
 export function useCreateFolder(options: UseCreateFolderOptions) {
+  const queryClient = useQueryClient();
+
   return useMutation<
     responseSchemas.CreateFolderResponse,
     AxiosError<ServerError>,
     requestSchemas.CreateFolderInput
   >({
     mutationFn: createFolder,
-    onSuccess: (data) => options.onSuccess(data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['paths'] });
+      options.onSuccess(data);
+    },
     onError: (error) => {
       const serverError = error.response?.data;
       if (serverError) {

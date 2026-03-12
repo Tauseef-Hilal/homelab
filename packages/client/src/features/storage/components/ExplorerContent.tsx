@@ -1,238 +1,188 @@
 "use client";
 
 import { Button } from "@client/components/ui/button";
-import { ForkKnifeCrossedIcon, Loader2Icon } from "lucide-react";
-import useDriveStore from "../stores/driveStore";
-import FileSystemEntry from "./FileSystemEntry";
-import { cx } from "class-variance-authority";
-import { useEffect, useState } from "react";
+import {
+  FolderPlusIcon,
+  UploadIcon,
+  Loader2Icon,
+  AlertTriangleIcon,
+} from "lucide-react";
+
+import useDriveStore from "../stores/drive.store";
+import { useMemo, useState, useCallback } from "react";
+
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@client/components/ui/context-menu";
+
 import NewFolderDialog from "./NewFolderDialog";
 import UploadDialog from "./UploadDialog";
-import { useCopyItems } from "../hooks/useCopyItems";
-import { toast } from "sonner";
-import { getJob } from "../api/getJob";
 import { useListDirectory } from "../hooks/useListDirectory";
-import { useMoveItems } from "../hooks/useMoveItems";
 import { useLongPress } from "@client/hooks/useLongPress";
-import { useQueryClient } from "@tanstack/react-query";
+import { useCopyMutation } from "../hooks/useCopyMutation";
+import { useMoveMutation } from "../hooks/useMoveMutation";
+import ExplorerList from "./ExplorerList";
 
 const ExplorerContent: React.FC = () => {
   const [showFolderDialog, setShowFolderDialog] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
-  const { path, push, stack, stackIdx, clipboard } = useDriveStore();
-  const { isPending, data, error, refetch } = useListDirectory(path, true);
-  const folder = data?.folder ?? stack[stackIdx];
-  const queryClient = useQueryClient();
 
-  const { onTouchStart, onTouchEnd } = useLongPress<HTMLDivElement>((e) => {
-    e.currentTarget.dispatchEvent(
-      new MouseEvent("contextmenu", {
-        bubbles: false,
-        clientX: e.touches[0].clientX ?? 0,
-        clientY: e.touches[0].clientY ?? 0,
-      }),
-    );
-  });
+  const path = useDriveStore((s) => s.path);
+  const selectAll = useDriveStore((s) => s.selectAll);
+  const clipboard = useDriveStore((s) => s.clipboard);
 
-  useEffect(() => {
-    if (!data) return;
+  const { isPending, data, error, refetch } = useListDirectory(path);
 
-    const currFolder = stack[stackIdx];
-    const newFolder = data.folder;
+  const copyMutation = useCopyMutation(path);
+  const moveMutation = useMoveMutation(path);
 
-    if (!currFolder || currFolder.id != newFolder.id) {
-      push(data.folder);
-    }
-  }, [data]);
+  const folder = data?.folder;
 
-  const copyMutation = useCopyItems({
-    onSuccess: (data) => {
-      const toastId = `toast-${data.job.id}`;
-      toast.loading("Copy job enqueued", { id: toastId });
+  const entries = useMemo(() => {
+    if (!folder) return [];
+    return [...folder.children, ...folder.files];
+  }, [folder]);
 
-      const interval = setInterval(async () => {
-        try {
-          const jobRes = await getJob(data.job.id);
-          const status = jobRes.job.status;
+  const emptyFolder = entries.length === 0;
 
-          switch (status) {
-            case "completed":
-              toast.success("Files copied successfully", { id: toastId });
-              queryClient.invalidateQueries({ queryKey: ["stats"] });
-              clearInterval(interval);
-              refetch();
-              break;
+  const { onTouchStart, onTouchEnd, onTouchMove } =
+    useLongPress<HTMLDivElement>((x, y) => {
+      const el = document.elementFromPoint(x, y);
+      el?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          clientX: x,
+          clientY: y,
+        }),
+      );
+    });
 
-            case "processing":
-              toast.loading(`Copying files: ${jobRes.job.progress}%`, {
-                id: toastId,
-              });
-              break;
+  const pasteHandler = useCallback(() => {
+    if (!folder || clipboard.items.length === 0) return;
 
-            case "failed":
-              toast.error("Some files failed to copy", { id: toastId });
-              clearInterval(interval);
-              refetch();
-              break;
-
-            default:
-              toast.loading("Copy job enqueued", { id: toastId });
-              break;
-          }
-        } catch {
-          toast.error("Failed to fetch job status", { id: toastId });
-          clearInterval(interval);
-        }
-      }, 1000);
-    },
-    onError: (err) => toast.error(err),
-  });
-
-  const moveMutation = useMoveItems({
-    onSuccess: (data) => {
-      const toastId = `toast-${data.job.id}`;
-      toast.loading("Move job enqueued", { id: toastId });
-
-      const interval = setInterval(async () => {
-        try {
-          const jobRes = await getJob(data.job.id);
-          const status = jobRes.job.status;
-
-          switch (status) {
-            case "completed":
-              toast.success("Files moved successfully", { id: toastId });
-              clearInterval(interval);
-              refetch();
-              break;
-
-            case "processing":
-              toast.loading(`Moving files: ${jobRes.job.progress}%`, {
-                id: toastId,
-              });
-              break;
-
-            case "failed":
-              toast.error("Some files failed to move", { id: toastId });
-              clearInterval(interval);
-              refetch();
-              break;
-
-            default:
-              toast.loading("Move job enqueued", { id: toastId });
-              break;
-          }
-        } catch {
-          toast.error("Failed to fetch job status", { id: toastId });
-          clearInterval(interval);
-        }
-      }, 1000);
-    },
-    onError: (err) => toast.error(err),
-  });
-
-  const pasteHandler = async () => {
-    if (clipboard.type == "copy") {
-      return copyMutation.mutate({
+    if (clipboard.type === "copy") {
+      copyMutation.mutate({
         destinationFolderId: folder.id,
         items: clipboard.items,
       });
+      return;
     }
 
     moveMutation.mutate({
       destinationFolderId: folder.id,
       items: clipboard.items,
     });
-  };
+  }, [clipboard, folder, copyMutation, moveMutation]);
 
-  if (isPending || folder == undefined) {
+  /* ---------------- Loading ---------------- */
+
+  if (isPending || !folder) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <div className="h-full flex flex-col items-center justify-center gap-4 text-muted-foreground">
         <Loader2Icon className="animate-spin" size={36} />
+        <p className="text-sm">Loading files...</p>
       </div>
     );
   }
 
+  /* ---------------- Error ---------------- */
+
   if (error) {
     return (
-      <div className="h-full flex flex-col justify-center items-center gap-2">
-        <ForkKnifeCrossedIcon /> <p>{error.message}</p>
-        <Button onClick={() => refetch()} variant={"outline"}>
+      <div className="h-full flex flex-col justify-center items-center gap-4 text-center">
+        <AlertTriangleIcon size={28} className="text-destructive" />
+        <p className="text-sm text-muted-foreground">{error.message}</p>
+
+        <Button onClick={() => refetch()} variant="outline">
           Retry
         </Button>
       </div>
     );
   }
 
-  const emptyFolder = folder.children.length == 0 && folder.files.length == 0;
+  /* ---------------- UI ---------------- */
 
   return (
-    <div className="h-full">
+    <div className="h-full overflow-hidden">
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          {!emptyFolder ? (
-            <div
-              onTouchStart={onTouchStart}
-              onTouchEnd={onTouchEnd}
-              className={cx(
-                "grid grid-cols-4 align-center place-content-start",
-                "place-items-center gap-2 h-full overflow-auto",
-              )}
-            >
-              {folder?.children.map((child) => (
-                <FileSystemEntry
-                  key={child.id}
-                  child={child}
-                  refetch={refetch}
-                />
-              ))}
+          <div
+            className="h-full overflow-y-auto px-4 py-3"
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
+            onTouchMove={onTouchMove}
+          >
+            {!emptyFolder ? (
+              <ExplorerList entries={entries} path={path} />
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center gap-4 text-center text-muted-foreground">
+                <FolderPlusIcon size={36} />
+                <div>
+                  <p className="font-medium">This folder is empty</p>
+                  <p className="text-sm">
+                    Upload files or create a new folder to get started.
+                  </p>
+                </div>
 
-              {folder?.files.map((child) => (
-                <FileSystemEntry
-                  key={child.id}
-                  child={child}
-                  refetch={refetch}
-                />
-              ))}
-            </div>
-          ) : (
-            <div
-              onTouchStart={onTouchStart}
-              onTouchEnd={onTouchEnd}
-              className="h-full flex justify-center items-center"
-            >
-              <p>Oops, there's nothing here. But you can add your files!</p>
-            </div>
-          )}
+                <div className="flex gap-2 mt-2">
+                  <Button size="sm" onClick={() => setShowUploadDialog(true)}>
+                    <UploadIcon size={16} className="mr-2" />
+                    Upload
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowFolderDialog(true)}
+                  >
+                    <FolderPlusIcon size={16} className="mr-2" />
+                    New Folder
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </ContextMenuTrigger>
-        <ContextMenuContent>
+
+        <ContextMenuContent className="w-48">
           <ContextMenuItem onClick={() => setShowFolderDialog(true)}>
+            <FolderPlusIcon size={16} className="mr-2" />
             New Folder
           </ContextMenuItem>
+
           <ContextMenuItem onClick={() => setShowUploadDialog(true)}>
+            <UploadIcon size={16} className="mr-2" />
             Upload
           </ContextMenuItem>
-          <ContextMenuItem onClick={pasteHandler}>Paste</ContextMenuItem>
-          <ContextMenuItem onClick={pasteHandler}>Download</ContextMenuItem>
+
+          <ContextMenuItem
+            onClick={pasteHandler}
+            disabled={clipboard.items.length === 0}
+          >
+            Paste
+          </ContextMenuItem>
+
+          <ContextMenuItem onClick={() => selectAll(entries)}>
+            Select All
+          </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
 
       <NewFolderDialog
-        parentId={folder?.id}
+        parentId={folder.id}
         open={showFolderDialog}
         setOpen={setShowFolderDialog}
-        refetch={refetch}
+        parentPath={folder.fullPath}
       />
+
       <UploadDialog
-        folderId={folder?.id}
+        folderId={folder.id}
         open={showUploadDialog}
         setOpen={setShowUploadDialog}
-        refetch={refetch}
+        folderPath={folder.fullPath}
       />
     </div>
   );

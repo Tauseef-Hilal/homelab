@@ -4,8 +4,10 @@ import { AuthState, User } from '../types/auth.types';
 const useAuthStore = create<AuthState>((set) => ({
   user: null,
   accessToken: null,
+  authInitialized: false,
   setUser: (user: User) => set({ user }),
   setAccessToken: (accessToken: string) => set({ accessToken }),
+  setAuthInitialized: (authInitialized: boolean) => set({ authInitialized }),
   logout: () => set({ user: null, accessToken: null }),
 }));
 

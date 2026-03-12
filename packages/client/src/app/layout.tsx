@@ -1,8 +1,9 @@
 import "@client/styles/global.css";
-import { ReactQueryProvider } from "@client/providers/reactQuery.provider";
 import type { Metadata } from "next";
+import { ReactQueryProvider } from "@client/providers/reactQuery.provider";
 import { inter } from "@client/styles/fonts";
 import { Toaster } from "sonner";
+import { AuthProvider } from "@client/components/AuthProvider";
 import Me from "@client/components/Me";
 
 export const metadata: Metadata = {
@@ -16,14 +17,35 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                const theme = localStorage.getItem("theme");
+                if (theme === "dark") {
+                  document.documentElement.classList.add("dark");
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`dark:bg-black dark:text-white bg-gray-50 text-gray-900 noselect ${inter.className}`}
       >
         <ReactQueryProvider>
-          {children}
-          <Toaster />
-          <Me />
+          <AuthProvider>
+            {children}
+            <Toaster
+              theme="system"
+              position="bottom-right"
+              richColors
+              closeButton
+            />
+            <Me />
+          </AuthProvider>
         </ReactQueryProvider>
       </body>
     </html>

@@ -10,7 +10,7 @@ export interface UseRequestChangePasswordOptions {
 }
 
 export function useRequestChangePassword(
-  options: UseRequestChangePasswordOptions
+  options: UseRequestChangePasswordOptions,
 ) {
   const router = useRouter();
 
@@ -21,14 +21,19 @@ export function useRequestChangePassword(
   >({
     mutationFn: requestChangePassword,
     onSuccess: (data) => {
-      router.push(`/auth/verification?token=${data.token}`);
+      router.replace(
+        `/auth/verification?token=${encodeURIComponent(data.token)}`,
+      );
     },
     onError: (error) => {
       const serverError = error.response?.data;
 
-      if (serverError) {
-        options.onGlobalError(serverError.message);
+      if (!serverError) {
+        options.onGlobalError('Something went wrong');
+        return;
       }
+
+      options.onGlobalError(serverError.message);
     },
   });
 }

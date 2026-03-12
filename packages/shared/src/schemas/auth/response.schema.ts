@@ -32,18 +32,22 @@ export const verifyOtpSchema = z.object({
       username: z.string(),
       email: z.email(),
       role: z.enum(['USER', 'ADMIN']),
-    })
+    }),
   ),
   tokens: z.optional(
     z.object({
       access: z.string().min(1),
-    })
+    }),
   ),
   changePasswordToken: z.optional(z.string().min(1)),
 });
 
 export const requestChangePasswordSchema = z.object({
   token: z.string().min(1),
+});
+
+export const refreshSchema = z.object({
+  tokens: z.object({ access: z.string().min(1) }),
 });
 
 export const changePasswordSchema = z.object({});

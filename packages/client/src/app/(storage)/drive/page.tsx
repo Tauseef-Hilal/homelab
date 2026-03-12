@@ -5,10 +5,12 @@ import { HardDrive } from "lucide-react";
 export default function DrivePage() {
   return (
     <>
-      <Header icon={<HardDrive />} title="Drive" showBackBtn />
-      <main className="h-full">
-        <Explorer />
-      </main>
+      <div className="flex flex-col h-screen overflow-clip">
+        <Header icon={<HardDrive />} title="Drive" showBackBtn />
+        <main className="h-full">
+          <Explorer />
+        </main>
+      </div>
     </>
   );
 }

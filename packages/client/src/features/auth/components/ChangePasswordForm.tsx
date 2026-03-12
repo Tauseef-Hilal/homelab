@@ -30,22 +30,22 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ token }) => {
     onFieldError: (errors) => mapServerFieldErrors(errors, setError),
   });
 
-  const onSubmit = (data: requestSchemas.ChangePasswordInput) =>
+  const onSubmit = (data: requestSchemas.ChangePasswordInput) => {
+    setErrorMsg("");
     mutation.mutate(data);
+  };
   const fieldClassName = "bg-neutral-100 h-12 w-full shadow-none border-0";
 
   return (
     <form
       noValidate
       onSubmit={handleSubmit(onSubmit)}
-      className="flex flex-col items-center gap-8 w-full px-8"
+      className="flex flex-col gap-6 w-full max-w-md mx-auto px-6 py-8"
     >
-      <h1 className="text-2xl w-full text-left font-bold">
-        Set a new password for your account
-      </h1>
+      <h1 className="text-2xl font-semibold">Set a new password</h1>
 
       <FormField
-        className={fieldClassName}
+        className="bg-muted h-12 w-full border rounded-lg"
         placeholder="New Password"
         type="password"
         registration={register("newPassword")}
@@ -54,14 +54,14 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ token }) => {
 
       <Button
         type="submit"
-        disabled={isSubmitting || mutation.isPending}
-        className="h-12 w-full cursor-pointer"
+        disabled={mutation.isPending}
+        className="h-12 w-full"
       >
         Change Password
       </Button>
 
-      {mutation.isError && !errors.newPassword && (
-        <p className="text-red-500">{errorMsg}</p>
+      {errorMsg && (
+        <p className="text-sm text-destructive text-center">{errorMsg}</p>
       )}
     </form>
   );

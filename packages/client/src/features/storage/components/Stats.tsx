@@ -1,31 +1,60 @@
 "use client";
 
 import { useGetStats } from "../hooks/useGetStats";
+import { cx } from "class-variance-authority";
 
 const formatSize = (bytes: number) => {
-  const gb = bytes / 1024 / 1024 / 1024;
-  if (gb >= 1) return `${gb.toFixed(1)} GB`;
-  return `${(bytes / 1024 / 1024).toFixed(0)} MB`;
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0;
+  let value = bytes;
+
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024;
+    i++;
+  }
+
+  return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 };
 
 const StorageStats: React.FC = () => {
   const { data, isLoading } = useGetStats();
 
-  if (isLoading || !data) return null;
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span>Loading...</span>
+        <div className="w-24 h-1.5 bg-muted rounded-full animate-pulse" />
+      </div>
+    );
+  }
+
+  if (!data) return null;
 
   const percent = Math.min((data.storageUsed / data.storageQuota) * 100, 100);
 
+  const barColor =
+    percent > 90
+      ? "bg-red-500"
+      : percent > 70
+        ? "bg-yellow-500"
+        : "bg-blue-500";
+
   return (
-    <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 whitespace-nowrap">
-      {/* Storage text */}
-      <span>
-        {formatSize(data.storageUsed)}
-        {" / " + formatSize(data.storageQuota)}
+    <div
+      className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap"
+      title={`${formatSize(data.storageUsed)} used of ${formatSize(
+        data.storageQuota,
+      )}`}
+    >
+      <span className="font-medium">
+        {formatSize(data.storageUsed)} / {formatSize(data.storageQuota)}
       </span>
 
-      {/* Progress bar (hidden on small screens) */}
-      <div className="hidden sm:block w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-        <div className="h-full bg-blue-500" style={{ width: `${percent}%` }} />
+      <div className="hidden sm:block w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+        <div
+          className={cx("h-full transition-all duration-500", barColor)}
+          style={{ width: `${percent}%` }}
+        />
       </div>
     </div>
   );

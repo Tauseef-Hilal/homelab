@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { mapServerFieldErrors } from "../utils/fieldErrors";
-import { requestSchemas, responseSchemas } from "@homelab/shared/schemas/auth";
+import { requestSchemas } from "@homelab/shared/schemas/auth";
 import FormField from "@client/components/FormField";
 import { useState } from "react";
 import { Button } from "@client/components/ui/button";
@@ -33,22 +33,24 @@ export function AuthForm({ formType: defaultFormType }: AuthFormProps) {
     verification: requestSchemas.requestChangePasswordSchema,
   };
 
+  const loginMutation = useLogin({
+    onFieldError: (fieldErrors) => mapServerFieldErrors(fieldErrors, setError),
+    onGlobalError: setErrorMsg,
+  });
+
+  const signupMutation = useSignup({
+    onFieldError: (fieldErrors) => mapServerFieldErrors(fieldErrors, setError),
+    onGlobalError: setErrorMsg,
+  });
+
+  const verificationMutation = useRequestChangePassword({
+    onGlobalError: setErrorMsg,
+  });
+
   const mutations = {
-    login: useLogin({
-      onFieldError: (fieldErrors: any) => {
-        mapServerFieldErrors(fieldErrors, setError);
-      },
-      onGlobalError: (msg: string) => setErrorMsg(msg),
-    }),
-    signup: useSignup({
-      onFieldError: (fieldErrors: any) => {
-        mapServerFieldErrors(fieldErrors, setError);
-      },
-      onGlobalError: (msg: string) => setErrorMsg(msg),
-    }),
-    verification: useRequestChangePassword({
-      onGlobalError: (msg) => setErrorMsg(msg),
-    }),
+    login: loginMutation,
+    signup: signupMutation,
+    verification: verificationMutation,
   };
 
   const {
@@ -61,21 +63,33 @@ export function AuthForm({ formType: defaultFormType }: AuthFormProps) {
   });
 
   const mutation = mutations[formType];
-  const onSubmit = (data: FormValues) => mutation.mutate(data as any);
 
-  const fieldClassName = "bg-neutral-100 h-12 w-full shadow-none border-0";
+  const onSubmit = (data: FormValues) => {
+    setErrorMsg(null);
+    mutation.mutate(data as any);
+  };
+
+  const fieldClassName = "bg-muted h-12 w-full shadow-none border rounded-lg";
 
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
       noValidate
-      className="flex flex-col items-center gap-8 w-full px-8"
+      className="flex flex-col gap-6 w-full max-w-md mx-auto px-6 py-8"
     >
-      <h1 className="text-2xl w-full text-left font-bold">
-        {formType == "login" && "Login to your account"}
-        {formType == "signup" && "Create an Account"}
-        {formType == "verification" && "Enter email to get an OTP"}
-      </h1>
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {formType == "login" && "Login to your account"}
+          {formType == "signup" && "Create an account"}
+          {formType == "verification" && "Request password reset"}
+        </h1>
+
+        <p className="text-sm text-muted-foreground">
+          {formType == "login" && "Enter your credentials to continue"}
+          {formType == "signup" && "Fill the form to create your account"}
+          {formType == "verification" && "Enter your email to receive an OTP"}
+        </p>
+      </div>
 
       {formType == "signup" && (
         <FormField
@@ -105,63 +119,66 @@ export function AuthForm({ formType: defaultFormType }: AuthFormProps) {
         />
       )}
 
-      {formType != "signup" && (
-        <div className="flex flex-col w-full">
-          <p className="text-sm w-full text-left">
+      <div className="flex flex-col gap-1 text-sm">
+        {formType != "verification" && (
+          <p>
             Don't have an account?{" "}
             <Button
               type="button"
-              variant={"link"}
-              className="font-medium cursor-pointer"
+              variant="link"
+              className="px-1"
               onClick={() => setFormType("signup")}
             >
               Register
             </Button>
           </p>
-          {formType == "login" && (
-            <p className="text-sm w-full text-left">
-              Forgot password?{" "}
-              <Button
-                type="button"
-                variant={"link"}
-                className="font-medium cursor-pointer"
-                onClick={() => setFormType("verification")}
-              >
-                Reset
-              </Button>
-            </p>
-          )}
-        </div>
-      )}
+        )}
 
-      {formType == "signup" && (
-        <p className="text-sm w-full text-left">
-          Already have an account?{" "}
-          <Button
-            type="button"
-            variant={"link"}
-            className="font-medium cursor-pointer"
-            onClick={() => setFormType("login")}
-          >
-            Login
-          </Button>
-        </p>
-      )}
+        {formType == "login" && (
+          <p>
+            Forgot password?{" "}
+            <Button
+              type="button"
+              variant="link"
+              className="px-1"
+              onClick={() => setFormType("verification")}
+            >
+              Reset
+            </Button>
+          </p>
+        )}
+
+        {formType == "signup" && (
+          <p>
+            Already have an account?{" "}
+            <Button
+              type="button"
+              variant="link"
+              className="px-1"
+              onClick={() => setFormType("login")}
+            >
+              Login
+            </Button>
+          </p>
+        )}
+      </div>
 
       <Button
         type="submit"
-        disabled={isSubmitting || mutation.isPending}
-        className="h-12 w-full cursor-pointer"
+        disabled={mutation.isPending}
+        className="h-12 w-full"
       >
         {formType == "login" && "Login"}
         {formType == "signup" && "Signup"}
         {formType == "verification" && "Send OTP"}
-        {mutation.isPending ||
-          (isSubmitting && <Loader className="animate-spin" />)}
+
+        {(mutation.isPending || isSubmitting) && (
+          <Loader className="animate-spin ml-2" />
+        )}
       </Button>
 
-      {mutation.isError && !errors.email && (
-        <p className="text-red-500">{errorMsg}</p>
+      {errorMsg && (
+        <p className="text-sm text-destructive text-center">{errorMsg}</p>
       )}
     </form>
   );

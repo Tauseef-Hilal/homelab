@@ -1,19 +1,30 @@
-import Link from "next/link";
+"use client";
 
-interface HomeLinkProps {
+import Link from "next/link";
+import { cx } from "class-variance-authority";
+
+interface Props {
   link: string;
-  icon: React.ReactNode;
   text: string;
+  icon: React.ReactNode;
 }
 
-const HomeLink: React.FC<HomeLinkProps> = ({ link, icon, text }) => {
+const HomeLink: React.FC<Props> = ({ link, text, icon }) => {
   return (
-    <div className="flex gap-2 items-center p-2 text-xl">
-      {icon}
-      <Link href={link} className="hover:underline">
-        {text}
-      </Link>
-    </div>
+    <Link
+      href={link}
+      className={cx(
+        "flex items-center gap-4 p-5 rounded-xl border",
+        "bg-card hover:bg-muted",
+        "transition-colors",
+      )}
+    >
+      <div className="flex items-center justify-center w-10 h-10 rounded-md bg-primary/10 text-primary">
+        {icon}
+      </div>
+
+      <span className="font-medium">{text}</span>
+    </Link>
   );
 };
 

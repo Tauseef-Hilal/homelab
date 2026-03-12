@@ -1,6 +1,6 @@
 import { AxiosError } from 'axios';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import useAuthStore from '../stores/auth.store';
+import useAuthStore from '../../../stores/auth.store';
 import { logout } from '../api/logout';
 import { useRouter } from 'next/navigation';
 import { ServerError } from '@homelab/shared/types';
@@ -23,8 +23,8 @@ export function useLogout(options: UseLogoutOptions) {
     mutationFn: logout,
     onSuccess: () => {
       clearAuthState();
-      queryClient.removeQueries({ queryKey: ['me'] });
-      router.refresh();
+      queryClient.clear();
+      router.replace('/auth/login');
     },
     onError: (error) => {
       const serverError = error.response?.data;

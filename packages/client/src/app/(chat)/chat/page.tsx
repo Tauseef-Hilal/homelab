@@ -1,21 +1,15 @@
-import BackButton from "@client/components/BackButton";
 import Header from "@client/components/Header";
 import GroupChat from "@client/features/chat/components/GroupChat";
-import { cx } from "class-variance-authority";
 import { MessageCircleIcon } from "lucide-react";
 
-export default function DrivePage() {
+export default function ChatPage() {
   return (
-    <>
-      <Header
-        className="fixed top-0 w-full bg-white dark:bg-black"
-        icon={<MessageCircleIcon />}
-        title="Chat"
-        showBackBtn
-      />
-      <main className="h-screen w-full">
+    <div className="flex flex-col h-screen">
+      <Header icon={<MessageCircleIcon />} title="Chat" showBackBtn />
+
+      <main className="flex-1 overflow-hidden">
         <GroupChat />
       </main>
-    </>
+    </div>
   );
 }

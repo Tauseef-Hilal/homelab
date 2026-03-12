@@ -20,20 +20,24 @@ export function useChangePassword(options: UseChangePasswordOptions) {
   >({
     mutationFn: changePassword,
     onSuccess: () => {
-      router.push('/auth/login');
+      router.replace('/auth/login');
     },
-    onError: (err) => {
-      console.dir(err.response?.data)
-      const serverError = err.response?.data;
-      const fieldErrors = serverError?.details?.fieldErrors;
+    onError: (error) => {
+      const serverError = error.response?.data;
+
+      if (!serverError) {
+        options.onGlobalError('Something went wrong');
+        return;
+      }
+
+      const fieldErrors = serverError.details?.fieldErrors;
 
       if (fieldErrors) {
-        return options.onFieldError(fieldErrors);
+        options.onFieldError(fieldErrors);
+        return;
       }
 
-      if (serverError) {
-        return options.onGlobalError(serverError.message);
-      }
+      options.onGlobalError(serverError.message);
     },
   });
 }

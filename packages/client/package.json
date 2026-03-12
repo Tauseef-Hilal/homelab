@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@homelab/shared": "workspace:*",
     "@hookform/resolvers": "^5.2.1",
     "@radix-ui/react-checkbox": "^1.3.3",
     "@radix-ui/react-context-menu": "^2.2.16",
@@ -19,6 +20,7 @@
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.3",
     "@tanstack/react-query": "^5.84.1",
+    "@tanstack/react-virtual": "^3.13.21",
     "axios": "^1.11.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -30,7 +32,6 @@
     "react-dom": "19.1.0",
     "react-hook-form": "^7.62.0",
     "react-icons": "^5.5.0",
-    "@homelab/shared": "workspace:*",
     "socket.io-client": "^4.8.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",

@@ -20,19 +20,24 @@ export function useLogin(options: UseLoginOptions) {
   >({
     mutationFn: login,
     onSuccess: (data) => {
-      router.push(`/auth/verification?token=${data.token}`);
+      router.push(`/auth/verification?token=${encodeURIComponent(data.token)}`);
     },
     onError: (error) => {
       const serverError = error.response?.data;
-      const fieldErrors = serverError?.details?.fieldErrors;
+
+      if (!serverError) {
+        options.onGlobalError('Something went wrong');
+        return;
+      }
+
+      const fieldErrors = serverError.details?.fieldErrors;
 
       if (fieldErrors) {
         options.onFieldError(fieldErrors);
+        return;
       }
 
-      if (serverError) {
-        options.onGlobalError(serverError.message);
-      }
+      options.onGlobalError(serverError.message);
     },
   });
 }

@@ -1,9 +1,9 @@
 import { File } from "../types/storage.types";
 import Image from "next/image";
-import useAuthStore from "@client/features/auth/stores/auth.store";
+import useAuthStore from "@client/stores/auth.store";
+import { IoClose } from "react-icons/io5";
+import { useEffect, useRef } from "react";
 import { cx } from "class-variance-authority";
-import { IoIosCloseCircle } from "react-icons/io";
-import { useRef } from "react";
 
 interface PreviewProps {
   file: File;
@@ -13,10 +13,28 @@ interface PreviewProps {
 
 const Preview: React.FC<PreviewProps> = ({ file, open, setOpen }) => {
   const token = useAuthStore().accessToken;
-  const src = `${process.env.NEXT_PUBLIC_API_URL}/storage/file/${file.id}/preview?token=${token}`;
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const src = `${process.env.NEXT_PUBLIC_API_URL}/storage/file/${file.id}/preview?token=${token}`;
+
+  const close = () => {
+    if (videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause();
+    }
+    setOpen(false);
+  };
+
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+
+    if (open) window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [open]);
+
   let element = null;
+
   if (
     file.mimeType.startsWith("video/") ||
     file.mimeType.startsWith("audio/")
@@ -25,48 +43,71 @@ const Preview: React.FC<PreviewProps> = ({ file, open, setOpen }) => {
       <video
         ref={videoRef}
         src={src}
-        className="max-w-full max-h-full object-contain"
         controls
+        className="w-full h-full object-contain"
       />
     );
   } else if (file.mimeType.startsWith("image/")) {
     element = (
       <Image
-        width={300}
-        height={300}
+        unoptimized
         src={src}
         alt="Preview"
-        className="max-w-full max-h-full object-cover"
+        fill
+        className="object-contain"
       />
     );
   } else {
     element = (
-      <p className="text-white py-12">Preview not available for this file</p>
+      <div className="flex items-center justify-center h-full text-white">
+        Preview not available
+      </div>
     );
   }
 
   return (
     <div
-      style={{ display: open ? "flex" : "none" }}
+      onClick={close}
       className={cx(
-        "fixed w-full h-full top-0 left-0",
-        "justify-center items-center",
-        "bg-black",
+        "fixed inset-0 z-50 flex items-center justify-center",
+        "bg-black/70 backdrop-blur-sm transition",
+        open ? "opacity-100" : "opacity-0 pointer-events-none",
       )}
     >
-      <div className="relative max-w-full max-h-full">
-        {element}
-        <IoIosCloseCircle
-          size={48}
-          className="absolute right-0 top-0 rounded-full shadow text-white"
-          onClick={() => {
-            if (videoRef.current && !videoRef.current.paused) {
-              videoRef.current.pause();
-            }
+      <div onClick={(e) => e.stopPropagation()} className="relative">
+        {/* Fixed preview frame */}
+        <div
+          className="
+            relative
+            w-[900px]
+            h-[600px]
+            max-w-[95vw]
+            max-h-[85vh]
+            bg-black
+            rounded-xl
+            overflow-hidden
+            shadow-2xl
+          "
+        >
+          {element}
+        </div>
 
-            setOpen(false);
-          }}
-        />
+        {/* Close button */}
+        <button
+          onClick={close}
+          className="
+            absolute -top-3 -right-3
+            w-10 h-10
+            flex items-center justify-center
+            rounded-full
+            bg-white/10
+            hover:bg-white/20
+            backdrop-blur
+            transition
+          "
+        >
+          <IoClose size={20} className="text-white" />
+        </button>
       </div>
     </div>
   );

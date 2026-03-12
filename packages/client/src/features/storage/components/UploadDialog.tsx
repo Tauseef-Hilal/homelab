@@ -6,12 +6,13 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@client/components/ui/dialog";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { requestSchemas } from "@homelab/shared/schemas/storage";
-import { useForm } from "react-hook-form";
-import { useUploadFile } from "../hooks/useUploadFile";
+
+import { Button } from "@client/components/ui/button";
 import { Input } from "@client/components/ui/input";
+import { Progress } from "@client/components/ui/progress";
+
 import {
   Select,
   SelectContent,
@@ -19,10 +20,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@client/components/ui/select";
+
+import { Upload, X } from "lucide-react";
+
 import { useState } from "react";
-import { Button } from "@client/components/ui/button";
-import { Progress } from "@client/components/ui/progress";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { requestSchemas } from "@homelab/shared/schemas/storage";
+import { useUploadFile } from "../hooks/useUploadFile";
 import { useBatchMutation } from "../hooks/useBatchMutation";
+
 import { UploadFileResponse } from "@homelab/shared/schemas/storage/response.schema";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -30,107 +38,144 @@ interface UploadDialogProps {
   folderId: string;
   open: boolean;
   setOpen: (open: boolean) => void;
-  refetch: () => void;
+  folderPath: string;
 }
 
 const UploadDialog: React.FC<UploadDialogProps> = ({
   folderId,
   open,
   setOpen,
-  refetch,
+  folderPath,
 }) => {
   const queryClient = useQueryClient();
-  const [ranOnce, setRanOnce] = useState(false);
+
   const [files, setFiles] = useState<File[]>([]);
-  const [visibility, setVisibility] =
-    useState<requestSchemas.UploadFileInput["visibility"]>("public");
+  const [ranOnce, setRanOnce] = useState(false);
 
-  const {
-    handleSubmit,
-    register,
-    formState: { isSubmitting },
-  } = useForm<requestSchemas.UploadFileInput>({
-    defaultValues: { folderId, visibility },
+  const form = useForm<requestSchemas.UploadFileInput>({
     resolver: zodResolver(requestSchemas.uploadFileSchema),
+    defaultValues: {
+      folderId,
+      visibility: "public",
+    },
   });
 
-  const mutation = useUploadFile({
-    onSuccess: () => {},
+  const uploadMutation = useUploadFile({
     onError: () => {},
+    onSuccess: () => {},
   });
 
-  const { isPending, mutate, retry, failed, setFailed, progress } =
+  const { mutate, retry, progress, failed, setFailed, isPending } =
     useBatchMutation<requestSchemas.UploadFileInput, UploadFileResponse>({
-      mutationFn: mutation.mutateAsync,
-      onSuccess: () => {
-        refetch();
-        queryClient.invalidateQueries({ queryKey: ["stats"] });
-      },
+      mutationFn: uploadMutation.mutateAsync,
       delay: 1000,
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["stats"] });
+        queryClient.invalidateQueries({
+          queryKey: ["listDirectory", folderPath],
+        });
+      },
     });
 
+  const reset = () => {
+    setFiles([]);
+    setRanOnce(false);
+    setFailed([]);
+    form.reset();
+  };
+
   const onSubmit = async (data: requestSchemas.UploadFileInput) => {
-    data.folderId = folderId;
+    if (files.length === 0) return;
+
     setRanOnce(true);
 
-    if (failed.length > 0) {
-      return retry();
-    }
-
-    if (files.length == 0) return;
+    if (failed.length > 0) return retry();
 
     const inputs = files.map((file) => {
       const formData = new FormData();
+
       formData.append("file", file);
-      formData.append("folderId", data.folderId ?? "");
+      formData.append("folderId", folderId);
       formData.append("visibility", data.visibility);
+
       return formData as any as requestSchemas.UploadFileInput;
     });
 
     mutate(inputs);
   };
 
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   return (
     <Dialog
       open={open}
-      onOpenChange={(isOpen) => {
-        setOpen(isOpen);
-        setRanOnce(false);
-        setFiles([]);
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (!v) reset();
       }}
     >
-      <DialogContent>
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Upload File</DialogTitle>
-          <DialogDescription>Select files to upload (Max 20)</DialogDescription>
+          <DialogTitle>Upload Files</DialogTitle>
+          <DialogDescription>
+            Drag files here or select them to upload.
+          </DialogDescription>
         </DialogHeader>
+
         <form
           noValidate
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col gap-2"
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-4"
         >
-          <Input
-            required
-            multiple
-            type="file"
-            onChange={(e) => {
-              setFiles([...(e.target.files ?? [])]);
-              setFailed([]);
-            }}
-          />
+          <label className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer hover:bg-muted transition">
+            <Upload size={28} className="mb-2 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              Click or drag files here
+            </p>
+
+            <Input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                setFiles([...(e.target.files ?? [])]);
+                setFailed([]);
+              }}
+            />
+          </label>
+
+          {files.length > 0 && (
+            <div className="space-y-2 max-h-40 overflow-auto">
+              {files.map((file, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between border rounded px-3 py-1 text-sm"
+                >
+                  {file.name}
+
+                  <button type="button" onClick={() => removeFile(i)}>
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <Select
-            value={visibility}
-            defaultValue="public"
-            onValueChange={(value) =>
-              setVisibility(
-                value as requestSchemas.UploadFileInput["visibility"],
+            value={form.watch("visibility")}
+            onValueChange={(v) =>
+              form.setValue(
+                "visibility",
+                v as requestSchemas.UploadFileInput["visibility"],
               )
             }
-            {...register("visibility")}
           >
             <SelectTrigger>
               <SelectValue placeholder="Visibility" />
             </SelectTrigger>
+
             <SelectContent>
               <SelectItem value="public">Public</SelectItem>
               <SelectItem value="private">Private</SelectItem>
@@ -139,25 +184,33 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
           </Select>
 
           {ranOnce && (
-            <div>
+            <div className="space-y-2">
               {isPending ? (
-                <Progress value={progress} />
+                <>
+                  <Progress value={progress} />
+                  <p className="text-xs text-muted-foreground">
+                    {Math.round(progress)}%
+                  </p>
+                </>
               ) : (
-                <p>
+                <p className="text-sm">
                   {failed.length > 0
                     ? `Failed to upload ${failed.length} files`
-                    : "Files uploaded successfully"}
+                    : "Upload complete"}
                 </p>
               )}
             </div>
           )}
 
-          <Button
-            type="submit"
-            disabled={isSubmitting || isPending || files.length == 0}
-          >
-            {failed.length > 0 ? "Retry" : "Upload"}
-          </Button>
+          <DialogFooter>
+            <Button
+              type="submit"
+              disabled={files.length === 0 || isPending}
+              className="w-full"
+            >
+              {failed.length > 0 ? "Retry Upload" : "Upload"}
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

@@ -1,6 +1,6 @@
 "use client";
 
-import useAuthStore from "@client/features/auth/stores/auth.store";
+import useAuthStore from "@client/stores/auth.store";
 import { useMe } from "@client/hooks/useMe";
 import { useEffect } from "react";
 

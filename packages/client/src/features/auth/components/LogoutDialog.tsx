@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from "@client/components/ui/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { requestSchemas, responseSchemas } from "@homelab/shared/schemas/auth";
+import { requestSchemas } from "@homelab/shared/schemas/auth";
 import { Controller, useForm } from "react-hook-form";
 import { useLogout } from "../hooks/useLogout";
 import { useState } from "react";
@@ -22,14 +22,18 @@ import { LucideLogOut } from "lucide-react";
 
 interface LogoutDialogProps {}
 
-export const LogoutDialog: React.FC<LogoutDialogProps> = ({}) => {
+export const LogoutDialog: React.FC<LogoutDialogProps> = () => {
   const [errorMsg, setErrorMsg] = useState("");
+
   const {
     control,
     handleSubmit,
     formState: { isSubmitting },
   } = useForm<requestSchemas.LogoutInput>({
     resolver: zodResolver(requestSchemas.logoutSchema),
+    defaultValues: {
+      logoutAll: false,
+    },
   });
 
   const mutation = useLogout({
@@ -40,16 +44,29 @@ export const LogoutDialog: React.FC<LogoutDialogProps> = ({}) => {
 
   return (
     <Dialog>
+      {/* Trigger */}
       <DialogTrigger asChild>
-        <LucideLogOut />
+        <Button variant="ghost" size="icon">
+          <LucideLogOut size={18} />
+        </Button>
       </DialogTrigger>
-      <DialogContent>
+
+      {/* Dialog */}
+      <DialogContent className="sm:max-w-md">
         <form noValidate onSubmit={onSubmit}>
-          <DialogHeader>
-            <DialogTitle>Logout</DialogTitle>
-            <DialogDescription>Are you sure to logout?</DialogDescription>
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="flex items-center gap-2">
+              <LucideLogOut size={18} />
+              Logout
+            </DialogTitle>
+
+            <DialogDescription>
+              Are you sure you want to log out?
+            </DialogDescription>
           </DialogHeader>
-          <div className="py-2">
+
+          {/* Options */}
+          <div className="py-4 space-y-3">
             <Controller
               name="logoutAll"
               control={control}
@@ -60,21 +77,27 @@ export const LogoutDialog: React.FC<LogoutDialogProps> = ({}) => {
                     checked={field.value}
                     onCheckedChange={field.onChange}
                   />
-                  <Label htmlFor="logoutAll">Log out of all devices</Label>
+
+                  <Label htmlFor="logoutAll" className="text-sm cursor-pointer">
+                    Log out of all devices
+                  </Label>
                 </div>
               )}
             />
 
-            {errorMsg && <p className="text-red-500">{errorMsg}</p>}
+            {errorMsg && <p className="text-sm text-destructive">{errorMsg}</p>}
           </div>
-          <DialogFooter>
+
+          {/* Footer */}
+          <DialogFooter className="gap-2">
             <DialogClose asChild>
-              <Button variant={"outline"}>Cancel</Button>
+              <Button variant="outline">Cancel</Button>
             </DialogClose>
+
             <Button
               type="submit"
-              disabled={isSubmitting || mutation.isPending}
-              className="cursor-pointer"
+              variant="destructive"
+              disabled={mutation.isPending || isSubmitting}
             >
               Logout
             </Button>

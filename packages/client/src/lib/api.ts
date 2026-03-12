@@ -1,8 +1,10 @@
-import useAuthStore from '@client/features/auth/stores/auth.store';
+import { refresh } from '@client/api/refresh';
+import { env } from '@client/config/env';
+import useAuthStore from '@client/stores/auth.store';
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: env.API_URL,
   withCredentials: true,
 });
 
@@ -70,7 +72,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await api.post(`/auth/refresh`);
+        const data = await refresh();
         const newToken = data.tokens.access;
 
         useAuthStore.getState().setAccessToken(newToken);
@@ -83,12 +85,10 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (err) {
         if (err instanceof AxiosError && err.status == 401) {
-          console.error(err);
           window.location.href = '/auth/login';
           return;
         }
 
-        console.error(err);
         processQueue(err, null);
         useAuthStore.getState().logout();
         return Promise.reject(err);
@@ -98,7 +98,7 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;
