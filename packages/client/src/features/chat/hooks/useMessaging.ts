@@ -17,7 +17,7 @@ export function useMessaging() {
     socketRef.current = socket;
 
     socket.on('broadcast', (message) => {
-      setMessages((messages) => [message, ...messages]);
+      setMessages((messages) => [...messages, message]);
     });
 
     return () => {

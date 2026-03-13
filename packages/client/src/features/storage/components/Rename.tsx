@@ -23,6 +23,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import z from "zod";
 import { useEffect } from "react";
+import { useMoveMutation } from "../hooks/useMoveMutation";
 
 interface RenameProps {
   item: File | Folder;
@@ -50,10 +51,7 @@ const RenameDialog: React.FC<RenameProps> = ({
   setOpen,
   parentPath,
 }) => {
-  const queryClient = useQueryClient();
-
   const ext = item.name.includes(".") ? item.name.split(".").pop() : undefined;
-
   const baseName = ext ? item.name.slice(0, -(ext.length + 1)) : item.name;
 
   const form = useForm<RenameInput>({
@@ -67,28 +65,15 @@ const RenameDialog: React.FC<RenameProps> = ({
     form.reset({ name: baseName });
   }, [item, open]);
 
-  const mutation = useMoveItems({
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["listDirectory", parentPath],
-      });
-
-      toast.success("Renamed successfully");
-      setOpen(false);
-    },
-
-    onError: () => toast.error("Rename failed"),
-  });
+  const mutation = useMoveMutation(parentPath);
 
   const onSubmit = (data: RenameInput) => {
-    const newName = ext ? `${data.name}.${ext}` : data.name;
-
     mutation.mutate({
       destinationFolderId: isFolder(item) ? item.parentId : undefined,
       items: [
         {
           id: item.id,
-          newName,
+          newName: data.name,
           type: isFolder(item) ? "folder" : "file",
         },
       ],

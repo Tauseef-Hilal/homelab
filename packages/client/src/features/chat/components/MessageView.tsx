@@ -2,46 +2,42 @@ import { ioSchemas } from "@homelab/shared/schemas/chat";
 import UserAvatar from "./UserAvatar";
 
 interface MessageViewProps {
-  message: ioSchemas.BroadcastMessage;
-  isOwn?: boolean;
+  messages: ioSchemas.BroadcastMessage[];
 }
 
-const MessageView: React.FC<MessageViewProps> = ({ message, isOwn }) => {
-  const time = new Date(message.sentAt).toLocaleTimeString([], {
+const MessageView: React.FC<MessageViewProps> = ({ messages }) => {
+  const first = messages[0];
+
+  const author = first.author ?? { username: "Unknown" };
+
+  const time = new Date(first.sentAt).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
   });
 
   return (
-    <div
-      className={`flex items-start gap-2 ${
-        isOwn ? "justify-end" : "justify-start"
-      }`}
-    >
-      {!isOwn && <UserAvatar user={message.author} />}
+    <div className="flex gap-3 px-4 py-2 hover:bg-muted/40 transition-colors">
+      <div className="shrink-0 mt-1">
+        <UserAvatar user={author} />
+      </div>
 
-      <div className="flex flex-col max-w-[70%]">
-        {!isOwn && (
-          <span className="text-sm text-muted-foreground mb-1">
-            {message.author.username}
-          </span>
-        )}
+      <div className="flex flex-col leading-snug max-w-[900px]">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="font-semibold text-sm">{author.username}</span>
 
-        <div
-          className={`rounded-2xl px-4 py-2 text-sm shadow-sm break-words ${
-            isOwn ? "bg-primary text-primary-foreground" : "bg-muted"
-          }`}
-        >
-          {message.content}
+          <span className="text-xs text-muted-foreground">{time}</span>
         </div>
 
-        <span
-          className={`text-[11px] text-muted-foreground mt-1 ${
-            isOwn ? "text-right" : ""
-          }`}
-        >
-          {time}
-        </span>
+        <div className="flex flex-col gap-[2px]">
+          {messages.map((m) => (
+            <p
+              key={m.id}
+              className="text-sm text-muted-foreground whitespace-pre-wrap break-words"
+            >
+              {m.content}
+            </p>
+          ))}
+        </div>
       </div>
     </div>
   );
