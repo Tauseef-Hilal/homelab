@@ -12,7 +12,7 @@ export function useListDirectory(path: string) {
     responseSchemas.ListDirectoryResponse,
     AxiosError<ServerError>
   >({
-    queryKey: ['listDirectory', path],
+    queryKey: ['list', path],
     queryFn: ({ signal }) => listDirectory(path, signal),
     enabled: !!user,
     staleTime: Infinity,

@@ -1,12 +1,14 @@
-import fs from 'fs/promises';
-import { Readable } from 'stream';
-import { pipeline } from 'stream/promises';
-import { createWriteStream } from 'fs';
-import { env } from '@homelab/shared/config';
-import { mediaConstants } from '@homelab/shared/constants';
 import path from 'path';
+import { createReadStream, createWriteStream } from 'fs';
+import { pipeline } from 'stream/promises';
+import { env } from '@homelab/shared/config';
 import { prisma } from '@homelab/shared/prisma';
 import { Folder } from '@prisma/client';
+import { Readable } from 'stream';
+
+/* -------------------------------------------------------------------------- */
+/*                                  FILE NAMES                                */
+/* -------------------------------------------------------------------------- */
 
 export function getFileNameWithoutExtension(name: string) {
   const idx = name.lastIndexOf('.');
@@ -20,141 +22,193 @@ export function splitNameAndExtension(name: string) {
     : { base: name.slice(0, idx), ext: name.slice(idx) };
 }
 
-export async function resolveFileName(
-  file: {
-    id: string;
-    name: string;
-    userId: string;
-  },
-  newNameWithoutExtension: string,
-  folderId: string,
-  copy: boolean = false,
+export function getFileExtension(filename: string) {
+  return path.extname(filename).replace('.', '').toLowerCase();
+}
+
+/* -------------------------------------------------------------------------- */
+/*                            DROPBOX STYLE NAMING                            */
+/* -------------------------------------------------------------------------- */
+
+function resolveDuplicateName(
+  baseName: string,
+  ext: string,
+  names: Set<string>,
 ) {
-  const existingFiles = await prisma.file.findMany({
-    where: { folderId: folderId, userId: file.userId },
-    select: { id: true, name: true },
-  });
+  const original = `${baseName}${ext}`;
 
-  const existingFileNames = existingFiles.map(
-    (f: { name: string; id: string }) =>
-      f.id != file.id || copy ? f.name : '',
-  );
-
-  const ext = getFileExtension(file.name);
-  let newFileName = newNameWithoutExtension;
-  let newFilePath = '';
-
-  let n = 1;
-  while (existingFileNames.includes(`${newFileName}.${ext}`)) {
-    newFileName = newNameWithoutExtension;
-    newFileName = `${newFileName}-${n}`;
-    n++;
+  if (!names.has(original)) {
+    return original;
   }
 
-  newFileName = `${newFileName}.${ext}`;
+  let counter = 1;
+  let finalName: string;
 
-  if (!folderId) {
-    newFilePath = `/${newFileName}`;
-  } else {
+  do {
+    finalName = `${baseName} (${counter})${ext}`;
+    counter++;
+  } while (names.has(finalName));
+
+  return finalName;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              FILE NAME RESOLVER                            */
+/* -------------------------------------------------------------------------- */
+
+type ResolveFileNameOptions =
+  | {
+      name: string;
+      destFolderId: string;
+      existingNames?: never;
+      parentPath?: never;
+    }
+  | {
+      name: string;
+      existingNames: Set<string>;
+      parentPath: string;
+      destFolderId?: never;
+    };
+
+type ResolvedFileName = {
+  resolvedName: string;
+  resolvedPath: string;
+};
+
+export async function resolveFileName(
+  options: ResolveFileNameOptions,
+): Promise<ResolvedFileName> {
+  const { name } = options;
+
+  let names: Set<string>;
+  let parentPath = '';
+
+  if (options.existingNames) {
+    names = options.existingNames;
+    parentPath = options.parentPath;
+  } else if (options.destFolderId) {
     const folder = await prisma.folder.findUnique({
-      where: { id: folderId },
-      select: { fullPath: true },
+      where: { id: options.destFolderId },
+      select: {
+        fullPath: true,
+        files: { select: { name: true } },
+      },
     });
 
-    if (!folder) {
-      throw new Error('Folder does not exist');
-    }
-
-    newFilePath = `${folder.fullPath}/${newFileName}`;
+    parentPath = folder?.fullPath ?? '';
+    names = new Set(folder?.files.map((f) => f.name));
+  } else {
+    throw new Error('Invalid options');
   }
 
-  return { newFileName, newFilePath };
+  const ext = path.extname(name);
+  const base = path.basename(name, ext);
+
+  const finalName = resolveDuplicateName(base, ext, names);
+
+  return {
+    resolvedName: finalName,
+    resolvedPath: pathJoin(parentPath, finalName),
+  };
 }
 
-export function pathJoin(parent: string | undefined, child: string) {
-  return path.join(parent ?? '/', child);
+/* -------------------------------------------------------------------------- */
+/*                             FOLDER NAME RESOLVER                           */
+/* -------------------------------------------------------------------------- */
+
+type ResolveFolderNameOptions =
+  | {
+      name: string;
+      destFolderId: string | null;
+      existingNames?: never;
+      parentPath?: never;
+    }
+  | {
+      name: string;
+      existingNames: Set<string>;
+      parentPath: string;
+      destFolderId?: never;
+    };
+
+type ResolvedFolderName = {
+  resolvedName: string;
+  resolvedPath: string;
+};
+
+export async function resolveFolderName(
+  options: ResolveFolderNameOptions,
+): Promise<ResolvedFolderName> {
+  const { name } = options;
+
+  let names: Set<string>;
+  let parentPath = '';
+
+  if (options.existingNames) {
+    names = options.existingNames;
+    parentPath = options.parentPath;
+  } else if (options.destFolderId) {
+    const folder = await prisma.folder.findUnique({
+      where: { id: options.destFolderId! },
+      select: {
+        fullPath: true,
+        children: { select: { name: true } },
+      },
+    });
+
+    parentPath = folder?.fullPath ?? '';
+    names = new Set(folder?.children.map((f) => f.name));
+  } else {
+    throw new Error('Invalid options');
+  }
+
+  const finalName = resolveDuplicateName(name, '', names);
+
+  return {
+    resolvedName: finalName,
+    resolvedPath: pathJoin(parentPath, finalName),
+  };
 }
 
-export function getFileExtension(filename: string): string {
-  const ext = path.extname(filename || '').toLowerCase();
-  return ext.startsWith('.') ? ext.slice(1) : ext;
+/* -------------------------------------------------------------------------- */
+/*                                   PATHS                                    */
+/* -------------------------------------------------------------------------- */
+
+export function pathJoin(parent: string, child: string) {
+  return path.join(parent, child);
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                FILE COPYING                                */
+/* -------------------------------------------------------------------------- */
 
 export async function copyFileOnDisk(src: string, dest: string) {
-  await pipeline(
-    Readable.from((await fs.open(src)).createReadStream()),
-    createWriteStream(dest),
-  );
+  await pipeline(createReadStream(src), createWriteStream(dest));
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                MEDIA PATHS                                 */
+/* -------------------------------------------------------------------------- */
+
+export function getThumbnailsDirPath(userId: string) {
+  return path.join(path.resolve(env.THUMBNAIL_DIR_PATH), userId);
 }
 
 export function getThumbnailPath(userId: string, fileId: string) {
   return path.join(getThumbnailsDirPath(userId), `${fileId}.webp`);
 }
 
-export function getThumbnailsDirPath(userId: string) {
-  return path.join(
-    path.resolve(env.MEDIA_DIR_PATH),
-    userId,
-    mediaConstants.thumbnailsDirName,
-  );
-}
-
-export function getOriginalFilePath(
-  userId: string,
-  fileId: string,
-  ext: string,
-) {
-  return path.join(getOriginalsDirPath(userId), `${fileId}.${ext}`);
-}
-
-export function getOriginalsDirPath(userId: string) {
-  return path.join(
-    path.resolve(env.MEDIA_DIR_PATH),
-    userId,
-    mediaConstants.originalsDirName,
-  );
-}
-
 export function getTempFilePath(fileName: string) {
   return path.join(path.resolve(env.TEMP_DIR_PATH), fileName);
 }
 
-export async function resolveFolderName(
-  folder: {
-    id: string;
-    name: string;
-    userId: string;
-  },
-  newName: string,
-  targetFolderId: string | null,
-  copy: boolean = false,
-) {
-  const existingFolders = await prisma.folder.findMany({
-    where: { parentId: targetFolderId, userId: folder.userId },
-    select: { id: true, name: true },
-  });
-
-  const existingFolderNames = existingFolders.map(
-    (f: { name: string; id: string }) =>
-      f.id != folder.id || copy ? f.name : '',
-  );
-
-  let n = 1;
-  let newFolderName = newName;
-
-  while (existingFolderNames.includes(newFolderName)) {
-    newFolderName = newName;
-    newFolderName = `${newFolderName}-${n}`;
-    n++;
-  }
-
-  return newFolderName;
-}
+/* -------------------------------------------------------------------------- */
+/*                              SECURITY HELPERS                              */
+/* -------------------------------------------------------------------------- */
 
 export function ensureFolderExists(
   folder: Folder | null,
-  errMsg: string = 'Folder does not exist',
-) {
+  errMsg = 'Folder does not exist',
+): asserts folder is Folder {
   if (!folder) {
     throw new Error(errMsg);
   }
@@ -163,9 +217,75 @@ export function ensureFolderExists(
 export function ensureUserIsOwner(
   folder: Folder,
   userId: string,
-  errMsg: string = 'You do not have the permission to perform this action',
+  errMsg = 'You do not have the permission to perform this action',
 ) {
-  if (folder.userId != userId) {
+  if (folder.userId !== userId) {
     throw new Error(errMsg);
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                CHUNK STORAGE                               */
+/* -------------------------------------------------------------------------- */
+
+export function getBlobStorageKeyByHash(hash: string) {
+  const prefix1 = hash.slice(0, 2);
+  const prefix2 = hash.slice(2, 4);
+
+  return path.join(prefix1, prefix2, hash);
+}
+
+export function getBlobStoragePathByKey(storageKey: string) {
+  return path.join(env.BLOB_DIR_PATH, storageKey);
+}
+
+type GetFileStreamInput = {
+  chunks: {
+    size: number;
+    blob: {
+      storageKey: string;
+    };
+  }[];
+};
+
+type RangeOptions = {
+  start?: number;
+  end?: number;
+};
+
+export function getFileStream(
+  file: GetFileStreamInput,
+  range?: RangeOptions,
+): Readable {
+  const start = range?.start ?? 0;
+  // If no end is provided, read until the end of the last chunk
+  const end = range?.end ?? Infinity;
+
+  async function* generateFileChunks() {
+    let currentOffset = 0;
+
+    for (const chunk of file?.chunks ?? []) {
+      const chunkStart = currentOffset;
+      const chunkEnd = currentOffset + chunk.size - 1; // Inclusive end
+
+      currentOffset += chunk.size;
+
+      if (chunkEnd < start) continue;
+      if (chunkStart > end) break;
+
+      // Calculate the relative slice within this specific chunk
+      const relativeStart = Math.max(0, start - chunkStart);
+      const relativeEnd = Math.min(chunk.size - 1, end - chunkStart);
+
+      const storagePath = getBlobStoragePathByKey(chunk.blob.storageKey);
+
+      // Yield the specific byte range for this chunk's file
+      yield* createReadStream(storagePath, {
+        start: relativeStart,
+        end: relativeEnd,
+      });
+    }
+  }
+
+  return Readable.from(generateFileChunks());
 }

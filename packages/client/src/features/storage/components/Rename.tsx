@@ -16,14 +16,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useMoveItems } from "../hooks/useMoveItems";
-import { isFolder } from "@client/lib/utils";
+import { invalidateQueries, isFolder, pollJobData } from "@client/lib/utils";
 
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
 import z from "zod";
 import { useEffect } from "react";
-import { useMoveMutation } from "../hooks/useMoveMutation";
 
 interface RenameProps {
   item: File | Folder;
@@ -51,6 +50,8 @@ const RenameDialog: React.FC<RenameProps> = ({
   setOpen,
   parentPath,
 }) => {
+  const queryClient = useQueryClient();
+
   const ext = item.name.includes(".") ? item.name.split(".").pop() : undefined;
   const baseName = ext ? item.name.slice(0, -(ext.length + 1)) : item.name;
 
@@ -65,15 +66,27 @@ const RenameDialog: React.FC<RenameProps> = ({
     form.reset({ name: baseName });
   }, [item, open]);
 
-  const mutation = useMoveMutation(parentPath);
+  const mutation = useMoveItems({
+    onSuccess: (data) =>
+      pollJobData(
+        data.job.id,
+        {
+          processing: "Moving files",
+          completed: "Files moved successfully",
+          failed: "Failed to move files",
+        },
+        () => invalidateQueries(queryClient, [["list", parentPath], ["stats"]]),
+      ),
+    onError: (err) => toast.error(err),
+  });
 
   const onSubmit = (data: RenameInput) => {
     mutation.mutate({
-      destinationFolderId: isFolder(item) ? item.parentId : undefined,
+      destinationFolderId: isFolder(item) ? item.parentId : item.folderId,
       items: [
         {
           id: item.id,
-          newName: data.name,
+          newName: `${data.name}.${ext}`,
           type: isFolder(item) ? "folder" : "file",
         },
       ],

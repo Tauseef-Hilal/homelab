@@ -1,9 +1,5 @@
 import { ConnectionOptions, Queue } from 'bullmq';
-import {
-  JobPayload,
-  ThumbnailJobPayload,
-  queueNames,
-} from '@homelab/shared/jobs';
+import { ThumbnailJobPayload, queueNames } from '@homelab/shared/jobs';
 import { enqueueJob } from '../enqueueJob';
 import { redis } from '@homelab/shared/redis';
 
@@ -11,16 +7,21 @@ export const thumbnailQueue = new Queue(queueNames.thumbnailQueueName, {
   connection: redis as unknown as ConnectionOptions,
 });
 
+const defaultThumbnailJobOptions = {
+  attempts: 3,
+  backoff: {
+    type: 'exponential' as const,
+    delay: 5000,
+  },
+  removeOnComplete: true,
+  removeOnFail: false,
+};
+
 export const enqueueThumbnailJob = enqueueJob<ThumbnailJobPayload>(
-  async (name: string, payload: JobPayload) => {
+  async (name: string, payload: ThumbnailJobPayload, jobId: string) => {
     await thumbnailQueue.add(name, payload, {
-      attempts: 3,
-      backoff: {
-        type: 'exponential',
-        delay: 5000,
-      },
-      removeOnComplete: true,
-      removeOnFail: false,
+      ...defaultThumbnailJobOptions,
+      jobId, // idempotencyKey used as BullMQ jobId
     });
   },
 );

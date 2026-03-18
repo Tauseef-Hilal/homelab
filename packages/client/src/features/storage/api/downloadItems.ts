@@ -5,6 +5,8 @@ import {
 } from '@homelab/shared/schemas/storage';
 
 export async function downloadItems(data: requestSchemas.DownloadItemsInput) {
-  const res = await api.post('/storage/items/download', data);
+  const res = await api.post('/storage/items/download', data, {
+    headers: { 'x-idempotency-key': crypto.randomUUID() },
+  });
   return responseSchemas.downloadItemsSchema.parse(res.data);
 }

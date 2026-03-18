@@ -12,17 +12,16 @@ export const thumbnailWorker = new Worker<
   ThumbnailJobResult
 >(queueNames.thumbnailQueueName, thumbnailProcessor, {
   connection: redis as unknown as ConnectionOptions,
-  concurrency: 1,
+  concurrency: 2,
 });
 
 thumbnailWorker.on('active', async (job, prev) => {
-  await updateJob(job.data.prismaJobId, { status: 'processing' });
+  await updateJob(job.id ?? '', { status: 'processing' });
 
   const logger = getJobLogger('thumbnail-worker', job);
   logger.info(
     {
       userId: job.data.userId,
-      filePath: job.data.filePath,
       attempts: job.attemptsMade,
     },
     `Processing job: ${job.name}<${job.id}>`,
@@ -30,7 +29,7 @@ thumbnailWorker.on('active', async (job, prev) => {
 });
 
 thumbnailWorker.on('completed', async (job) => {
-  await updateJob(job.data.prismaJobId, {
+  await updateJob(job.id ?? '', {
     status: 'completed',
     attempts: job.attemptsMade,
   });
@@ -44,7 +43,6 @@ thumbnailWorker.on('completed', async (job) => {
   logger.info(
     {
       userId: job.data.userId,
-      filePath: job.data.filePath,
       attempts: job.attemptsMade,
     },
     `Job ${job.name}<${job.id}> completed`,
@@ -52,8 +50,9 @@ thumbnailWorker.on('completed', async (job) => {
 });
 
 thumbnailWorker.on('failed', async (job, err) => {
-  await updateJob(job?.data.prismaJobId ?? '', {
+  await updateJob(job?.id ?? '', {
     status: 'failed',
+    error: err.message,
     attempts: job?.attemptsMade ?? 0,
   });
 
@@ -61,7 +60,6 @@ thumbnailWorker.on('failed', async (job, err) => {
   logger.error(
     {
       userId: job?.data.userId,
-      filePath: job?.data.filePath,
       attempts: job?.attemptsMade,
       error: err.message,
     },

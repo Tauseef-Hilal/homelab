@@ -9,4 +9,5 @@ export const jobNames = {
   moveJobName: 'move',
   deleteJobName: 'delete',
   zipJobName: 'zip',
+  uploadCleanupJobName: 'upload-cleanup',
 };

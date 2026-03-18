@@ -8,14 +8,12 @@ export const downloadController = catchAsync(
   async (req: Request, res: Response) => {
     const id = requestSchemas.idParamSchema.parse(req.params.id);
 
-    const { filePath, fileName } = await validateLinkAndGetDownloadMeta(
-      id
-    );
+    const { filePath, fileName } = await validateLinkAndGetDownloadMeta(id);
 
     res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
     res.setHeader('Content-Type', 'application/zip');
 
     const fileStream = createReadStream(filePath);
     fileStream.pipe(res);
-  }
+  },
 );

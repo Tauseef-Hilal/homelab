@@ -1,20 +1,8 @@
 "use client";
 
+import { formatSize } from "@client/lib/utils";
 import { useGetStats } from "../hooks/useGetStats";
 import { cx } from "class-variance-authority";
-
-const formatSize = (bytes: number) => {
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let i = 0;
-  let value = bytes;
-
-  while (value >= 1024 && i < units.length - 1) {
-    value /= 1024;
-    i++;
-  }
-
-  return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
-};
 
 const StorageStats: React.FC = () => {
   const { data, isLoading } = useGetStats();

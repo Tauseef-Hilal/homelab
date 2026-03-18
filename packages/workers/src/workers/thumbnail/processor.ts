@@ -11,7 +11,7 @@ export const thumbnailProcessor = async (
 ): Promise<ThumbnailJobResult> => {
   switch (job.name) {
     case jobNames.thumbnailJobName:
-      return await generateThumbnail(job.data);
+      return await generateThumbnail(job);
     default:
       throw new Error(`Unknown job name: ${job.name}`);
   }

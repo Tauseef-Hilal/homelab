@@ -40,7 +40,7 @@ const NewFolderDialog: React.FC<NewFolderDialogProps> = ({
   const { mutate, isPending } = useCreateFolder({
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["listDirectory", parentPath],
+        queryKey: ["list", parentPath],
       });
       form.reset();
       setOpen(false);

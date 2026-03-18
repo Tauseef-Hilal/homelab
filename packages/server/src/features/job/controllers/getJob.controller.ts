@@ -14,12 +14,11 @@ export const getJobController = catchAsync(
 
     res.status(200).json(
       success({
-        job: {
-          id: job.id,
-          status: job.status,
-          progress: Number(progress) ?? 0,
-          result: job.result,
-        },
+        id: job.id,
+        status: job.status,
+        progress: Number(progress) ?? 0,
+        result: job.result,
+        error: job.error,
       }),
     );
   },

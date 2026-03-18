@@ -19,3 +19,7 @@ export type ZipJobResult = {
   zipPath: string;
   zippedAt: string;
 };
+
+export type UploadCleanupJobResult = {
+  cleanedAt: string;
+};

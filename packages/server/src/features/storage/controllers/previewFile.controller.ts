@@ -1,10 +1,10 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { createReadStream } from 'fs';
 import { requestSchemas } from '@homelab/shared/schemas/storage';
-import { getFileMeta } from '../services/file.service';
 import { verifyAccessToken } from '@server/lib/jwt';
 import { throwUnauthorized } from '@server/features/auth/utils/error.util';
+import { getFileStream } from '@homelab/shared/utils';
+import { getFileMeta } from '../services/file.service';
 
 export const previewFileController = catchAsync(
   async (req: Request, res: Response) => {
@@ -15,31 +15,34 @@ export const previewFileController = catchAsync(
       const fileId = requestSchemas.idParamSchema.parse(req.params.fileId);
       const range = req.headers.range;
 
-      const { filePath, fileSize, mimeType } = await getFileMeta(sub, fileId);
+      const file = await getFileMeta(sub, fileId);
 
       if (!range) {
-        res.setHeader('Content-Type', mimeType);
-        res.setHeader('Content-Length', fileSize);
-        return createReadStream(filePath).pipe(res);
+        res.setHeader('Content-Type', file.mimeType);
+        res.setHeader('Content-Length', file.size);
+        return getFileStream(file).pipe(res);
       }
 
       const [startStr, endStr] = range.replace(/bytes=/, '').split('-');
       const start = parseInt(startStr, 10);
-      const end = endStr ? parseInt(endStr, 10) : fileSize - 1;
+      const end = endStr ? parseInt(endStr, 10) : file.size - 1;
 
-      if (start >= fileSize || end >= fileSize) {
-        res.status(416).setHeader('Content-Range', `bytes */${fileSize}`).end();
+      if (start >= file.size || end >= file.size) {
+        res
+          .status(416)
+          .setHeader('Content-Range', `bytes */${file.size}`)
+          .end();
         return;
       }
 
       const chunkSize = end - start + 1;
-      const fileStream = createReadStream(filePath, { start, end });
+      const fileStream = getFileStream(file, { start, end });
 
       res.writeHead(206, {
-        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Content-Range': `bytes ${start}-${end}/${file.size}`,
         'Accept-Ranges': 'bytes',
         'Content-Length': chunkSize,
-        'Content-Type': mimeType,
+        'Content-Type': file.mimeType,
       });
 
       fileStream.pipe(res);

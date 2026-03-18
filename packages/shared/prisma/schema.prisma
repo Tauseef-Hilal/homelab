@@ -5,7 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider      = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -24,20 +24,21 @@ enum UserRole {
 }
 
 model User {
-  id               String             @id @default(uuid())
-  role             UserRole           @default(USER)
-  email            String             @unique
-  username         String
-  password         String
-  storageQuota     Int                @default(524288000)
-  storageUsed      Int                @default(0)
-  files            File[]
-  folders          Folder[]
-  createdAt        DateTime           @default(now())
-  refreshTokens    RefreshToken[]
-  DownloadLink     DownloadLink[]
-  Job              Job[]
-  BroadcastMessage BroadcastMessage[]
+  id             String             @id @default(uuid())
+  role           UserRole           @default(USER)
+  email          String             @unique
+  username       String
+  password       String
+  storageQuota   Int                @default(524288000)
+  storageUsed    Int                @default(0)
+  files          File[]
+  folders        Folder[]
+  createdAt      DateTime           @default(now())
+  refreshTokens  RefreshToken[]
+  downloadLinks  DownloadLink[]
+  jobs           Job[]
+  messages       BroadcastMessage[]
+  uploadSessions UploadSession[]
 }
 
 model RefreshToken {
@@ -69,8 +70,11 @@ model Folder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([parentId, name, userId])
   @@unique([userId, fullPath])
+  @@index([userId, fullPath])
   @@index([parentId])
+  @@index([fullPath])
 }
 
 model File {
@@ -90,7 +94,64 @@ model File {
   updatedAt  DateTime     @updatedAt
   SharedLink SharedLink[]
 
+  chunks          FileChunk[]
+  uploadSession   UploadSession? @relation(fields: [uploadSessionId], references: [id])
+  uploadSessionId String?        @unique
+
   @@unique([userId, fullPath])
+  @@unique([folderId, name, userId])
+  @@index([userId, folderId])
+  @@index([fullPath])
+}
+
+model FileChunk {
+  id         String   @id @default(uuid())
+  fileId     String
+  blobId     String
+  chunkIndex Int
+  size       Int
+  createdAt  DateTime @default(now())
+
+  file File @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  blob Blob @relation(fields: [blobId], references: [id])
+
+  @@unique([fileId, chunkIndex])
+  @@index([fileId])
+}
+
+model Blob {
+  id         String   @id @default(uuid())
+  hash       String
+  storageKey String
+  size       Int
+  refCount   Int
+  createdAt  DateTime @default(now())
+
+  chunks FileChunk[]
+
+  @@unique([hash])
+  @@index([refCount])
+}
+
+model UploadSession {
+  id             String       @id @default(uuid())
+  totalChunks    Int
+  uploadedChunks Int
+  totalSize      Int
+  status         UploadStatus
+  userId         String
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+
+  file File?
+  user User  @relation(fields: [userId], references: [id])
+}
+
+enum UploadStatus {
+  active
+  cancelled
+  completed
+  expired
 }
 
 enum Visibility {

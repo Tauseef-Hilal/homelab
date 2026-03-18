@@ -1,33 +1,27 @@
 import { randomUUID } from 'crypto';
-import { existsSync } from 'fs';
-import { unlink } from 'fs/promises';
-
-import { File, Visibility } from '@prisma/client';
-
+import { File, Folder, Prisma, Visibility } from '@prisma/client';
 import { prisma } from '@homelab/shared/prisma';
-import { redis, RedisKeys } from '@homelab/shared/redis';
-
 import {
-  copyFileOnDisk,
-  getFileExtension,
-  getFileNameWithoutExtension,
-  getOriginalFilePath,
-  getThumbnailPath,
-  pathJoin,
   resolveFileName,
   resolveFolderName,
   calculateSize,
   reserve,
   release,
+  getThumbnailPath,
+  copyFileOnDisk,
+  pathJoin,
 } from '@homelab/shared/utils/';
 
-import { HttpError } from '@homelab/shared/errors';
+import { HttpError, StorageErrorCode } from '@homelab/shared/errors';
 import { CommonErrorCode } from '@homelab/shared/errors';
-import { StorageErrorCode } from '@homelab/shared/errors';
-
-import { validateFolderCopyPaths } from '@workers/utils/storage';
-
 import { CopyJobPayload, CopyJobResult } from '@homelab/shared/jobs/';
+import pLimit from 'p-limit';
+import { Job } from 'bullmq';
+import { getJobLogger } from '@workers/utils/logger';
+
+const FILE_BATCH_SIZE = 1000;
+const FOLDER_BATCH_SIZE = 1000;
+const SCAN_BATCH_SIZE = 1000;
 
 type FileMeta = {
   id: string;
@@ -41,6 +35,11 @@ type FileMeta = {
   hasThumbnail: boolean;
 };
 
+type FileIdMap = {
+  oldId: string;
+  newId: string;
+};
+
 type FolderMeta = {
   id: string;
   name: string;
@@ -49,285 +48,416 @@ type FolderMeta = {
   fullPath: string;
 };
 
-type CopyArgs = {
-  src: string;
-  dest: string;
+// Consolidated context type
+type CopyContext = {
+  fileMeta: FileMeta[];
+  fileIdMap: FileIdMap[];
+  folderMeta: FolderMeta[];
+  pendingCopiedSize: number;
 };
 
-export const copyItems = async ({
-  prismaJobId,
-  userId,
-  items,
-  destFolderId,
-}: CopyJobPayload): Promise<CopyJobResult> => {
-  let copySize = 0;
-  let processed: CopyArgs[] = [];
+export const copyItems = async (
+  job: Job<CopyJobPayload>,
+): Promise<CopyJobResult> => {
+  const logger = getJobLogger('io-worker', job);
+  const { userId, items, destFolderId } = job.data;
+
+  let totalCopySize = 0;
+  let actualCopiedSize = 0;
+
+  const ctx: CopyContext = {
+    fileMeta: [],
+    fileIdMap: [],
+    folderMeta: [],
+    pendingCopiedSize: 0,
+  };
 
   try {
     const fileIds: string[] = [];
     const folderIds: string[] = [];
 
-    // Separate file and folder IDs for size calculation
     items.forEach((item) =>
       item.type === 'file' ? fileIds.push(item.id) : folderIds.push(item.id),
     );
 
-    // Calculate total size and reserve user quota
-    copySize = await calculateSize(fileIds, folderIds);
-    await reserve(userId, copySize);
+    totalCopySize = await calculateSize(fileIds, folderIds);
+    await reserve(userId, totalCopySize);
 
-    const fileMeta: FileMeta[] = [];
-    const folderMeta: FolderMeta[] = [];
-    const copyArgs: CopyArgs[] = [];
-
-    // Build a copy plan for every item
-    for (const item of items) {
-      if (item.type === 'folder') {
-        await copyFolder(
-          userId,
-          item.id,
-          destFolderId,
-          fileMeta,
-          folderMeta,
-          copyArgs,
-        );
-      } else {
-        await copyFile(userId, item.id, destFolderId, fileMeta, copyArgs);
-      }
-    }
-
-    // Periodically update job progress in Redis
-    const progressInterval = setInterval(async () => {
-      const progress = Math.floor((processed.length / copyArgs.length) * 100);
-      redis.setex(RedisKeys.jobs.progress(prismaJobId), 60, progress);
-    }, 100);
-
-    // Execute planned disk copy operations
-    for (const arg of copyArgs) {
-      await copyFileOnDisk(arg.src, arg.dest);
-      processed.push(arg);
-    }
-
-    clearInterval(progressInterval);
-
-    // Persist folders and files in a single transaction
-    await prisma.$transaction(async (tx) => {
-      await tx.folder.createMany({ data: folderMeta });
-      await tx.file.createMany({ data: fileMeta });
+    const destFolder = await prisma.folder.findUnique({
+      where: { id: destFolderId, userId },
+      include: {
+        children: { select: { name: true } },
+        files: { select: { name: true } },
+      },
     });
 
-    return { copiedAt: new Date().toISOString() };
-  } catch (err: any) {
-    // Release reserved quota and clean up partially copied files
-    if (
-      'code' in err &&
-      err.code !== StorageErrorCode.QUOTA_EXCEEDED &&
-      err.code !== StorageErrorCode.SERVER_LIMIT_EXCEEDED
-    ) {
-      await release(userId, copySize);
-
-      for (const copyArg of processed) {
-        await unlink(copyArg.dest);
-      }
+    if (!destFolder) {
+      throw new HttpError({
+        status: 404,
+        code: CommonErrorCode.NOT_FOUND,
+        message: "Destination folder doesn't exist",
+      });
     }
 
-    console.error(err);
+    const flush = async () => {
+      if (!ctx.fileMeta.length && !ctx.folderMeta.length) return;
+
+      const batchSize = ctx.fileMeta.reduce((s, f) => s + f.size, 0);
+
+      try {
+        await executeCopyTransaction(
+          ctx.fileMeta,
+          ctx.fileIdMap,
+          ctx.folderMeta,
+        );
+
+        actualCopiedSize += ctx.pendingCopiedSize;
+      } catch (err) {
+        ctx.pendingCopiedSize -= batchSize;
+        throw err;
+      }
+
+      // Thumbnail errors should NOT fail the transaction
+      try {
+        await copyThumbnails(userId, [...ctx.fileMeta], [...ctx.fileIdMap]);
+      } catch (err) {
+        logger.error(err, 'Thumbnail copy failed');
+      } finally {
+        ctx.fileMeta.length = 0;
+        ctx.fileIdMap.length = 0;
+        ctx.folderMeta.length = 0;
+        ctx.pendingCopiedSize = 0;
+      }
+    };
+
+    const existingNames: Set<string> = new Set();
+    destFolder.children.forEach((c) => existingNames.add(c.name));
+    destFolder.files.forEach((f) => existingNames.add(f.name));
+
+    await prepareCopyPlan(
+      userId,
+      fileIds,
+      folderIds,
+      { ...destFolder, childrenNames: existingNames },
+      ctx,
+      flush,
+    );
+
+    await flush();
+
+    return { copiedAt: new Date().toISOString() };
+  } catch (err) {
+    // Release the portion that wasn't successfully committed
+    await release(userId, totalCopySize - actualCopiedSize);
+    logger.error(err);
 
     throw err instanceof HttpError
       ? err
       : new HttpError({
           status: 500,
           code: CommonErrorCode.INTERNAL_SERVER_ERROR,
-          message: 'Failed to copy items',
+          message: 'Failed to copy files',
         });
   }
 };
 
-export async function copyFile(
+async function prepareCopyPlan(
   userId: string,
-  fileId: string,
-  targetFolderId: string,
-  fileMeta: FileMeta[],
-  copyArgs: CopyArgs[],
+  fileIds: string[],
+  folderIds: string[],
+  destFolder: { id: string; fullPath: string; childrenNames: Set<string> },
+  ctx: CopyContext,
+  flush: () => Promise<void>,
 ) {
-  // Fetch the source file metadata
-  const srcFile = await prisma.file.findUnique({ where: { id: fileId } });
-  if (!srcFile) throw new Error('File does not exist');
+  for (const folderId of folderIds) {
+    await copyFolderSubtree(userId, folderId, destFolder, ctx, flush);
+  }
 
-  // Resolve unique filename/path in destination
-  const { newFileName, newFilePath } = await resolveFileName(
-    srcFile,
-    getFileNameWithoutExtension(srcFile.name),
-    targetFolderId,
-    true,
-  );
+  if (fileIds.length) {
+    const files = await prisma.file.findMany({
+      where: { id: { in: fileIds }, userId },
+    });
 
-  // Get destination folder path
-  const folder = await prisma.folder.findUnique({
-    where: { id: targetFolderId },
+    for (const file of files) {
+      await buildFileCopyPlan(
+        file,
+        destFolder.id,
+        destFolder.fullPath,
+        ctx,
+        true,
+        destFolder.childrenNames,
+      );
+
+      if (ctx.fileMeta.length >= FILE_BATCH_SIZE) {
+        await flush();
+      }
+    }
+  }
+}
+
+async function copyFolderSubtree(
+  userId: string,
+  rootFolderId: string,
+  destFolder: { id: string; fullPath: string; childrenNames: Set<string> },
+  ctx: CopyContext,
+  flush: () => Promise<void>,
+) {
+  const root = await prisma.folder.findUnique({
+    where: { id: rootFolderId, userId },
+    select: { id: true, name: true, fullPath: true, parentId: true },
   });
 
-  // Plan the file copy operation
-  await planFileCopy(
+  if (!root) {
+    throw new HttpError({
+      status: 404,
+      code: CommonErrorCode.NOT_FOUND,
+      message: 'Folder doesnt exist',
+    });
+  }
+
+  if (
+    root.fullPath === destFolder.fullPath ||
+    destFolder.fullPath.startsWith(root.fullPath + '/')
+  ) {
+    throw new HttpError({
+      status: 400,
+      code: StorageErrorCode.INVALID_OPERATION,
+      message: 'Cannot copy a folder into itself or its subfolder',
+    });
+  }
+
+  const folderIdMap = new Map<string, string>();
+  const folderPathMap = new Map<string, string>();
+
+  let cursor: string | null = null;
+
+  do {
+    const folders: Folder[] = await prisma.folder.findMany({
+      where: {
+        userId,
+        AND: [
+          {
+            OR: [
+              { id: root.id },
+              { fullPath: { startsWith: root.fullPath + '/' } },
+            ],
+          },
+          ...(cursor ? [{ fullPath: { gt: cursor } }] : []),
+        ],
+      },
+      orderBy: { fullPath: 'asc' },
+      take: SCAN_BATCH_SIZE + 1,
+    });
+
+    const hasMore = folders.length > SCAN_BATCH_SIZE;
+    if (hasMore) folders.pop();
+
+    for (const folder of folders) {
+      let newName = folder.name;
+
+      if (folder.id === root.id) {
+        const { resolvedName } = await resolveFolderName({
+          name: folder.name,
+          existingNames: destFolder.childrenNames,
+          parentPath: destFolder.fullPath,
+        });
+
+        newName = resolvedName;
+        destFolder.childrenNames.add(resolvedName);
+      }
+
+      const newId = randomUUID();
+      const parentNewId =
+        folder.id === root.id
+          ? destFolder.id
+          : folderIdMap.get(folder.parentId!)!;
+
+      const parentPath =
+        folder.id === root.id
+          ? destFolder.fullPath
+          : folderPathMap.get(folder.parentId!)!;
+
+      const newPath = pathJoin(parentPath, newName);
+
+      ctx.folderMeta.push({
+        id: newId,
+        name: newName,
+        parentId: parentNewId,
+        fullPath: newPath,
+        userId,
+      });
+
+      folderIdMap.set(folder.id, newId);
+      folderPathMap.set(folder.id, newPath);
+
+      if (ctx.folderMeta.length >= FOLDER_BATCH_SIZE) {
+        await flush();
+      }
+    }
+
+    cursor = hasMore ? folders[folders.length - 1].fullPath : null;
+  } while (cursor);
+
+  await copyFilesForSubtree(
     userId,
-    srcFile,
-    targetFolderId,
-    folder!.fullPath,
-    fileMeta,
-    copyArgs,
-    newFileName,
-    newFilePath,
+    root,
+    folderIdMap,
+    folderPathMap,
+    ctx,
+    flush,
   );
 }
 
-export async function copyFolder(
+async function copyFilesForSubtree(
   userId: string,
-  srcFolderId: string,
-  destFolderId: string,
-  fileMeta: FileMeta[],
-  folderMeta: FolderMeta[],
-  copyArgs: CopyArgs[],
+  root: { id: string; name: string; fullPath: string; parentId: string | null },
+  folderIdMap: Map<string, string>,
+  folderPathMap: Map<string, string>,
+  ctx: CopyContext,
+  flush: () => Promise<void>,
 ) {
-  // Fetch source and destination folders
-  const [srcFolder, destFolder] = await Promise.all([
-    prisma.folder.findUnique({ where: { id: srcFolderId } }),
-    prisma.folder.findUnique({ where: { id: destFolderId } }),
-  ]);
+  let cursor: string | null = null;
 
-  if (!srcFolder || !destFolder) throw new Error('Folders do not exist');
+  do {
+    const files: File[] = await prisma.file.findMany({
+      where: {
+        userId,
+        OR: [
+          { folderId: root.id },
+          { fullPath: { startsWith: root.fullPath + '/' } },
+        ],
+        ...(cursor ? [{ fullPath: { gt: cursor } }] : []),
+      },
+      orderBy: { fullPath: 'asc' },
+      take: SCAN_BATCH_SIZE + 1,
+    });
 
-  // Prevent copying folder into its own subtree
-  validateFolderCopyPaths(srcFolder.fullPath, destFolder.fullPath);
+    const hasMore = files.length > SCAN_BATCH_SIZE;
+    if (hasMore) files.pop();
 
-  // Resolve unique folder name
-  const resolvedName = await resolveFolderName(
-    srcFolder,
-    srcFolder.name,
-    destFolderId,
-    true,
-  );
+    for (const file of files) {
+      const newFolderId = folderIdMap.get(file.folderId)!;
+      const newFolderPath = folderPathMap.get(file.folderId)!;
 
-  const newFolderId = randomUUID();
-  const newFolderPath = pathJoin(destFolder.fullPath, resolvedName);
+      await buildFileCopyPlan(file, newFolderId, newFolderPath, ctx);
 
-  // Store folder metadata for later DB insertion
-  folderMeta.push({
-    id: newFolderId,
-    name: resolvedName,
-    userId,
-    parentId: destFolderId,
-    fullPath: newFolderPath,
-  });
+      if (ctx.fileMeta.length >= FILE_BATCH_SIZE) {
+        await flush();
+      }
+    }
 
-  // Recursively copy folder contents
-  await copyFolderContents(
-    userId,
-    srcFolderId,
-    newFolderId,
-    newFolderPath,
-    fileMeta,
-    folderMeta,
-    copyArgs,
-  );
+    cursor = hasMore ? files[files.length - 1].fullPath : null;
+  } while (cursor);
 }
 
-async function copyFolderContents(
-  userId: string,
-  srcFolderId: string,
+async function buildFileCopyPlan(
+  file: File,
   destFolderId: string,
   destFolderPath: string,
-  fileMeta: FileMeta[],
-  folderMeta: FolderMeta[],
-  copyArgs: CopyArgs[],
-) {
-  // Fetch folder contents
-  const srcFolder = await prisma.folder.findUnique({
-    where: { id: srcFolderId },
-    include: { files: true, children: true },
-  });
-
-  if (!srcFolder) return;
-
-  // Copy all files inside this folder
-  for (const file of srcFolder.files) {
-    await planFileCopy(
-      userId,
-      file,
-      destFolderId,
-      destFolderPath,
-      fileMeta,
-      copyArgs,
-    );
-  }
-
-  // Recursively copy all child folders
-  for (const child of srcFolder.children) {
-    const newChildId = randomUUID();
-    const newChildPath = pathJoin(destFolderPath, child.name);
-
-    folderMeta.push({
-      id: newChildId,
-      name: child.name,
-      userId,
-      parentId: destFolderId,
-      fullPath: newChildPath,
-    });
-
-    await copyFolderContents(
-      userId,
-      child.id,
-      newChildId,
-      newChildPath,
-      fileMeta,
-      folderMeta,
-      copyArgs,
-    );
-  }
-}
-
-async function planFileCopy(
-  userId: string,
-  file: File,
-  folderId: string,
-  folderPath: string,
-  fileMeta: FileMeta[],
-  copyArgs: CopyArgs[],
-  resolvedName?: string,
-  resolvedPath?: string,
+  ctx: CopyContext,
+  resolveNameConflicts: boolean = false,
+  existingNames?: Set<string>,
 ) {
   const newFileId = randomUUID();
-  const ext = getFileExtension(file.name);
+  let newFilePath = pathJoin(destFolderPath, file.name);
+  let newFileName = file.name;
 
-  // Determine final file name and path
-  const name = resolvedName ?? file.name;
-  const fullPath = resolvedPath ?? pathJoin(folderPath, name);
-
-  // Plan original file copy operation
-  copyArgs.push({
-    src: getOriginalFilePath(file.userId, file.id, ext),
-    dest: getOriginalFilePath(userId, newFileId, ext),
-  });
-
-  // Plan thumbnail copy if available
-  const srcThumb = getThumbnailPath(file.userId, file.id);
-
-  if (file.hasThumbnail && existsSync(srcThumb)) {
-    copyArgs.push({
-      src: srcThumb,
-      dest: getThumbnailPath(userId, newFileId),
+  if (resolveNameConflicts) {
+    const { resolvedName, resolvedPath } = await resolveFileName({
+      name: file.name,
+      existingNames: existingNames!,
+      parentPath: destFolderPath,
     });
+
+    newFileName = resolvedName;
+    newFilePath = resolvedPath;
+    existingNames?.add(newFileName);
   }
 
-  // Store metadata for later DB creation
-  fileMeta.push({
+  ctx.fileMeta.push({
     id: newFileId,
-    name,
-    mimeType: file.mimeType,
+    name: newFileName,
+    fullPath: newFilePath,
+    folderId: destFolderId,
     size: file.size,
-    folderId,
-    fullPath,
+    userId: file.userId,
+    mimeType: file.mimeType,
     visibility: file.visibility,
-    userId,
     hasThumbnail: file.hasThumbnail,
   });
+
+  ctx.fileIdMap.push({ oldId: file.id, newId: newFileId });
+  ctx.pendingCopiedSize += file.size;
+}
+
+async function executeCopyTransaction(
+  fileMeta: FileMeta[],
+  fileIdMap: FileIdMap[],
+  folderMeta: FolderMeta[],
+) {
+  await prisma.$transaction(async (tx) => {
+    if (folderMeta.length) {
+      await tx.folder.createMany({ data: folderMeta });
+    }
+
+    if (fileMeta.length) {
+      await tx.file.createMany({ data: fileMeta });
+
+      await tx.$executeRaw`
+        INSERT INTO "FileChunk" ("id", "fileId","blobId","chunkIndex","size")
+        SELECT
+          gen_random_uuid(),
+          map."newFileId",
+          fc."blobId",
+          fc."chunkIndex",
+          fc."size"
+        FROM "FileChunk" fc
+        JOIN (
+          VALUES ${Prisma.join(
+            fileIdMap.map((m) => Prisma.sql`(${m.oldId}, ${m.newId})`),
+          )}
+        ) AS map("oldFileId","newFileId")
+        ON fc."fileId" = map."oldFileId"
+      `;
+
+      await tx.$executeRaw`
+        UPDATE "Blob"
+        SET "refCount" = "refCount" + counts.count
+        FROM (
+          SELECT "blobId", COUNT(*) as count
+          FROM "FileChunk"
+          WHERE "fileId" IN (${Prisma.join(
+            fileMeta.map((m) => Prisma.sql`${m.id}`),
+          )})
+          GROUP BY "blobId"
+        ) counts
+        WHERE "Blob"."id" = counts."blobId"
+      `;
+    }
+  });
+}
+
+async function copyThumbnails(
+  userId: string,
+  fileMeta: FileMeta[],
+  fileIdMap: FileIdMap[],
+) {
+  const limit = pLimit(10);
+
+  await Promise.all(
+    fileMeta.map(async (file, i) =>
+      limit(async () => {
+        if (!file.hasThumbnail) return;
+
+        const src = getThumbnailPath(userId, fileIdMap[i].oldId);
+        const dest = getThumbnailPath(userId, file.id);
+
+        try {
+          await copyFileOnDisk(src, dest);
+        } catch (err) {
+          console.error('Thumbnail copy failed', err);
+        }
+      }),
+    ),
+  );
 }

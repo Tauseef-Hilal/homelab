@@ -8,7 +8,7 @@ export function getJobLogger(
 ) {
   return loggerWithContext({
     service: service,
-    jobId: job?.data.prismaJobId,
+    jobId: job?.id ?? '',
     jobName: job?.name,
     userId: job?.data.userId,
     attempts: job?.attemptsMade,

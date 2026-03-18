@@ -5,6 +5,8 @@ import {
 } from '@homelab/shared/schemas/storage';
 
 export async function moveItems(data: requestSchemas.MoveItemsInput) {
-  const res = await api.patch('/storage/items/move', data);
+  const res = await api.patch('/storage/items/move', data, {
+    headers: { 'x-idempotency-key': crypto.randomUUID() },
+  });
   return responseSchemas.moveItemsSchema.parse(res.data);
 }

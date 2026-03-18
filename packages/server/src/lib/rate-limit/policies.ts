@@ -116,17 +116,53 @@ export const storageListPolicy: RateLimitPolicy = {
 
 /**
  * File uploads
- * Disk IO + metadata writes
- *
- * Burst: 5
- * Sustained: 0.5/sec (30/min)
  */
-export const uploadPolicy: RateLimitPolicy = {
+export const uploadInitPolicy: RateLimitPolicy = {
   scope: 'user',
   resource: 'storage',
-  action: 'upload',
+  action: 'upload_init',
+  capacity: 10,
+  refillRate: 10 / 60,
+};
+
+export const uploadChunkPolicy: RateLimitPolicy = {
+  scope: 'user',
+  resource: 'storage',
+  action: 'upload_chunk',
+  capacity: 300,
+  refillRate: 300 / 60,
+};
+
+export const uploadChunkCheckPolicy: RateLimitPolicy = {
+  scope: 'user',
+  resource: 'storage',
+  action: 'upload_chunk_check',
+  capacity: 10,
+  refillRate: 2,
+};
+
+export const uploadFinalizePolicy: RateLimitPolicy = {
+  scope: 'user',
+  resource: 'storage',
+  action: 'upload_finalize',
+  capacity: 10,
+  refillRate: 10 / 60,
+};
+
+export const uploadStatusPolicy: RateLimitPolicy = {
+  scope: 'user',
+  resource: 'storage',
+  action: 'upload_status',
   capacity: 20,
-  refillRate: 0.5,
+  refillRate: 5,
+};
+
+export const uploadCancelPolicy: RateLimitPolicy = {
+  scope: 'user',
+  resource: 'storage',
+  action: 'upload_cancel',
+  capacity: 5,
+  refillRate: 1 / 10, // 1 every 10 sec
 };
 
 /**

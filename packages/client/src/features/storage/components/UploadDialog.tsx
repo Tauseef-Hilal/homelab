@@ -3,35 +3,16 @@
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from "@client/components/ui/dialog";
-
 import { Button } from "@client/components/ui/button";
 import { Input } from "@client/components/ui/input";
 import { Progress } from "@client/components/ui/progress";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@client/components/ui/select";
-
-import { Upload, X } from "lucide-react";
-
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-
-import { requestSchemas } from "@homelab/shared/schemas/storage";
-import { useUploadFile } from "../hooks/useUploadFile";
-import { useBatchMutation } from "../hooks/useBatchMutation";
-
-import { UploadFileResponse } from "@homelab/shared/schemas/storage/response.schema";
+import { Upload, X, Pause, Play, RotateCcw, Check } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { useUploadManager } from "../hooks/useUploadManager";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface UploadDialogProps {
@@ -41,180 +22,171 @@ interface UploadDialogProps {
   folderPath: string;
 }
 
-const UploadDialog: React.FC<UploadDialogProps> = ({
+export default function UploadDialog({
   folderId,
   open,
   setOpen,
   folderPath,
-}) => {
+}: UploadDialogProps) {
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [files, setFiles] = useState<File[]>([]);
-  const [ranOnce, setRanOnce] = useState(false);
+  const {
+    items,
+    addFiles,
+    startUploads,
+    retryUploads,
+    pauseUpload,
+    resumeUpload,
+    cancelUpload,
+    retryUpload,
+    clear,
+  } = useUploadManager();
 
-  const form = useForm<requestSchemas.UploadFileInput>({
-    resolver: zodResolver(requestSchemas.uploadFileSchema),
-    defaultValues: {
-      folderId,
-      visibility: "public",
-    },
-  });
+  // Check if there are any files currently in a "working" state
+  const isProcessing = items.some((i) =>
+    ["initiating", "hashing", "negotiating", "uploading"].includes(i.status),
+  );
 
-  const uploadMutation = useUploadFile({
-    onError: () => {},
-    onSuccess: () => {},
-  });
+  const finished = items.every((i) =>
+    ["uploaded", "failed", "canceled"].includes(i.status),
+  );
 
-  const { mutate, retry, progress, failed, setFailed, isPending } =
-    useBatchMutation<requestSchemas.UploadFileInput, UploadFileResponse>({
-      mutationFn: uploadMutation.mutateAsync,
-      delay: 1000,
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["stats"] });
-        queryClient.invalidateQueries({
-          queryKey: ["listDirectory", folderPath],
-        });
-      },
-    });
+  const failed = items.some((i) => i.status === "failed");
 
-  const reset = () => {
-    setFiles([]);
-    setRanOnce(false);
-    setFailed([]);
-    form.reset();
-  };
+  useEffect(() => {
+    if (finished) {
+      queryClient.invalidateQueries({
+        queryKey: ["stats"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["list", folderPath],
+      });
+    }
+  }, [finished, folderId, queryClient]); // Added missing dependencies
 
-  const onSubmit = async (data: requestSchemas.UploadFileInput) => {
-    if (files.length === 0) return;
-
-    setRanOnce(true);
-
-    if (failed.length > 0) return retry();
-
-    const inputs = files.map((file) => {
-      const formData = new FormData();
-
-      formData.append("file", file);
-      formData.append("folderId", folderId);
-      formData.append("visibility", data.visibility);
-
-      return formData as any as requestSchemas.UploadFileInput;
-    });
-
-    mutate(inputs);
-  };
-
-  const removeFile = (index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) {
+      addFiles([...e.target.files], folderId);
+      // Reset value so the same file can be picked again if removed
+      e.target.value = "";
+    }
   };
 
   return (
     <Dialog
       open={open}
-      onOpenChange={(v) => {
-        setOpen(v);
-        if (!v) reset();
+      onOpenChange={(open) => {
+        if (!open && !isProcessing) {
+          clear();
+        }
+
+        setOpen(open);
       }}
     >
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>Upload Files</DialogTitle>
-          <DialogDescription>
-            Drag files here or select them to upload.
-          </DialogDescription>
         </DialogHeader>
 
         <form
-          noValidate
-          onSubmit={form.handleSubmit(onSubmit)}
           className="space-y-4"
-        >
-          <label className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer hover:bg-muted transition">
-            <Upload size={28} className="mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Click or drag files here
-            </p>
+          onSubmit={(e) => {
+            e.preventDefault();
 
+            if (failed) {
+              retryUploads();
+              return;
+            }
+
+            startUploads();
+          }}
+        >
+          <label className="flex flex-col items-center border-2 border-dashed rounded-lg p-6 cursor-pointer hover:bg-muted transition-colors">
+            <Upload size={28} className="mb-2 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Click or drag files</p>
             <Input
+              ref={fileInputRef}
               type="file"
               multiple
               className="hidden"
-              onChange={(e) => {
-                setFiles([...(e.target.files ?? [])]);
-                setFailed([]);
-              }}
+              onChange={handleFileChange}
             />
           </label>
 
-          {files.length > 0 && (
-            <div className="space-y-2 max-h-40 overflow-auto">
-              {files.map((file, i) => (
+          {items.length > 0 && (
+            <div className="space-y-2 max-h-52 overflow-auto pr-1">
+              {items.map((item) => (
                 <div
-                  key={i}
-                  className="flex items-center justify-between border rounded px-3 py-1 text-sm"
+                  key={item.id}
+                  className="border rounded px-3 py-2 space-y-2"
                 >
-                  {file.name}
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="truncate font-medium max-w-[70%]">
+                      {item.file.name}
+                    </span>
 
-                  <button type="button" onClick={() => removeFile(i)}>
-                    <X size={14} />
-                  </button>
+                    <div className="flex gap-2">
+                      {item.status === "uploading" && (
+                        <button
+                          type="button"
+                          onClick={() => pauseUpload(item.id)}
+                        >
+                          <Pause size={14} className="hover:text-primary" />
+                        </button>
+                      )}
+                      {item.status === "paused" && (
+                        <button
+                          type="button"
+                          onClick={() => resumeUpload(item.id)}
+                        >
+                          <Play size={14} className="hover:text-primary" />
+                        </button>
+                      )}
+                      {item.status === "failed" && (
+                        <button
+                          type="button"
+                          onClick={() => retryUpload(item.id)}
+                        >
+                          <RotateCcw size={14} className="hover:text-primary" />
+                        </button>
+                      )}
+                      {item.status === "uploaded" ? (
+                        <Check size={16} className="text-green-500" />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => cancelUpload(item.id)}
+                        >
+                          <X size={14} className="hover:text-destructive" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {["initiating", "hashing", "negotiating"].includes(
+                    item.status,
+                  ) && <Progress value={undefined} className="h-1" />}
+
+                  {["uploading", "paused"].includes(item.status) && (
+                    <Progress value={item.progress * 100} className="h-1" />
+                  )}
                 </div>
               ))}
             </div>
           )}
 
-          <Select
-            value={form.watch("visibility")}
-            onValueChange={(v) =>
-              form.setValue(
-                "visibility",
-                v as requestSchemas.UploadFileInput["visibility"],
-              )
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Visibility" />
-            </SelectTrigger>
-
-            <SelectContent>
-              <SelectItem value="public">Public</SelectItem>
-              <SelectItem value="private">Private</SelectItem>
-              <SelectItem value="shared">Shared</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {ranOnce && (
-            <div className="space-y-2">
-              {isPending ? (
-                <>
-                  <Progress value={progress} />
-                  <p className="text-xs text-muted-foreground">
-                    {Math.round(progress)}%
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm">
-                  {failed.length > 0
-                    ? `Failed to upload ${failed.length} files`
-                    : "Upload complete"}
-                </p>
-              )}
-            </div>
-          )}
-
           <DialogFooter>
-            <Button
-              type="submit"
-              disabled={files.length === 0 || isPending}
-              className="w-full"
-            >
-              {failed.length > 0 ? "Retry Upload" : "Upload"}
+            <Button type="submit" disabled={isProcessing} className="w-full">
+              {isProcessing
+                ? "Uploading..."
+                : failed
+                  ? "Retry failed"
+                  : "Start upload"}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
-};
-
-export default UploadDialog;
+}

@@ -22,11 +22,16 @@ import NewFolderDialog from "./NewFolderDialog";
 import UploadDialog from "./UploadDialog";
 import { useListDirectory } from "../hooks/useListDirectory";
 import { useLongPress } from "@client/hooks/useLongPress";
-import { useCopyMutation } from "../hooks/useCopyMutation";
-import { useMoveMutation } from "../hooks/useMoveMutation";
 import ExplorerList from "./ExplorerList";
+import { useCopyItems } from "../hooks/useCopyItems";
+import { invalidateQueries, pollJobData } from "@client/lib/utils";
+import { toast } from "sonner";
+import { useMoveItems } from "../hooks/useMoveItems";
+import { useQueryClient } from "@tanstack/react-query";
 
 const ExplorerContent: React.FC = () => {
+  const queryClient = useQueryClient();
+
   const [showFolderDialog, setShowFolderDialog] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
 
@@ -36,8 +41,35 @@ const ExplorerContent: React.FC = () => {
 
   const { isPending, data, error, refetch } = useListDirectory(path);
 
-  const copyMutation = useCopyMutation(path);
-  const moveMutation = useMoveMutation(path);
+  const copyMutation = useCopyItems({
+    onSuccess: (data) =>
+      pollJobData(
+        data.job.id,
+        {
+          processing: "Copying files",
+          completed: "Files copied successfully",
+          failed: "Failed to copy files",
+        },
+        () => invalidateQueries(queryClient, [["list", path], ["stats"]]),
+        () => invalidateQueries(queryClient, [["list", path], ["stats"]]),
+      ),
+    onError: (err) => toast.error(err),
+  });
+
+  const moveMutation = useMoveItems({
+    onSuccess: (data) =>
+      pollJobData(
+        data.job.id,
+        {
+          processing: "Moving files",
+          completed: "Files moved successfully",
+          failed: "Failed to move files",
+        },
+        () => invalidateQueries(queryClient, [["list", path]]),
+        () => invalidateQueries(queryClient, [["list", path]]),
+      ),
+    onError: (err) => toast.error(err),
+  });
 
   const folder = data?.folder;
 

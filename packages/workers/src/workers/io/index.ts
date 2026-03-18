@@ -12,14 +12,14 @@ export const fileIOWorker = new Worker<JobPayload>(
 );
 
 fileIOWorker.on('active', async (job, prev) => {
-  await updateJob(job.data.prismaJobId, { status: 'processing' });
+  await updateJob(job.id ?? '', { status: 'processing' });
 
   const logger = getJobLogger('io-worker', job);
   logger.info(`Processing job: ${job.name}<${job.id}>`);
 });
 
 fileIOWorker.on('completed', async (job) => {
-  await updateJob(job.data.prismaJobId, {
+  await updateJob(job.id ?? '', {
     status: 'completed',
     attempts: job.attemptsMade,
   });
@@ -29,8 +29,9 @@ fileIOWorker.on('completed', async (job) => {
 });
 
 fileIOWorker.on('failed', async (job, err) => {
-  await updateJob(job?.data.prismaJobId ?? '', {
+  await updateJob(job?.id ?? '', {
     status: 'failed',
+    error: err.message,
     attempts: job?.attemptsMade ?? 0,
   });
 

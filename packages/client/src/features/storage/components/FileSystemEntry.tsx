@@ -18,13 +18,20 @@ import {
 } from "@client/components/ui/context-menu";
 
 import { useSelect } from "../hooks/useSelect";
-import { isFolder } from "@client/lib/utils";
+import {
+  formatSize,
+  invalidateQueries,
+  isFolder,
+  pollJobData,
+} from "@client/lib/utils";
 import { useLongPress } from "@client/hooks/useLongPress";
 import { env } from "@client/config/env";
 
 import useDriveStore from "../stores/drive.store";
-import { useDownloadMutation } from "../hooks/useDownloadMutation";
-import { useDeleteMutation } from "../hooks/useDeleteMutation";
+import { useDownloadItems } from "../hooks/useDownloadItems";
+import { useDeleteItems } from "../hooks/useDeleteItems";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface FileSystemEntryProps {
   child: File | Folder;
@@ -33,6 +40,8 @@ interface FileSystemEntryProps {
 
 const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
   ({ child, parentPath }) => {
+    const queryClient = useQueryClient();
+
     const [showPreview, setShowPreview] = useState(false);
     const [showRename, setShowRename] = useState(false);
 
@@ -47,7 +56,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
     const selected = isSelected(child);
     const isGrid = viewMode === "grid";
 
-    const thumbnailUrl = `${env.API_URL}/uploads/${child.userId}/thumbnails/${child.id}.webp`;
+    const thumbnailUrl = `${env.API_URL}/thumbnails/${child.userId}/${child.id}.webp`;
 
     const entryItem = {
       id: child.id,
@@ -112,8 +121,40 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
       document.body.removeChild(link);
     };
 
-    const downloadMutation = useDownloadMutation(downloadZip);
-    const deleteMutation = useDeleteMutation(parentPath);
+    const downloadMutation = useDownloadItems({
+      onSuccess: (data) =>
+        pollJobData(
+          data.job.id,
+          {
+            processing: "Zipping files for download",
+            completed: "Starting download",
+            failed: "Failed to copy files",
+          },
+          (result) => {
+            if (result) {
+              downloadZip((result as { downloadLink: string }).downloadLink);
+            }
+          },
+        ),
+      onError: (err) => toast.error(err),
+    });
+
+    const deleteMutation = useDeleteItems({
+      onSuccess: (data) =>
+        pollJobData(
+          data.job.id,
+          {
+            processing: "Deleting files",
+            completed: "Files deleted successfully",
+            failed: "Failed to copy files",
+          },
+          () =>
+            invalidateQueries(queryClient, [["list", parentPath], ["stats"]]),
+          () =>
+            invalidateQueries(queryClient, [["list", parentPath], ["stats"]]),
+        ),
+      onError: (err) => toast.error(err),
+    });
 
     const downloadHandler = () => {
       downloadMutation.mutate({
@@ -132,9 +173,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
     /* ---------- Helpers ---------- */
 
     const size =
-      !folder && "size" in child && child.size
-        ? `${(child.size / 1024).toFixed(1)} KB`
-        : "-";
+      !folder && "size" in child && child.size ? formatSize(child.size) : "-";
 
     const modified =
       "updatedAt" in child
@@ -227,7 +266,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
               height={28}
               src={thumbnailUrl}
               alt={child.name}
-              className="object-cover rounded-md"
+              className="h-[28px] object-cover rounded-md"
             />
           ) : (
             <FaFile size={20} className="text-muted-foreground" />

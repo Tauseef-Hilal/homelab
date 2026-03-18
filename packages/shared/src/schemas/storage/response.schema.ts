@@ -5,24 +5,6 @@ export const getStatsSchema = z.object({
   storageQuota: z.number(),
 });
 
-export const uploadFileSchema = z.object({
-  file: z.object({
-    id: z.string(),
-    name: z.string(),
-    fullPath: z.string(),
-    mimeType: z.string(),
-    size: z.number(),
-    visibility: z.enum(['private', 'public']),
-    hasThumbnail: z.boolean(),
-    userId: z.string(),
-    updatedAt: z.string(),
-    folderId: z.string(),
-  }),
-  job: z.object({
-    id: z.string(),
-  }),
-});
-
 export const listDirectorySchema = z.object({
   folder: z.object({
     id: z.string(),
@@ -96,11 +78,28 @@ export const downloadItemsSchema = z.object({
   }),
 });
 
+export const uploadInitSchema = z.object({
+  fileId: z.uuid(),
+  uploadId: z.uuid(),
+});
+
+export const uploadChunkCheckSchema = z.object({
+  missingChunks: z.array(z.int()),
+});
+
+export const uploadStatusSchema = z.object({
+  status: z.enum(['active', 'cancelled', 'completed', 'expired']),
+  uploadedChunks: z.int(),
+  totalChunks: z.int(),
+});
+
 export type GetStatsOutput = z.infer<typeof getStatsSchema>;
-export type UploadFileResponse = z.infer<typeof uploadFileSchema>;
 export type ListDirectoryResponse = z.infer<typeof listDirectorySchema>;
 export type CreateFolderResponse = z.infer<typeof createFolderSchema>;
 export type CopyItemsOutput = z.infer<typeof copyItemsSchema>;
 export type MoveItemsOutput = z.infer<typeof moveItemsSchema>;
 export type DeleteItemsOutput = z.infer<typeof deleteItemsSchema>;
 export type DownloadItemsOutput = z.infer<typeof downloadItemsSchema>;
+export type UploadInitOutput = z.infer<typeof uploadInitSchema>;
+export type UploadChunkCheckOutput = z.infer<typeof uploadChunkCheckSchema>;
+export type UploadStatusSchema = z.infer<typeof uploadStatusSchema>;

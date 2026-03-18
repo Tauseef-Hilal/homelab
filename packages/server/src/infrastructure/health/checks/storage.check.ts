@@ -7,8 +7,12 @@ import path from 'path';
 export async function checkStorage(): Promise<HealthCheckResult> {
   try {
     await Promise.race([
-      fs.access(path.resolve(env.MEDIA_DIR_PATH)),
-      timeout(),
+      Promise.all([
+        fs.access(path.resolve(env.THUMBNAIL_DIR_PATH)),
+        fs.access(path.resolve(env.BLOB_DIR_PATH)),
+        fs.access(path.resolve(env.TEMP_DIR_PATH)),
+      ]),
+      timeout(3000),
     ]);
 
     return {

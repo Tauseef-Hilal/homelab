@@ -25,6 +25,7 @@ export function useCopyItems(options: UseCopyItemsOptions) {
       const serverError = error.response?.data;
       if (serverError) {
         options.onError(serverError.message);
+        return;
       }
 
       toast.error(error.message);

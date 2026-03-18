@@ -1,7 +1,6 @@
 name: homelab-dev
 
 services:
-
   migrate:
     build:
       context: ..
@@ -21,8 +20,8 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     command: sh -c "
-        pnpm --filter shared exec prisma migrate deploy &&
-        pnpm --filter shared exec prisma generate 
+      pnpm --filter shared exec prisma migrate deploy &&
+      pnpm --filter shared exec prisma generate
       "
 
   server:

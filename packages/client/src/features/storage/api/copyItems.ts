@@ -5,6 +5,8 @@ import {
 } from '@homelab/shared/schemas/storage';
 
 export async function copyItems(data: requestSchemas.CopyItemsInput) {
-  const res = await api.post('/storage/items/copy', data);
+  const res = await api.post('/storage/items/copy', data, {
+    headers: { 'x-idempotency-key': crypto.randomUUID() },
+  });
   return responseSchemas.copyItemsSchema.parse(res.data);
 }
