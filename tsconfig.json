@@ -1,9 +1,12 @@
 {
   "files": [],
   "references": [
-    {"path": "./packages/shared" },
-    {"path": "./packages/server" },
-    {"path": "./packages/workers" },
-    {"path": "./packages/client" }
+    {"path": "./packages/contracts" },
+    {"path": "./packages/db" },
+    {"path": "./packages/infra" },
+    {"path": "./packages/storage" },
+    {"path": "./apps/api" },
+    {"path": "./apps/workers" },
+    {"path": "./apps/web" }
   ]
 }

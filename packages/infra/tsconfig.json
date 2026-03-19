@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "rootDir": "src",
+    "outDir": "dist",
+    "composite": true,
+    "paths": {
+      "@homelab/infra": ["./src"],
+      "@homelab/infra/*": ["./src/*"],
+      "@homelab/contracts": ["../contracts/src/index.ts"],
+      "@homelab/contracts/*": ["../contracts/src/*"]
+    }
+  },
+  "references": [{ "path": "../contracts" }],
+  "include": ["src"]
+}

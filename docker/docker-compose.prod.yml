@@ -7,7 +7,7 @@ services:
   migrate:
     build:
       context: ..
-      dockerfile: ./packages/server/docker/Dockerfile.prod
+      dockerfile: ./apps/api/docker/Dockerfile.prod
       target: prod
     depends_on:
       db:
@@ -16,8 +16,7 @@ services:
       - ../.env.production
     command: >
       sh -c "
-        pnpm --filter shared exec prisma migrate deploy &&
-        pnpm --filter shared exec prisma generate
+        pnpm --filter @homelab/db exec prisma migrate deploy
       "
     restart: "no"
     dns:
@@ -31,7 +30,7 @@ services:
     restart: unless-stopped
     build:
       context: ..
-      dockerfile: ./packages/server/docker/Dockerfile.prod
+      dockerfile: ./apps/api/docker/Dockerfile.prod
       target: prod
     ports:
       - "5001:5001"
@@ -44,7 +43,7 @@ services:
       - ../.env.production
     volumes:
       - ../data:/app/data
-    command: pnpm --filter server run start
+    command: pnpm --filter @homelab/api run start
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -56,7 +55,7 @@ services:
     restart: unless-stopped
     build:
       context: ..
-      dockerfile: ./packages/workers/docker/Dockerfile.thumbnail.prod
+      dockerfile: ./apps/workers/docker/Dockerfile.thumbnail.prod
       target: prod
     depends_on:
       migrate:
@@ -67,7 +66,7 @@ services:
       - ../.env.production
     volumes:
       - ../data:/app/data
-    command: pnpm --filter workers run start:thumbnail
+    command: pnpm --filter @homelab/workers run start:thumbnail
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -79,7 +78,7 @@ services:
     restart: unless-stopped
     build:
       context: ..
-      dockerfile: ./packages/workers/docker/Dockerfile.io.prod
+      dockerfile: ./apps/workers/docker/Dockerfile.io.prod
       target: prod
     depends_on:
       migrate:
@@ -90,7 +89,7 @@ services:
       - ../.env.production
     volumes:
       - ../data:/app/data
-    command: pnpm --filter workers run start:io
+    command: pnpm --filter @homelab/workers run start:io
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -102,16 +101,15 @@ services:
     restart: unless-stopped
     build:
       context: ..
-      dockerfile: ./packages/client/docker/Dockerfile.prod
+      dockerfile: ./apps/web/docker/Dockerfile.prod
       target: prod
       network: host
     ports:
       - "3000:3000"
     env_file:
-      - ../packages/client/.env.production
+      - ../apps/web/.env.production
     volumes:
       - ../data:/app/data
-    command: pnpm --filter client run start
     dns:
       - 8.8.8.8
       - 8.8.4.4

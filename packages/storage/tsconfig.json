@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "rootDir": "src",
+    "outDir": "dist",
+    "composite": true,
+    "paths": {
+      "@homelab/storage": ["./src"],
+      "@homelab/storage/*": ["./src/*"],
+      "@homelab/contracts": ["../contracts/src/index.ts"],
+      "@homelab/contracts/*": ["../contracts/src/*"],
+      "@homelab/db": ["../db/src/index.ts"],
+      "@homelab/db/*": ["../db/src/*"],
+      "@homelab/infra": ["../infra/src/index.ts"],
+      "@homelab/infra/*": ["../infra/src/*"]
+    }
+  },
+  "references": [
+    { "path": "../contracts" },
+    { "path": "../db" },
+    { "path": "../infra" }
+  ],
+  "include": ["src"]
+}

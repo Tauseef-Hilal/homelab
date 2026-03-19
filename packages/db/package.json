@@ -1,0 +1,38 @@
+{
+  "name": "@homelab/db",
+  "version": "0.1.0",
+  "description": "Database schema and Prisma client for Homelab",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "keywords": [],
+  "author": "Tauseef Tantary",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc -b && tsc-alias",
+    "generate": "prisma generate",
+    "migrate:deploy": "prisma migrate deploy"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./prisma": {
+      "types": "./dist/prisma/index.d.ts",
+      "require": "./dist/prisma/index.js",
+      "default": "./dist/prisma/index.js"
+    }
+  },
+  "dependencies": {
+    "@prisma/client": "^6.13.0",
+    "prisma": "^6.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.14",
+    "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.16",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.8.3"
+  }
+}

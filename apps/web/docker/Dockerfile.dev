@@ -1,0 +1,35 @@
+# ------------------------
+# Base (shared for dev/prod)
+# ------------------------
+FROM node:20-slim AS base
+WORKDIR /app
+
+# Install system deps and enable pnpm
+RUN apt-get update -y \
+ && apt-get install -y openssl ca-certificates \
+ && update-ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy root config for caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
+
+# Install root dependencies
+RUN pnpm install
+
+# ------------------------
+# Development
+# ------------------------
+FROM base AS dev
+
+# Copy entire monorepo
+COPY . .
+
+# Reinstall to get all workspace dependencies
+RUN pnpm install --recursive
+
+EXPOSE 3000
+
+# Start dev server
+CMD ["pnpm", "--filter", "@homelab/web", "dev"]

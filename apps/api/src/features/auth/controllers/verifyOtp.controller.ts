@@ -1,0 +1,94 @@
+import { Request, Response } from 'express';
+import { catchAsync } from '@server/lib/catchAsync';
+import { requestSchemas } from '@homelab/contracts/schemas/auth';
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyTfaToken,
+} from '@server/lib/jwt';
+import { TfaPurpose } from '../constants/TfaPurpose';
+import { prisma } from '@homelab/db/prisma';
+import { HttpError } from '@homelab/contracts/errors';
+import { AuthErrorCode } from '../constants/AuthErrorCode';
+import { buildTokenPayload, storeRefreshToken } from '../utils/token.util';
+import { TokenMeta } from '../../../types/jwt.types';
+import { tokenExpirations } from '@server/constants/token.constants';
+import { success } from '@server/lib/response';
+import { env } from '@homelab/infra/config';
+import * as OtpService from '../services/otp.service';
+import * as AuthService from '../services/auth.service';
+
+export const verifyOtpController = catchAsync(
+  async (req: Request, res: Response) => {
+    const { token, otp } = requestSchemas.verifyOtpSchema.parse(req.body);
+    const { email, userId, purpose } = verifyTfaToken(token);
+
+    await OtpService.verifyOtp(userId, otp);
+    await handleOtpPurpose[purpose](res, email, req.clientMeta ?? {}, token);
+  },
+);
+
+const handleOtpPurpose = {
+  [TfaPurpose.LOGIN]: async (
+    res: Response,
+    email: string,
+    meta: TokenMeta,
+    token: string,
+  ) => {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      throw new HttpError({
+        status: 404,
+        code: AuthErrorCode.USER_DOES_NOT_EXIST,
+        message: 'No user with the given email exists',
+      });
+    }
+
+    const payload = buildTokenPayload({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+
+    await storeRefreshToken(prisma, refreshToken, user.id, meta);
+
+    return res
+      .status(201)
+      .cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: env.NODE_ENV == 'production',
+        sameSite: env.NODE_ENV == 'production' ? 'none' : 'lax',
+        maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
+      })
+      .json(
+        success(
+          {
+            user: {
+              id: user.id,
+              role: user.role,
+              email: user.email,
+              username: user.username,
+            },
+            tokens: { access: accessToken },
+          },
+          'Login successful',
+        ),
+      );
+  },
+
+  [TfaPurpose.CHANGE_PASSWORD]: async (
+    res: Response,
+    userId: string,
+    meta: TokenMeta,
+    token: string,
+  ) => {
+    await AuthService.allowPasswordChange(userId);
+    return res
+      .status(200)
+      .json(
+        success({ changePasswordToken: token }, 'Continue to change password'),
+      );
+  },
+};

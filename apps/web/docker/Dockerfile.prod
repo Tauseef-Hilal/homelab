@@ -1,0 +1,57 @@
+# --------------------------------
+# Base stage (dependencies)
+# --------------------------------
+FROM node:20-slim AS base
+WORKDIR /app
+
+RUN apt-get update -y \
+ && apt-get install -y openssl ca-certificates \
+ && update-ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy dependency files for caching
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY apps/web/package.json apps/web/
+COPY packages/contracts/package.json packages/contracts/
+
+# Install all dependencies (dev + prod)
+RUN pnpm install -r --frozen-lockfile --prod=false --filter @homelab/web...
+
+# --------------------------------
+# Build stage
+# --------------------------------
+FROM base AS build
+WORKDIR /app
+
+# Copy source code
+COPY . .
+
+# Build Next.js app
+RUN pnpm --filter @homelab/contracts build
+RUN pnpm --filter @homelab/web build
+
+# --------------------------------
+# Runtime stage (minimal)
+# --------------------------------
+FROM node:20-slim AS prod
+WORKDIR /app
+
+RUN apt-get update -y \
+ && apt-get install -y openssl ca-certificates \
+ && update-ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Copy the standalone server and static assets emitted by Next.js.
+COPY --from=build /app/apps/web/.next/standalone ./
+COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
+
+# Expose Next.js port
+EXPOSE 3000
+
+# Start Next.js app
+CMD ["node", "apps/web/server.js"]

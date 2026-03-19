@@ -1,0 +1,76 @@
+# --------------------------------
+# Base stage (dependencies)
+# --------------------------------
+FROM node:20-slim AS base
+WORKDIR /app
+
+RUN apt-get update -y \
+ && apt-get install -y openssl ca-certificates \
+ && update-ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy only dependency files for efficient caching
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY apps/workers/package.json apps/workers/
+COPY packages/contracts/package.json packages/contracts/
+COPY packages/db/package.json packages/db/
+COPY packages/infra/package.json packages/infra/
+COPY packages/storage/package.json packages/storage/
+
+# Install dependencies
+RUN pnpm install -r --frozen-lockfile --prod=false --filter @homelab/workers...
+
+# --------------------------------
+# Build stage
+# --------------------------------
+FROM base AS build
+WORKDIR /app
+
+# Copy source code
+COPY . .
+
+# Generate prisma client
+RUN pnpm --filter @homelab/db generate
+
+# Build the workers and their internal workspace dependencies in topological order.
+RUN pnpm -r --filter @homelab/workers... build
+
+# --------------------------------
+# Runtime stage (minimal)
+# --------------------------------
+FROM node:20-slim AS prod
+WORKDIR /app
+
+RUN apt-get update -y \
+ && apt-get install -y openssl ca-certificates \
+ && update-ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy only built output and required files from build stage
+COPY --from=build /app/apps/workers/dist ./apps/workers/dist/
+COPY --from=build /app/apps/workers/package.json ./apps/workers/
+
+COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist/
+COPY --from=build /app/packages/contracts/package.json ./packages/contracts/
+
+COPY --from=build /app/packages/db/dist ./packages/db/dist/
+COPY --from=build /app/packages/db/prisma ./packages/db/prisma/
+COPY --from=build /app/packages/db/package.json ./packages/db/
+
+COPY --from=build /app/packages/infra/dist ./packages/infra/dist/
+COPY --from=build /app/packages/infra/package.json ./packages/infra/
+
+COPY --from=build /app/packages/storage/dist ./packages/storage/dist/
+COPY --from=build /app/packages/storage/package.json ./packages/storage/
+
+COPY --from=build /app/node_modules ./node_modules/
+
+COPY --from=build /app/pnpm-lock.yaml ./
+COPY --from=build /app/pnpm-workspace.yaml ./
+COPY --from=build /app/package.json ./
+
+CMD ["pnpm", "--filter", "@homelab/workers", "start:io"]

@@ -1,0 +1,79 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { env } from '@homelab/infra/config';
+import { errorHandler } from '@server/middleware/error.middleware';
+import { refreshController } from '@server/features/auth/controllers/refresh.controller';
+import { tokenExpirations } from '@server/constants/token.constants';
+import { loggerWithContext } from '@homelab/infra/logging';
+import * as AuthService from '@server/features/auth/services/auth.service';
+import { success } from '@server/lib/response';
+
+vi.mock('@server/features/auth/services/auth.service');
+
+describe('refreshController', () => {
+  const mockTokens = { access: 'access-token', refresh: 'refresh-token' };
+  const mockOldToken = 'old-token';
+
+  let req: any;
+  let res: any;
+  let next: any;
+
+  beforeEach(() => {
+    req = {
+      id: 'requestId',
+      logger: loggerWithContext({ requestId: 'requestId' }),
+      user: {
+        id: 'user-123',
+        email: 'user@example.com',
+      },
+      cookies: {
+        refreshToken: mockOldToken,
+      },
+      clientMeta: { ipAddress: '127.0.0.1', userAgent: 'Vitest' },
+    };
+
+    res = {
+      status: vi.fn().mockReturnThis(),
+      cookie: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    };
+
+    next = vi.fn().mockImplementation((err) => {
+      errorHandler(err, req, res, next);
+    });
+
+    vi.spyOn(AuthService, 'refreshTokens').mockResolvedValue({
+      tokens: mockTokens,
+    });
+  });
+
+  it('should successfully refresh tokens', async () => {
+    await refreshController(req, res, next);
+
+    expect(AuthService.refreshTokens).toHaveBeenCalledWith(
+      mockOldToken,
+      req.clientMeta,
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.cookie).toHaveBeenCalledWith(
+      'refreshToken',
+      mockTokens.refresh,
+      {
+        httpOnly: true,
+        secure: env.NODE_ENV == 'production',
+        sameSite: env.NODE_ENV == 'production' ? 'none' : 'lax',
+        maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
+      },
+    );
+    expect(res.json).toHaveBeenCalledWith(
+      success({ tokens: { access: mockTokens.access } }),
+    );
+  });
+
+  it('should throw if refresh token is missing', async () => {
+    const invalidReq = { ...req, cookies: {} };
+    await refreshController(invalidReq, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
+});

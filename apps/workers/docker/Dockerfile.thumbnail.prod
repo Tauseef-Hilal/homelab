@@ -1,0 +1,102 @@
+# --------------------------------
+# Base stage (dependencies)
+# --------------------------------
+FROM node:20-slim AS base
+WORKDIR /app
+
+# System dependencies
+RUN apt-get update && apt-get install -y \
+  build-essential \
+  libc6-dev \
+  libjpeg62-turbo-dev \
+  libpng-dev \
+  libwebp-dev \
+  libvips-dev \
+  ffmpeg \
+  poppler-utils \
+  bash \
+  curl \
+  openssl \
+  ca-certificates \
+  && update-ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@9 --activate
+
+# Copy dependency manifests
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY apps/workers/package.json apps/workers/
+COPY packages/contracts/package.json packages/contracts/
+COPY packages/db/package.json packages/db/
+COPY packages/infra/package.json packages/infra/
+COPY packages/storage/package.json packages/storage/
+
+# Install deps (cached layer)
+RUN pnpm install -r --frozen-lockfile --prod=false --filter @homelab/workers...
+
+
+# --------------------------------
+# Build stage
+# --------------------------------
+FROM base AS build
+WORKDIR /app
+
+# Copy full source
+COPY . .
+
+# Generate prisma client
+RUN pnpm --filter @homelab/db generate
+
+# Build the workers and their internal workspace dependencies in topological order.
+RUN pnpm -r --filter @homelab/workers... build
+
+
+# --------------------------------
+# Runtime stage
+# --------------------------------
+FROM node:20-slim AS prod
+WORKDIR /app
+
+# Runtime libraries only
+RUN apt-get update && apt-get install -y \
+  libc6 \
+  libjpeg62-turbo \
+  libpng16-16 \
+  libwebp7 \
+  libvips \
+  ffmpeg \
+  poppler-utils \
+  openssl \
+  ca-certificates \
+  && update-ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@9 --activate
+
+# Copy minimal runtime files
+COPY --from=build /app/package.json ./
+COPY --from=build /app/pnpm-lock.yaml ./
+COPY --from=build /app/pnpm-workspace.yaml ./
+
+COPY --from=build /app/apps/workers/dist ./apps/workers/dist/
+COPY --from=build /app/apps/workers/package.json ./apps/workers/
+
+COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist/
+COPY --from=build /app/packages/contracts/package.json ./packages/contracts/
+
+COPY --from=build /app/packages/db/dist ./packages/db/dist/
+COPY --from=build /app/packages/db/package.json ./packages/db/
+COPY --from=build /app/packages/db/prisma ./packages/db/prisma
+
+COPY --from=build /app/packages/infra/dist ./packages/infra/dist/
+COPY --from=build /app/packages/infra/package.json ./packages/infra/
+
+COPY --from=build /app/packages/storage/dist ./packages/storage/dist/
+COPY --from=build /app/packages/storage/package.json ./packages/storage/
+
+COPY --from=build /app/node_modules ./node_modules/
+
+# Start worker
+CMD ["pnpm", "--filter", "@homelab/workers", "start:thumbnail"]

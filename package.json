@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "build": "pnpm -r build",
-    "clean": "rm -rf packages/*/dist packages/client/.next packages/*/*.tsbuildinfo dist coverage",
-    "removeDeps": "rm -rf node_modules packages/*/node_modules"
+    "clean": "rm -rf packages/*/dist apps/*/dist apps/web/.next packages/*/*.tsbuildinfo apps/*/*.tsbuildinfo dist coverage",
+    "removeDeps": "rm -rf node_modules packages/*/node_modules apps/*/node_modules"
   },
   "devDependencies": {
     "ts-node": "^10.9.2",

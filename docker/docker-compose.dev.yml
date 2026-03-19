@@ -4,7 +4,7 @@ services:
   migrate:
     build:
       context: ..
-      dockerfile: ./packages/server/docker/Dockerfile.dev
+      dockerfile: ./apps/api/docker/Dockerfile.dev
       target: dev
     depends_on:
       db:
@@ -14,21 +14,20 @@ services:
     volumes:
       - ..:/app
       - node_modules:/app/node_modules
-      - shared_node_modules:/app/packages/shared/node_modules
       - pnpm_store:/root/.local/share/pnpm/store
     dns:
       - 8.8.8.8
       - 8.8.4.4
     command: sh -c "
-      pnpm --filter shared exec prisma migrate deploy &&
-      pnpm --filter shared exec prisma generate
+      pnpm --filter @homelab/db exec prisma migrate deploy &&
+      pnpm --filter @homelab/db exec prisma generate
       "
 
   server:
     restart: unless-stopped
     build:
       context: ..
-      dockerfile: ./packages/server/docker/Dockerfile.dev
+      dockerfile: ./apps/api/docker/Dockerfile.dev
       target: dev
     ports:
       - "5001:5001"
@@ -42,19 +41,18 @@ services:
     volumes:
       - ..:/app
       - node_modules:/app/node_modules
-      - shared_node_modules:/app/packages/shared/node_modules
-      - server_node_modules:/app/packages/server/node_modules
+      - api_node_modules:/app/apps/api/node_modules
       - pnpm_store:/root/.local/share/pnpm/store
     dns:
       - 8.8.8.8
       - 8.8.4.4
-    command: pnpm --filter server dev
+    command: pnpm --filter @homelab/api dev
 
   thumbnail-worker:
     restart: unless-stopped
     build:
       context: ..
-      dockerfile: ./packages/workers/docker/Dockerfile.thumbnail.dev
+      dockerfile: ./apps/workers/docker/Dockerfile.thumbnail.dev
       target: dev
     depends_on:
       migrate:
@@ -66,19 +64,18 @@ services:
     volumes:
       - ..:/app
       - node_modules:/app/node_modules
-      - shared_node_modules:/app/packages/shared/node_modules
-      - workers_node_modules:/app/packages/workers/node_modules
+      - workers_node_modules:/app/apps/workers/node_modules
       - pnpm_store:/root/.local/share/pnpm/store
     dns:
       - 8.8.8.8
       - 8.8.4.4
-    command: pnpm --filter workers dev:thumbnail
+    command: pnpm --filter @homelab/workers dev:thumbnail
 
   io-workers:
     restart: unless-stopped
     build:
       context: ..
-      dockerfile: ./packages/workers/docker/Dockerfile.io.dev
+      dockerfile: ./apps/workers/docker/Dockerfile.io.dev
       target: dev
     depends_on:
       migrate:
@@ -90,19 +87,18 @@ services:
     volumes:
       - ..:/app
       - node_modules:/app/node_modules
-      - shared_node_modules:/app/packages/shared/node_modules
-      - workers_node_modules:/app/packages/workers/node_modules
+      - workers_node_modules:/app/apps/workers/node_modules
       - pnpm_store:/root/.local/share/pnpm/store
     dns:
       - 8.8.8.8
       - 8.8.4.4
-    command: pnpm --filter workers dev:io
+    command: pnpm --filter @homelab/workers dev:io
 
   client:
     restart: unless-stopped
     build:
       context: ..
-      dockerfile: ./packages/client/docker/Dockerfile.dev
+      dockerfile: ./apps/web/docker/Dockerfile.dev
       target: dev
     ports:
       - "3000:3000"
@@ -114,13 +110,12 @@ services:
     volumes:
       - ..:/app
       - node_modules:/app/node_modules
-      - shared_node_modules:/app/packages/shared/node_modules
-      - client_node_modules:/app/packages/client/node_modules
+      - web_node_modules:/app/apps/web/node_modules
       - pnpm_store:/root/.local/share/pnpm/store
     dns:
       - 8.8.8.8
       - 8.8.4.4
-    command: pnpm --filter client dev
+    command: pnpm --filter @homelab/web dev
 
   db:
     image: postgres:16
@@ -150,9 +145,8 @@ volumes:
   redisdata:
 
   node_modules:
-  shared_node_modules:
-  server_node_modules:
+  api_node_modules:
   workers_node_modules:
-  client_node_modules:
+  web_node_modules:
 
   pnpm_store:

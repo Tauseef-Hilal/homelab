@@ -1,11 +1,22 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "target": "ES2020",
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "esModuleInterop": true,
     "noImplicitAny": true,
     "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@homelab/contracts": ["packages/contracts/src/index.ts"],
+      "@homelab/contracts/*": ["packages/contracts/src/*"],
+      "@homelab/db": ["packages/db/src/index.ts"],
+      "@homelab/db/*": ["packages/db/src/*"],
+      "@homelab/infra": ["packages/infra/src/index.ts"],
+      "@homelab/infra/*": ["packages/infra/src/*"],
+      "@homelab/storage": ["packages/storage/src/index.ts"],
+      "@homelab/storage/*": ["packages/storage/src/*"]
+    },
     "skipLibCheck": true,
     "strict": true
   },
