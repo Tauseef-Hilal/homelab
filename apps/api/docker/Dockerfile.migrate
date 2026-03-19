@@ -1,0 +1,25 @@
+# ------------------------
+# Migration Image
+# ------------------------
+FROM node:20-slim
+
+WORKDIR /app
+
+RUN apt-get update -y \
+  && apt-get install -y openssl ca-certificates \
+  && update-ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy full workspace (needed for prisma + schema + deps)
+COPY . .
+
+# Install ALL dependencies (important!)
+RUN pnpm install -r --frozen-lockfile
+
+# Generate Prisma client
+RUN pnpm --filter @homelab/db generate
+
+# Default command
+CMD ["pnpm", "--filter", "@homelab/db", "exec", "prisma", "migrate", "deploy"]

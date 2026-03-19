@@ -10,11 +10,11 @@ import {
   getThumbnailPath,
   copyFileOnDisk,
   pathJoin,
-} from '@homelab/storage/';
+} from '@homelab/storage';
 
 import { HttpError, StorageErrorCode } from '@homelab/contracts/errors';
 import { CommonErrorCode } from '@homelab/contracts/errors';
-import { CopyJobPayload, CopyJobResult } from '@homelab/contracts/jobs/';
+import { CopyJobPayload, CopyJobResult } from '@homelab/contracts/jobs';
 import pLimit from 'p-limit';
 import { Job } from 'bullmq';
 import { getJobLogger } from '@workers/utils/logger';

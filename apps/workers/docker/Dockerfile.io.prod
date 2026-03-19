@@ -53,19 +53,24 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 # Copy only built output and required files from build stage
 COPY --from=build /app/apps/workers/dist ./apps/workers/dist/
 COPY --from=build /app/apps/workers/package.json ./apps/workers/
+COPY --from=build /app/apps/workers/node_modules ./apps/workers/node_modules/
 
 COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist/
 COPY --from=build /app/packages/contracts/package.json ./packages/contracts/
+COPY --from=build /app/packages/contracts/node_modules ./packages/contracts/node_modules/
 
 COPY --from=build /app/packages/db/dist ./packages/db/dist/
 COPY --from=build /app/packages/db/prisma ./packages/db/prisma/
 COPY --from=build /app/packages/db/package.json ./packages/db/
+COPY --from=build /app/packages/db/node_modules ./packages/db/node_modules/
 
 COPY --from=build /app/packages/infra/dist ./packages/infra/dist/
 COPY --from=build /app/packages/infra/package.json ./packages/infra/
+COPY --from=build /app/packages/infra/node_modules ./packages/infra/node_modules/
 
 COPY --from=build /app/packages/storage/dist ./packages/storage/dist/
 COPY --from=build /app/packages/storage/package.json ./packages/storage/
+COPY --from=build /app/packages/storage/node_modules ./packages/storage/node_modules/
 
 COPY --from=build /app/node_modules ./node_modules/
 

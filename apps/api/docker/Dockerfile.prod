@@ -54,19 +54,24 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY --from=build /app/apps/api/dist ./apps/api/dist/
 COPY --from=build /app/apps/api/package.json ./apps/api/
 COPY --from=build /app/apps/api/lua ./apps/api/lua/
+COPY --from=build /app/apps/api/node_modules ./apps/api/node_modules/
 
 COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist/
 COPY --from=build /app/packages/contracts/package.json ./packages/contracts/
+COPY --from=build /app/packages/contracts/node_modules ./packages/contracts/node_modules/
 
 COPY --from=build /app/packages/db/dist ./packages/db/dist/
 COPY --from=build /app/packages/db/package.json ./packages/db/
 COPY --from=build /app/packages/db/prisma ./packages/db/prisma/
+COPY --from=build /app/packages/db/node_modules ./packages/db/node_modules/
 
 COPY --from=build /app/packages/infra/dist ./packages/infra/dist/
 COPY --from=build /app/packages/infra/package.json ./packages/infra/
+COPY --from=build /app/packages/infra/node_modules ./packages/infra/node_modules/
 
 COPY --from=build /app/packages/storage/dist ./packages/storage/dist/
 COPY --from=build /app/packages/storage/package.json ./packages/storage/
+COPY --from=build /app/packages/storage/node_modules ./packages/storage/node_modules/
 
 COPY --from=build /app/node_modules ./node_modules/
 

@@ -4,8 +4,7 @@ services:
   migrate:
     build:
       context: ..
-      dockerfile: ./apps/api/docker/Dockerfile.dev
-      target: dev
+      dockerfile: ./apps/api/docker/Dockerfile.migrate
     depends_on:
       db:
         condition: service_healthy
