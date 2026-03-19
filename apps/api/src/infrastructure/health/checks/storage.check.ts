@@ -10,7 +10,9 @@ export async function checkStorage(): Promise<HealthCheckResult> {
       Promise.all([
         fs.access(path.resolve(env.THUMBNAIL_DIR_PATH)),
         fs.access(path.resolve(env.BLOB_DIR_PATH)),
+        fs.access(path.resolve(env.LOG_DIR_PATH)),
         fs.access(path.resolve(env.TEMP_DIR_PATH)),
+        fs.access(path.resolve(env.TRASH_DIR_PATH)),
       ]),
       timeout(3000),
     ]);
@@ -26,7 +28,7 @@ export async function checkStorage(): Promise<HealthCheckResult> {
       message:
         err instanceof Error && err.message === 'timeout'
           ? 'storage timeout'
-          : 'upload directory inaccessible',
+          : 'storage directory inaccessible',
     };
   }
 }
