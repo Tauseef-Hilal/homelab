@@ -11,13 +11,6 @@ import { ServerError } from '@homelab/contracts/types';
 
 const MAX_CONCURRENT = 3;
 
-const ACTIVE_STATUSES = [
-  'initiating',
-  'hashing',
-  'negotiating',
-  'uploading',
-] as const;
-
 const isActive = (status: UploadStatus) =>
   status === 'initiating' ||
   status === 'hashing' ||
@@ -54,7 +47,6 @@ export function useUploadManager() {
 
     for (const item of pendingItems) {
       const latest = useUploadStore.getState();
-
       const running = latest.items.filter((i) => isActive(i.status)).length;
 
       if (running >= MAX_CONCURRENT) break;

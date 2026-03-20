@@ -1,17 +1,14 @@
-import fs from 'fs';
 import { randomUUID } from 'crypto';
-import { pipeline } from 'stream/promises';
 import archiver from 'archiver';
 import { ZipJobPayload, ZipJobResult } from '@homelab/contracts/jobs';
 import { prisma } from '@homelab/db/prisma';
-import { getFileStream, getTempFilePath } from '@homelab/storage';
 import { zipConstants } from '@workers/constants/zip.constants';
-import { env } from '@homelab/infra/config';
+import { env, getStorageProvider } from '@homelab/infra/config';
 import { CommonErrorCode, HttpError } from '@homelab/contracts/errors';
-import { unlink } from 'fs/promises';
 import pLimit from 'p-limit';
 import { Job } from 'bullmq';
 import { getJobLogger } from '@workers/utils/logger';
+import { PassThrough } from 'stream';
 
 const BATCH_SIZE = 1000;
 
@@ -21,7 +18,7 @@ type PartialFileWithChunks = {
   chunks: {
     size: number;
     blob: {
-      storageKey: string;
+      blobKey: string;
     };
   }[];
 };
@@ -29,13 +26,14 @@ type PartialFileWithChunks = {
 export const zipItems = async (
   job: Job<ZipJobPayload>,
 ): Promise<ZipJobResult> => {
+  const storage = getStorageProvider();
   const logger = getJobLogger('io-worker', job);
   const { userId, items, requestId } = job.data;
 
   const zipName = `${randomUUID()}.zip`;
-  const zipPath = getTempFilePath(zipName);
+  const zipKey = storage.keys.downloadPackage(zipName);
 
-  const { archive, archivePromise } = createArchive(zipPath);
+  const { archive, uploadPromise } = createArchive(zipKey, storage);
 
   try {
     const fileIds = items.filter((i) => i.type !== 'folder').map((i) => i.id);
@@ -51,25 +49,23 @@ export const zipItems = async (
     );
 
     if (!hasFiles) {
-      // ensure archive isn't empty
+      // Ensure archive isn't empty
       archive.append('No files found', { name: 'empty.txt' });
     }
 
-    // finalize zip stream
     await archive.finalize();
-    await archivePromise;
+    await uploadPromise;
 
     await finalizeJob(job.id ?? '', userId, requestId, zipName);
 
-    return { zippedAt: new Date().toISOString(), zipPath };
+    return { zippedAt: new Date().toISOString(), zipPath: zipKey };
   } catch (err) {
-    if (fs.existsSync(zipPath)) {
-      await unlink(zipPath).catch(() => {});
-    }
+    archive.abort();
+    await storage.artifacts.deleteIfPresent(zipKey).catch(() => {});
 
     if (err instanceof HttpError) throw err;
 
-    console.error('Zip Job Error:', err);
+    logger.error('Zip Job Error:', err);
 
     throw new HttpError({
       status: 500,
@@ -79,16 +75,26 @@ export const zipItems = async (
   }
 };
 
-function createArchive(zipPath: string) {
-  const archive = archiver('zip', { zlib: { level: 9 } });
+// Updated helper function
+function createArchive(
+  zipKey: string,
+  storage: ReturnType<typeof getStorageProvider>,
+) {
+  const archive = archiver('zip', { zlib: { level: 5 } });
 
-  const output = fs.createWriteStream(zipPath, {
-    highWaterMark: 1024 * 1024 * 4, // large buffer improves streaming throughput
+  const passThrough = new PassThrough({
+    highWaterMark: 1024 * 1024 * 4,
   });
 
-  const archivePromise = pipeline(archive, output);
+  const uploadPromise = storage.artifacts.put(zipKey, passThrough);
 
-  return { archive, archivePromise };
+  archive.on('error', (err) => {
+    passThrough.destroy(err);
+  });
+
+  archive.pipe(passThrough);
+
+  return { archive, uploadPromise };
 }
 
 async function getFolderPrefixes(folderIds: string[], userId: string) {
@@ -108,6 +114,8 @@ async function appendFilesToArchive(
   fileIds: string[],
   folderPrefixes: any[],
 ) {
+  const storage = getStorageProvider();
+
   let cursor: string | null = null;
   let hasFiles = false;
   const limit = pLimit(4); // prevent too many parallel streams
@@ -126,7 +134,7 @@ async function appendFilesToArchive(
         fullPath: true,
         chunks: {
           orderBy: { chunkIndex: 'asc' },
-          select: { size: true, blob: { select: { storageKey: true } } },
+          select: { size: true, blob: { select: { blobKey: true } } },
         },
       },
     });
@@ -140,7 +148,12 @@ async function appendFilesToArchive(
     await Promise.all(
       batchFiles.map((file) =>
         limit(async () => {
-          const stream = getFileStream(file);
+          const chunks = file.chunks.map((chunk) => ({
+            blobKey: chunk.blob.blobKey,
+            size: chunk.size,
+          }));
+
+          const stream = storage.reader.openFile(chunks);
 
           // append file stream to zip
           archive.append(stream, {
@@ -173,7 +186,8 @@ async function finalizeJob(
       data: {
         userId,
         requestId,
-        fileName: zipName,
+        displayName: zipName,
+        artifactKey: getStorageProvider().keys.downloadPackage(zipName),
         expiresAt: new Date(Date.now() + zipConstants.DOWNLOAD_LINK_EXPIRY_MS),
       },
     });

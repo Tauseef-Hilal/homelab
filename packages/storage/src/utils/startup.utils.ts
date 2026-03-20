@@ -1,25 +1,4 @@
-import path from 'path';
-import { mkdir } from 'fs/promises';
 import { prisma } from '@homelab/db/prisma';
-import { env } from '@homelab/infra/config';
-
-const runtimeDirectories = [
-  env.BLOB_DIR_PATH,
-  env.THUMBNAIL_DIR_PATH,
-  env.LOG_DIR_PATH,
-  env.TEMP_DIR_PATH,
-  env.TRASH_DIR_PATH,
-];
-
-export async function ensureRuntimeDirectories() {
-  const directories = [
-    ...new Set(runtimeDirectories.map((dir) => path.resolve(dir))),
-  ];
-
-  await Promise.all(
-    directories.map((directory) => mkdir(directory, { recursive: true })),
-  );
-}
 
 export async function ensureSystemStatsRow() {
   await prisma.$transaction(async (tx) => {
@@ -45,6 +24,5 @@ export async function ensureSystemStatsRow() {
 }
 
 export async function initializeStorageRuntime() {
-  await ensureRuntimeDirectories();
   await ensureSystemStatsRow();
 }

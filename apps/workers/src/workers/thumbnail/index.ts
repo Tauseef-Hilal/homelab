@@ -1,5 +1,9 @@
 import { ConnectionOptions, Worker } from 'bullmq';
-import { ThumbnailJobPayload, ThumbnailJobResult, queueNames } from '@homelab/contracts/jobs';
+import {
+  ThumbnailJobPayload,
+  ThumbnailJobResult,
+  queueNames,
+} from '@homelab/contracts/jobs';
 import { prisma } from '@homelab/db/prisma';
 import { logger } from '@homelab/infra/logging';
 import { redis } from '@homelab/infra/redis';
@@ -11,13 +15,14 @@ import { thumbnailProcessor } from './processor';
 async function startThumbnailWorker() {
   await initializeStorageRuntime();
 
-  const thumbnailWorker = new Worker<
-    ThumbnailJobPayload,
-    ThumbnailJobResult
-  >(queueNames.thumbnailQueueName, thumbnailProcessor, {
-    connection: redis as unknown as ConnectionOptions,
-    concurrency: 2,
-  });
+  const thumbnailWorker = new Worker<ThumbnailJobPayload, ThumbnailJobResult>(
+    queueNames.thumbnailQueueName,
+    thumbnailProcessor,
+    {
+      connection: redis as unknown as ConnectionOptions,
+      concurrency: 2,
+    },
+  );
 
   thumbnailWorker.on('active', async (job) => {
     await updateJob(job.id ?? '', { status: 'processing' });

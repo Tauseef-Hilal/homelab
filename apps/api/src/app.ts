@@ -34,11 +34,6 @@ app.use(express.json());
 app.use(extractClientMeta);
 app.use(requestLogger);
 
-app.use(
-  '/api/thumbnails',
-  express.static(path.resolve(env.THUMBNAIL_DIR_PATH)),
-);
-
 // Observability endpoints
 app.get('/api/health', healthController);
 app.get('/api/ready', readyController);

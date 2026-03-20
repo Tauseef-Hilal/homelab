@@ -120,12 +120,12 @@ model FileChunk {
 }
 
 model Blob {
-  id         String   @id @default(uuid())
-  hash       String
-  storageKey String
-  size       Int
-  refCount   Int
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid())
+  hash      String
+  blobKey   String   @unique
+  size      Int
+  refCount  Int
+  createdAt DateTime @default(now())
 
   chunks FileChunk[]
 
@@ -193,13 +193,14 @@ enum JobStatus {
 }
 
 model DownloadLink {
-  id        String   @id @default(uuid())
-  fileName  String
-  requestId String
-  createdAt DateTime @default(now())
-  expiresAt DateTime
-  userId    String
-  User      User     @relation(fields: [userId], references: [id])
+  id          String   @id @default(uuid())
+  artifactKey String
+  displayName String
+  requestId   String
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+  userId      String
+  User        User     @relation(fields: [userId], references: [id])
 }
 
 model BroadcastMessage {

@@ -7,8 +7,6 @@ import { jobNames } from '@homelab/contracts/jobs';
 import { prisma } from '@homelab/db/prisma';
 import { requestSchemas } from '@homelab/contracts/schemas/storage';
 import {
-  getBlobStorageKeyByHash,
-  getBlobStoragePathByKey,
   release,
   reserve,
   resolveFileName,
@@ -16,14 +14,13 @@ import {
 import { UploadStatus, Visibility } from '@prisma/client';
 import { enqueueThumbnailJob } from '@server/lib/jobs/thumbnailQueue';
 import { randomUUID, createHash } from 'crypto';
-import { mkdir, writeFile } from 'fs/promises';
-import path from 'path';
 import {
   MAX_CONCURRENT_UPLOADS,
   MAX_FILE_SIZE,
   UPLOAD_EXPIRY,
 } from '../constants/limits';
 import { enqueueUploadCleanupJob } from '@server/lib/jobs/fileIOQueue';
+import { getStorageProvider } from '@homelab/infra';
 
 /**
  * Initializes a new upload session or returns existing one
@@ -220,22 +217,11 @@ export async function saveChunk(
     });
   }
 
-  const storagePath = getBlobStoragePathByKey(
-    getBlobStorageKeyByHash(chunkHash),
-  );
+  const storageProvider = getStorageProvider();
+  const blobKey = storageProvider.keys.blob(chunkHash);
 
-  try {
-    await mkdir(path.dirname(storagePath), { recursive: true });
-    // 'wx' flag ensures we don't overwrite if another
-    // concurrent request beat us to it
-    await writeFile(storagePath, chunkBuffer, { flag: 'wx' });
-  } catch (e: any) {
-    if (e.code === 'EEXIST') {
-      // This is what 'wx' throws if the file is already there
-    } else {
-      throw e;
-    }
-  }
+  // Store blob
+  await storageProvider.blobs.putIfAbsent(blobKey, chunkBuffer);
 
   await prisma.$transaction(async (tx) => {
     let blobId: string;
@@ -244,7 +230,7 @@ export async function saveChunk(
       const newBlob = await tx.blob.create({
         data: {
           hash: chunkHash,
-          storageKey: storagePath,
+          blobKey: blobKey,
           size: chunkBuffer.length,
           refCount: 1,
         },

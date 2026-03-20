@@ -3,7 +3,8 @@ import { CommonErrorCode } from '@homelab/contracts/errors/';
 import { DeleteJobPayload, DeleteJobResult } from '@homelab/contracts/jobs';
 
 import { prisma } from '@homelab/db/prisma';
-import { getThumbnailPath, release } from '@homelab/storage';
+import { getStorageProvider } from '@homelab/infra';
+import { release } from '@homelab/storage';
 import { Prisma } from '@prisma/client';
 import { getJobLogger } from '@workers/utils/logger';
 import { Job } from 'bullmq';
@@ -92,6 +93,8 @@ async function deleteFilesInBatches(
   folders: { fullPath: string }[],
   ctx: DeleteContext,
 ) {
+  const storage = getStorageProvider();
+
   const startsWithFolderPrefixes = folders.map((folder) => ({
     fullPath: { startsWith: folder.fullPath + '/' },
   }));
@@ -125,7 +128,7 @@ async function deleteFilesInBatches(
 
       // queue thumbnails for deletion
       if (file.hasThumbnail)
-        ctx.deletePaths.push(getThumbnailPath(userId, file.id));
+        ctx.deletePaths.push(storage.keys.thumbnail(userId, file.id));
     });
 
     await removeBatch(batchFileIds, ctx);
@@ -137,7 +140,7 @@ async function deleteFilesInBatches(
 async function removeBatch(batchFileIds: string[], ctx: DeleteContext) {
   await prisma.$transaction(async (tx) => {
     const updatedBlobs = await tx.$queryRaw<
-      { id: string; refCount: number; storageKey: string }[]
+      { id: string; refCount: number; blobKey: string }[]
     >`
       UPDATE "Blob"
       SET "refCount" = GREATEST("refCount" - counts.count, 0)
@@ -148,7 +151,7 @@ async function removeBatch(batchFileIds: string[], ctx: DeleteContext) {
         GROUP BY "blobId"
       ) counts
       WHERE "Blob"."id" = counts."blobId"
-      RETURNING "Blob"."id", "Blob"."refCount", "Blob"."storageKey"
+      RETURNING "Blob"."id", "Blob"."refCount", "Blob"."blobKey"
     `;
 
     await tx.file.deleteMany({ where: { id: { in: batchFileIds } } });
@@ -158,7 +161,7 @@ async function removeBatch(batchFileIds: string[], ctx: DeleteContext) {
     updatedBlobs.forEach((b) => {
       if (b.refCount <= 0) {
         blobIds.push(b.id);
-        ctx.deletePaths.push(b.storageKey);
+        ctx.deletePaths.push(b.blobKey);
       }
     });
 
@@ -184,17 +187,15 @@ async function deleteFolders(userId: string, folders: { fullPath: string }[]) {
 }
 
 async function deletePhysicalFiles(paths: string[]) {
-  const limit = pLimit(10);
+  const storage = getStorageProvider();
 
-  await Promise.all(
-    paths.map((p) =>
-      limit(async () => {
-        try {
-          await unlink(p);
-        } catch (err) {
-          console.error('Failed to delete file', p, err);
-        }
-      }),
-    ),
-  );
+  const blobKeys = paths.filter((p) => p.startsWith('blobs'));
+  const thumbnailKeys = paths.filter((p) => p.startsWith('thumbnails'));
+
+  try {
+    await storage.blobs.deleteMany(blobKeys);
+    await storage.artifacts.deleteMany(thumbnailKeys);
+  } catch (err) {
+    console.error('Failed to delete files', err);
+  }
 }

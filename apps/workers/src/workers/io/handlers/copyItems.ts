@@ -7,7 +7,6 @@ import {
   calculateSize,
   reserve,
   release,
-  getThumbnailPath,
   copyFileOnDisk,
   pathJoin,
 } from '@homelab/storage';
@@ -18,6 +17,7 @@ import { CopyJobPayload, CopyJobResult } from '@homelab/contracts/jobs';
 import pLimit from 'p-limit';
 import { Job } from 'bullmq';
 import { getJobLogger } from '@workers/utils/logger';
+import { getStorageProvider } from '@homelab/infra';
 
 const FILE_BATCH_SIZE = 1000;
 const FOLDER_BATCH_SIZE = 1000;
@@ -443,17 +443,18 @@ async function copyThumbnails(
   fileIdMap: FileIdMap[],
 ) {
   const limit = pLimit(10);
+  const storage = getStorageProvider();
 
   await Promise.all(
     fileMeta.map(async (file, i) =>
       limit(async () => {
         if (!file.hasThumbnail) return;
 
-        const src = getThumbnailPath(userId, fileIdMap[i].oldId);
-        const dest = getThumbnailPath(userId, file.id);
+        const src = storage.keys.thumbnail(userId, fileIdMap[i].oldId);
+        const dest = storage.keys.thumbnail(userId, file.id);
 
         try {
-          await copyFileOnDisk(src, dest);
+          await storage.artifacts.copy(src, dest);
         } catch (err) {
           console.error('Thumbnail copy failed', err);
         }

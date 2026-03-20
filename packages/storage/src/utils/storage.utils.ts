@@ -186,22 +186,6 @@ export async function copyFileOnDisk(src: string, dest: string) {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                                MEDIA PATHS                                 */
-/* -------------------------------------------------------------------------- */
-
-export function getThumbnailsDirPath(userId: string) {
-  return path.join(path.resolve(env.THUMBNAIL_DIR_PATH), userId);
-}
-
-export function getThumbnailPath(userId: string, fileId: string) {
-  return path.join(getThumbnailsDirPath(userId), `${fileId}.webp`);
-}
-
-export function getTempFilePath(fileName: string) {
-  return path.join(path.resolve(env.TEMP_DIR_PATH), fileName);
-}
-
-/* -------------------------------------------------------------------------- */
 /*                              SECURITY HELPERS                              */
 /* -------------------------------------------------------------------------- */
 
@@ -227,65 +211,3 @@ export function ensureUserIsOwner(
 /* -------------------------------------------------------------------------- */
 /*                                CHUNK STORAGE                               */
 /* -------------------------------------------------------------------------- */
-
-export function getBlobStorageKeyByHash(hash: string) {
-  const prefix1 = hash.slice(0, 2);
-  const prefix2 = hash.slice(2, 4);
-
-  return path.join(prefix1, prefix2, hash);
-}
-
-export function getBlobStoragePathByKey(storageKey: string) {
-  return path.join(env.BLOB_DIR_PATH, storageKey);
-}
-
-type GetFileStreamInput = {
-  chunks: {
-    size: number;
-    blob: {
-      storageKey: string;
-    };
-  }[];
-};
-
-type RangeOptions = {
-  start?: number;
-  end?: number;
-};
-
-export function getFileStream(
-  file: GetFileStreamInput,
-  range?: RangeOptions,
-): Readable {
-  const start = range?.start ?? 0;
-  // If no end is provided, read until the end of the last chunk
-  const end = range?.end ?? Infinity;
-
-  async function* generateFileChunks() {
-    let currentOffset = 0;
-
-    for (const chunk of file?.chunks ?? []) {
-      const chunkStart = currentOffset;
-      const chunkEnd = currentOffset + chunk.size - 1; // Inclusive end
-
-      currentOffset += chunk.size;
-
-      if (chunkEnd < start) continue;
-      if (chunkStart > end) break;
-
-      // Calculate the relative slice within this specific chunk
-      const relativeStart = Math.max(0, start - chunkStart);
-      const relativeEnd = Math.min(chunk.size - 1, end - chunkStart);
-
-      const storagePath = getBlobStoragePathByKey(chunk.blob.storageKey);
-
-      // Yield the specific byte range for this chunk's file
-      yield* createReadStream(storagePath, {
-        start: relativeStart,
-        end: relativeEnd,
-      });
-    }
-  }
-
-  return Readable.from(generateFileChunks());
-}

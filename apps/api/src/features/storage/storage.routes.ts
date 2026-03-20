@@ -29,12 +29,14 @@ import { uploadChunkCheckController } from './controllers/uploadChunkCheck.contr
 import { uploadCancelController } from './controllers/uploadCancel.controller';
 import { uploadFinishController } from './controllers/uploadFinish.controller';
 import { uploadStatusController } from './controllers/uploadStatus.controller';
+import { thumbnailController } from './controllers/getThumbnail.controller';
 
 const router = Router();
 const authProtected = [requireAuth, rateLimit(globalUserPolicy)];
 
 router.get('/stats', ...authProtected, getStatsController);
 router.get('/file/:fileId/preview', previewFileController);
+router.get('/file/thumbnail/:userId/:fileId', thumbnailController);
 router.get(
   '/list',
   ...authProtected,

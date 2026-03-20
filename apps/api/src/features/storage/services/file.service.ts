@@ -15,7 +15,7 @@ export async function getFileMeta(userId: string, fileId: string) {
         orderBy: { chunkIndex: 'asc' },
         select: {
           size: true,
-          blob: { select: { storageKey: true, size: true } },
+          blob: { select: { blobKey: true, size: true } },
         },
       },
     },

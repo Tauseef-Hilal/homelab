@@ -9,9 +9,11 @@
       "@homelab/infra": ["./src"],
       "@homelab/infra/*": ["./src/*"],
       "@homelab/contracts": ["../contracts/src/index.ts"],
-      "@homelab/contracts/*": ["../contracts/src/*"]
+      "@homelab/contracts/*": ["../contracts/src/*"],
+      "@homelab/storage": ["../storage/src/index.ts"],
+      "@homelab/storage/*": ["../storage/src/*"]
     }
   },
-  "references": [{ "path": "../contracts" }],
+  "references": [{ "path": "../contracts" }, { "path": "../storage" }],
   "include": ["src"]
 }

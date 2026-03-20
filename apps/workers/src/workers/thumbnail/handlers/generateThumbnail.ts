@@ -1,21 +1,18 @@
-import path from 'path';
 import fs from 'fs/promises';
-import { spawn } from 'child_process';
 import { createWriteStream } from 'fs';
+import { spawn } from 'child_process';
+import path from 'path';
 import { pipeline } from 'stream/promises';
+import type { Readable } from 'stream';
+import { Job } from 'bullmq';
 import sharp from 'sharp';
 import ffmpeg from 'fluent-ffmpeg';
-import { Job } from 'bullmq';
-import {
-  getFileStream,
-  getTempFilePath,
-  getThumbnailPath,
-} from '@homelab/storage';
+
 import { ThumbnailJobPayload } from '@homelab/contracts/jobs';
 import { getJobLogger } from '@workers/utils/logger';
 import { prisma } from '@homelab/db/prisma';
 import { CommonErrorCode, HttpError } from '@homelab/contracts/errors';
-import { env } from '@homelab/infra/config';
+import { env, getStorageProvider } from '@homelab/infra/config';
 
 export const generateThumbnail = async (job: Job<ThumbnailJobPayload>) => {
   const { fileId, userId } = job.data;
@@ -28,7 +25,7 @@ export const generateThumbnail = async (job: Job<ThumbnailJobPayload>) => {
       mimeType: true,
       chunks: {
         orderBy: { chunkIndex: 'asc' },
-        select: { size: true, blob: { select: { storageKey: true } } },
+        select: { size: true, blob: { select: { blobKey: true } } },
       },
     },
   });
@@ -37,29 +34,32 @@ export const generateThumbnail = async (job: Job<ThumbnailJobPayload>) => {
     throw new HttpError({
       status: 404,
       code: CommonErrorCode.NOT_FOUND,
-      message: 'Source file doesnt not exist',
+      message: 'Source file does not exist',
     });
   }
 
-  const srcPath = getTempFilePath(fileId);
+  const storage = getStorageProvider();
+  const outputKey = storage.keys.thumbnail(userId, fileId);
 
   try {
-    await pipeline(getFileStream(file), createWriteStream(srcPath));
+    const chunks = file.chunks.map((chunk) => ({
+      blobKey: chunk.blob.blobKey,
+      size: chunk.size,
+    }));
 
-    const outputPath = getThumbnailPath(userId, fileId);
-    await fs.mkdir(path.dirname(outputPath), { recursive: true });
+    const fileStream = storage.reader.openFile(chunks);
 
     switch (true) {
       case file.mimeType.startsWith('image/'):
-        await generateImageThumbnail(srcPath, outputPath);
+        await generateImageThumbnail(fileStream, outputKey);
         break;
 
       case file.mimeType === 'application/pdf':
-        await generatePdfThumbnail(srcPath, outputPath, fileId);
+        await generatePdfThumbnail(fileStream, outputKey, fileId, file.name);
         break;
 
       case file.mimeType.startsWith('video/'):
-        await generateVideoThumbnail(srcPath, outputPath, fileId);
+        await generateVideoThumbnail(fileStream, outputKey, fileId, file.name);
         break;
 
       default:
@@ -71,10 +71,12 @@ export const generateThumbnail = async (job: Job<ThumbnailJobPayload>) => {
     }
 
     return {
-      thumbnailPath: outputPath,
+      thumbnailPath: outputKey,
       generatedAt: new Date().toISOString(),
     };
   } catch (err) {
+    logger.error(err);
+
     throw err instanceof HttpError
       ? err
       : new HttpError({
@@ -82,61 +84,96 @@ export const generateThumbnail = async (job: Job<ThumbnailJobPayload>) => {
           code: CommonErrorCode.INTERNAL_SERVER_ERROR,
           message: 'Failed to generate thumbnail',
         });
-  } finally {
-    // ensure temp file cleanup
-    await fs.unlink(srcPath).catch(() => {});
   }
 };
 
-async function generateImageThumbnail(srcPath: string, outputPath: string) {
-  await sharp(srcPath).resize(320).toFile(outputPath);
+async function generateImageThumbnail(fileStream: Readable, outputKey: string) {
+  const storage = getStorageProvider();
+  const transformStream = sharp().resize(320).png();
+  await storage.artifacts.put(outputKey, fileStream.pipe(transformStream));
 }
 
 async function generatePdfThumbnail(
-  srcPath: string,
-  outputPath: string,
+  fileStream: Readable,
+  outputKey: string,
   fileId: string,
+  fileName: string,
 ) {
-  const tempFile = path.join(env.TEMP_DIR_PATH, `${fileId}-pdf.png`);
+  const storage = getStorageProvider();
+  const sourceTempFile = path.resolve(
+    path.join(env.ROOT_DIR_PATH, storage.keys.temp(fileName)),
+  );
 
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn('pdftoppm', [
-      '-png',
-      '-f',
-      '1',
-      '-singlefile',
-      srcPath,
-      path.join(env.TEMP_DIR_PATH, `${fileId}-pdf`),
-    ]);
+  const outFilePrefix = path.resolve(
+    path.join(env.ROOT_DIR_PATH, storage.keys.temp(`${fileId}-pdf`)),
+  );
+  const outFilePath = `${outFilePrefix}.png`;
 
-    child.on('close', (code) =>
-      code === 0 ? resolve() : reject(new Error('PDF convert error')),
-    );
+  try {
+    await pipeline(fileStream, createWriteStream(sourceTempFile));
 
-    child.on('error', reject);
-  });
+    await new Promise<void>((resolve, reject) => {
+      let errorLog = '';
+      const child = spawn('pdftoppm', [
+        '-png',
+        '-f',
+        '1',
+        '-singlefile',
+        sourceTempFile,
+        outFilePrefix,
+      ]);
 
-  await sharp(tempFile).resize(320).toFile(outputPath);
-  await fs.unlink(tempFile);
+      child.stderr.on('data', (data) => {
+        errorLog += data.toString();
+      });
+
+      child.on('close', (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`PDF convert error: ${errorLog}`));
+      });
+
+      child.on('error', reject);
+    });
+
+    const buffer = await sharp(outFilePath).resize(320).toBuffer();
+    await storage.artifacts.put(outputKey, buffer);
+  } finally {
+    await fs.unlink(sourceTempFile).catch(() => {});
+    await fs.unlink(outFilePath).catch(() => {});
+  }
 }
 
 async function generateVideoThumbnail(
-  srcPath: string,
-  outputPath: string,
+  fileStream: Readable,
+  outputKey: string,
   fileId: string,
+  fileName: string,
 ) {
-  const tempFile = path.join(env.TEMP_DIR_PATH, `${fileId}-video.png`);
+  const storage = getStorageProvider();
+  const sourceTempFile = path.resolve(
+    path.join(env.ROOT_DIR_PATH, storage.keys.temp(fileName)),
+  );
+  const outActualFile = path.resolve(
+    path.join(env.ROOT_DIR_PATH, storage.keys.temp(`${fileId}-video.png`)),
+  );
 
-  await new Promise((resolve, reject) => {
-    ffmpeg(srcPath)
-      .seekInput(1) // grab frame at 1s
-      .frames(1)
-      .output(tempFile)
-      .on('end', resolve)
-      .on('error', reject)
-      .run();
-  });
+  try {
+    await pipeline(fileStream, createWriteStream(sourceTempFile));
 
-  await sharp(tempFile).resize(320).toFile(outputPath);
-  await fs.unlink(tempFile);
+    await new Promise((resolve, reject) => {
+      ffmpeg(sourceTempFile)
+        .seekInput(1)
+        .frames(1)
+        .output(outActualFile)
+        .on('end', resolve)
+        .on('error', (err) => reject(new Error(`FFmpeg error: ${err.message}`)))
+        .run();
+    });
+
+    const buffer = await sharp(outActualFile).resize(320).toBuffer();
+    await storage.artifacts.put(outputKey, buffer);
+  } finally {
+    await fs.unlink(sourceTempFile).catch(() => {});
+    await fs.unlink(outActualFile).catch(() => {});
+  }
 }

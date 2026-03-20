@@ -7,6 +7,7 @@ import { prisma } from '@homelab/db/prisma';
 import { CommonErrorCode, HttpError } from '@homelab/contracts/errors';
 import { Job } from 'bullmq';
 import { getJobLogger } from '@workers/utils/logger';
+import { getStorageProvider } from '@homelab/infra';
 
 export const cleanupUpload = async (
   job: Job<UploadCleanupJobPayload>,
@@ -28,7 +29,7 @@ export const cleanupUpload = async (
       return { cleanedAt: new Date().toISOString() };
     }
 
-    const deletedBlobPaths: string[] = [];
+    const deletedBlobKeys: string[] = [];
 
     await prisma.$transaction(async (tx) => {
       // Aggregate blob usage for this file
@@ -69,7 +70,7 @@ export const cleanupUpload = async (
         },
         select: {
           id: true,
-          storageKey: true,
+          blobKey: true,
         },
       });
 
@@ -81,18 +82,13 @@ export const cleanupUpload = async (
           },
         });
 
-        deletedBlobPaths.push(...deletableBlobs.map((b) => b.storageKey));
+        deletedBlobKeys.push(...deletableBlobs.map((b) => b.blobKey));
       }
     });
 
     // Delete files from disk AFTER DB commit
-    await Promise.all(
-      deletedBlobPaths.map((p) =>
-        fs.unlink(p).catch(() => {
-          // ignore missing files
-        }),
-      ),
-    );
+    const storage = getStorageProvider();
+    await storage.blobs.deleteMany(deletedBlobKeys);
 
     return { cleanedAt: new Date().toISOString() };
   } catch (err: unknown) {

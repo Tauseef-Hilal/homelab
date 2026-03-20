@@ -56,7 +56,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
     const selected = isSelected(child);
     const isGrid = viewMode === "grid";
 
-    const thumbnailUrl = `${env.API_URL}/thumbnails/${child.userId}/${child.id}.webp`;
+    const thumbnailUrl = `${env.API_URL}/storage/file/thumbnail/${child.userId}/${child.id}`;
 
     const entryItem = {
       id: child.id,

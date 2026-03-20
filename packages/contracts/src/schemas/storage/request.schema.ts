@@ -43,6 +43,11 @@ export const previewFileQuerySchema = z.object({
   token: z.string().min(1),
 });
 
+export const getThumbnailParamSchema = z.object({
+  fileId: z.uuid(),
+  userId: z.uuid(),
+});
+
 export const createFolderSchema = z.object({
   folderName: z.string().min(1, "Folder name can't be empty"),
   parentId: z.nullable(z.uuidv4()),
@@ -105,3 +110,4 @@ export type UploadChunkHeaderInput = z.infer<typeof uploadChunkHeaderSchema>;
 export type UploadFinishInput = z.infer<typeof uploadFinishSchema>;
 export type UploadCancelInput = z.infer<typeof uploadCancelSchema>;
 export type UploadStatusInput = z.infer<typeof uploadStatusSchema>;
+export type GetThumbnailInput = z.infer<typeof getThumbnailParamSchema>;

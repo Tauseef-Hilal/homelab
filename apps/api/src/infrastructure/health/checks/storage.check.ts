@@ -1,18 +1,15 @@
+import { getStorageProvider } from '@homelab/infra/config/storage';
 import { timeout } from '@server/lib/timeout';
 import { HealthCheckResult } from '@server/types/health';
-import { env } from '@homelab/infra/config';
-import fs from 'fs/promises';
-import path from 'path';
 
 export async function checkStorage(): Promise<HealthCheckResult> {
   try {
+    const storage = getStorageProvider();
+
     await Promise.race([
       Promise.all([
-        fs.access(path.resolve(env.THUMBNAIL_DIR_PATH)),
-        fs.access(path.resolve(env.BLOB_DIR_PATH)),
-        fs.access(path.resolve(env.LOG_DIR_PATH)),
-        fs.access(path.resolve(env.TEMP_DIR_PATH)),
-        fs.access(path.resolve(env.TRASH_DIR_PATH)),
+        storage.blobs.checkHealth(),
+        storage.artifacts.checkHealth(),
       ]),
       timeout(3000),
     ]);
@@ -28,7 +25,7 @@ export async function checkStorage(): Promise<HealthCheckResult> {
       message:
         err instanceof Error && err.message === 'timeout'
           ? 'storage timeout'
-          : 'storage directory inaccessible',
+          : 'storage inaccessible or misconfigured',
     };
   }
 }

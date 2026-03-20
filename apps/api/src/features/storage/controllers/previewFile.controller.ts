@@ -3,8 +3,8 @@ import { Request, Response } from 'express';
 import { requestSchemas } from '@homelab/contracts/schemas/storage';
 import { verifyAccessToken } from '@server/lib/jwt';
 import { throwUnauthorized } from '@server/features/auth/utils/error.util';
-import { getFileStream } from '@homelab/storage';
 import { getFileMeta } from '../services/file.service';
+import { getStorageProvider } from '@homelab/infra';
 
 export const previewFileController = catchAsync(
   async (req: Request, res: Response) => {
@@ -16,11 +16,16 @@ export const previewFileController = catchAsync(
       const range = req.headers.range;
 
       const file = await getFileMeta(sub, fileId);
+      const chunks = file.chunks.map((chunk) => ({
+        blobKey: chunk.blob.blobKey,
+        size: chunk.blob.size,
+      }));
+
+      const storage = getStorageProvider();
 
       if (!range) {
-        res.setHeader('Content-Type', file.mimeType);
         res.setHeader('Content-Length', file.size);
-        return getFileStream(file).pipe(res);
+        return storage.reader.openFile(chunks).pipe(res);
       }
 
       const [startStr, endStr] = range.replace(/bytes=/, '').split('-');
@@ -36,7 +41,7 @@ export const previewFileController = catchAsync(
       }
 
       const chunkSize = end - start + 1;
-      const fileStream = getFileStream(file, { start, end });
+      const fileStream = storage.reader.openFile(chunks, { start, end });
 
       res.writeHead(206, {
         'Content-Range': `bytes ${start}-${end}/${file.size}`,

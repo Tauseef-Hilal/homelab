@@ -26,12 +26,10 @@ const envSchema = z.object({
   REDIS_HOST: z.string(),
   REDIS_PORT: z.coerce.number(),
   REDIS_PASSWORD: z.string(),
-  BLOB_DIR_PATH: z.string().min(1),
-  THUMBNAIL_DIR_PATH: z.string().min(1),
-  LOG_DIR_PATH: z.string().min(1),
-  TEMP_DIR_PATH: z.string().min(1),
-  TRASH_DIR_PATH: z.string().min(1),
   ADMIN_PASSWORD: z.string(),
+  STORAGE_PROVIDER: z.string(),
+  ROOT_DIR_PATH: z.string().min(1),
+  LOG_DIR_PATH: z.string().min(1),
 });
 
 const parsed = envSchema.safeParse(process.env);

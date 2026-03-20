@@ -1,4 +1,3 @@
-import fs from 'fs';
 import { prisma } from '@homelab/db/prisma';
 import { Folder } from '@prisma/client';
 import {
@@ -7,10 +6,10 @@ import {
   resolveFolderName,
 } from '../utils/folder.util';
 import { pathJoin } from '../utils/file.util';
-import { getTempFilePath } from '@homelab/storage';
 import { HttpError } from '@homelab/contracts/errors';
 import { CommonErrorCode } from '@homelab/contracts/errors';
 import { randomUUID } from 'crypto';
+import { getStorageProvider } from '@homelab/infra';
 
 export async function createFolder(
   userId: string,
@@ -61,8 +60,9 @@ export async function prepareDownload(userId: string, folderId: string) {
 
 export async function validateLinkAndGetDownloadMeta(linkId: string) {
   const link = await prisma.downloadLink.findUnique({ where: { id: linkId } });
+  const storage = getStorageProvider();
 
-  if (!link || (link && !fs.existsSync(getTempFilePath(link.fileName)))) {
+  if (!link || (link && !(await storage.artifacts.exists(link.artifactKey)))) {
     throw new HttpError({
       status: 404,
       code: CommonErrorCode.NOT_FOUND,
@@ -86,7 +86,10 @@ export async function validateLinkAndGetDownloadMeta(linkId: string) {
     });
   }
 
-  return { filePath: getTempFilePath(link.fileName), fileName: link.fileName };
+  return {
+    fileStream: storage.artifacts.openRead(link.artifactKey),
+    fileName: link.displayName,
+  };
 }
 
 export async function listDirectory(userId: string, path: string) {
