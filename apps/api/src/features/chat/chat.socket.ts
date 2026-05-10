@@ -6,8 +6,29 @@ import { rateLimitCheck } from '@server/lib/rate-limit/rateLimit';
 import { chatSendPolicy } from '@server/lib/rate-limit/policies';
 import { redisPub, redisSub } from '@homelab/infra/redis';
 import logger from '@homelab/infra/logging';
+import { verifyAccessToken } from '@server/lib/jwt';
 
 export const registerChatSocket = (io: Server) => {
+  // Authentication middleware
+  io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+    if (!token) {
+      return next(new Error('Authentication error: Missing token'));
+    }
+
+    try {
+      const payload = verifyAccessToken(token);
+      (socket as any).user = {
+        id: payload.sub,
+        email: payload.email,
+        role: payload.role,
+      };
+      next();
+    } catch (err) {
+      next(new Error('Authentication error: Invalid token'));
+    }
+  });
+
   // Listen to Redis broadcasts from other servers
   redisSub.on('message', (channel: string, message: string) => {
     if (channel === BROADCAST_CHANNEL) {
@@ -17,7 +38,8 @@ export const registerChatSocket = (io: Server) => {
   });
 
   io.on('connection', (socket: Socket) => {
-    logger.info(`Client connected: ${socket.id}`);
+    const user = (socket as any).user;
+    logger.info(`Client connected: ${socket.id} (User: ${user?.id})`);
 
     // Listen for broadcast sends from client
     socket.on(
@@ -33,12 +55,13 @@ export const registerChatSocket = (io: Server) => {
             return ack({ success: false, error: 'Message too long' });
           }
 
+          // Ensure the sender matches the authenticated user
+          if (message.authorId !== user.id) {
+            return ack({ success: false, error: 'Unauthorized sender' });
+          }
+
           // Rate limit
-          const { allowed } = await rateLimitCheck(
-            message.authorId,
-            chatSendPolicy,
-          );
-          console.log('rate-limit identifier:', message.authorId);
+          const { allowed } = await rateLimitCheck(user.id, chatSendPolicy);
           if (!allowed) {
             return ack({
               success: false,

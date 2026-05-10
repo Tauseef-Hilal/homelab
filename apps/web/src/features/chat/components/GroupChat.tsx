@@ -15,7 +15,7 @@ import Paginator from "./Paginator";
 import { groupMessages } from "../utils/groupMessages";
 
 const GroupChat: React.FC = () => {
-  const { messages: liveMessages, sendMessage } = useMessaging();
+  const { messages: liveMessages, sendMessage, currentUserId } = useMessaging();
   const [message, setMessage] = useState("");
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -27,8 +27,12 @@ const GroupChat: React.FC = () => {
 
   const allMessages = useMemo(() => {
     const historyAsc = [...historyMessages].reverse(); // oldest -> newest
+    const historyIds = new Set(historyMessages.map((m) => m.id));
 
-    return [...historyAsc, ...liveMessages];
+    // Filter out live messages that are already in the history (to avoid duplicates on refetch)
+    const uniqueLiveMessages = liveMessages.filter((m) => !historyIds.has(m.id));
+
+    return [...historyAsc, ...uniqueLiveMessages];
   }, [historyMessages, liveMessages]);
 
   const groupedMessages = useMemo(() => {
@@ -89,7 +93,7 @@ const GroupChat: React.FC = () => {
           onSubmit={(e) => {
             e.preventDefault();
 
-            if (!message.trim()) return;
+            if (!message.trim() || !currentUserId) return;
 
             sendMessage(message);
             setMessage("");
@@ -98,17 +102,18 @@ const GroupChat: React.FC = () => {
           <div className="flex items-center w-full max-w-3xl gap-2 rounded-full border bg-background px-3 py-2 shadow-sm">
             <Input
               type="text"
-              placeholder="Write a message..."
+              placeholder={currentUserId ? "Write a message..." : "Connecting..."}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+              disabled={!currentUserId}
             />
 
             <Button
               type="submit"
               size="icon"
               className="rounded-full"
-              disabled={!message.trim()}
+              disabled={!message.trim() || !currentUserId}
             >
               <SendHorizonalIcon size={18} />
             </Button>

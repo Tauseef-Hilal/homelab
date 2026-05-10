@@ -8,13 +8,34 @@ import { toast } from 'sonner';
 import { v4 } from 'uuid';
 
 export function useMessaging() {
-  const { user } = useAuthStore();
+  const { user, accessToken, authInitialized } = useAuthStore();
   const [messages, setMessages] = useState<ioSchemas.BroadcastMessage[]>([]);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const socket = io(process.env.NEXT_PUBLIC_API_BASE_URL, {});
+    if (!authInitialized || !accessToken) return;
+
+    const url = process.env.NEXT_PUBLIC_API_BASE_URL;
+    if (!url) {
+      console.error('NEXT_PUBLIC_API_BASE_URL is not defined');
+      return;
+    }
+
+    const socket = io(url, {
+      transports: ['websocket'],
+      auth: {
+        token: accessToken,
+      },
+    });
     socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('Socket connected');
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+    });
 
     socket.on('broadcast', (message) => {
       setMessages((messages) => [...messages, message]);
@@ -23,7 +44,7 @@ export function useMessaging() {
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [authInitialized, accessToken]);
 
   const sendMessage = (content: string) => {
     if (!socketRef.current || !user) return;
