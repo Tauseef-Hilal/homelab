@@ -73,17 +73,29 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
       type: folder ? "folder" : ("file" as "folder" | "file"),
     };
 
-    const { onTouchStart, onTouchEnd, onTouchMove } =
-      useLongPress<HTMLDivElement>((x, y) => {
-        const el = document.elementFromPoint(x, y);
-        el?.dispatchEvent(
-          new MouseEvent("contextmenu", {
-            bubbles: true,
-            clientX: x,
-            clientY: y,
-          }),
-        );
-      });
+    const lp = useLongPress<HTMLDivElement>((x, y) => {
+      const el = document.elementFromPoint(x, y);
+      el?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          clientX: x,
+          clientY: y,
+        }),
+      );
+    });
+
+    const onTouchStart: React.TouchEventHandler<HTMLDivElement> = (e) => {
+      e.stopPropagation();
+      lp.onTouchStart(e);
+    };
+    const onTouchEnd: React.TouchEventHandler<HTMLDivElement> = (e) => {
+      e.stopPropagation();
+      lp.onTouchEnd(e);
+    };
+    const onTouchMove: React.TouchEventHandler<HTMLDivElement> = (e) => {
+      e.stopPropagation();
+      lp.onTouchMove(e);
+    };
 
     /* ---------- Click logic ---------- */
 
@@ -209,41 +221,58 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
         onTouchMove={onTouchMove}
         onClick={clickHandler}
         onDoubleClick={doubleClickHandler}
+        onContextMenu={(e) => e.stopPropagation()}
         className={cx(
           "relative group",
           "flex flex-col items-center justify-start",
-          "gap-2 p-3 w-[110px]",
-          "rounded-lg cursor-pointer",
-          "transition-colors",
-          "hover:bg-muted",
-          selected && "bg-primary/10",
+          "gap-3 p-4 w-[120px] md:w-[140px]",
+          "rounded-2xl cursor-pointer select-none",
+          "transition-all duration-300 ease-out",
+          "hover:bg-muted/80 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1",
+          selected && "bg-primary/10 shadow-inner ring-1 ring-primary/20",
         )}
       >
-        {selected && (
-          <IoCheckmarkCircle
-            className="absolute top-1 right-1 text-primary"
-            size={18}
-          />
-        )}
-
-        <div className="flex items-center justify-center h-[60px]">
-          {folder ? (
-            <FaFolder size={50} className="text-yellow-400" />
-          ) : child.hasThumbnail ? (
-            <Image
-              unoptimized
-              width={60}
-              height={60}
-              src={thumbnailUrl}
-              alt={child.name}
-              className="object-cover rounded-md h-[60px] w-[60px]"
-            />
+        <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+          {selected ? (
+            <IoCheckmarkCircle className="text-primary bg-background rounded-full" size={20} />
           ) : (
-            <FaFile size={50} className="text-muted-foreground" />
+            <div className="w-5 h-5 rounded-full border-2 border-primary/20 bg-background/50 backdrop-blur-sm" />
           )}
         </div>
 
-        <p className="text-xs text-center leading-tight line-clamp-2 break-words">
+        <div className={cx(
+          "flex items-center justify-center h-[80px] w-full rounded-xl transition-all duration-300",
+          (folder || !(child as File).hasThumbnail) && "bg-muted/30 group-hover:bg-primary/5",
+          selected && "bg-primary/5"
+        )}>
+          {folder ? (
+            <div className="relative">
+              <FaFolder size={56} className="text-yellow-400 drop-shadow-md" />
+              <div className="absolute inset-0 bg-gradient-to-tr from-yellow-500/20 to-transparent rounded-lg" />
+            </div>
+          ) : child.hasThumbnail ? (
+            <div className="relative group/thumb">
+              <Image
+                unoptimized
+                width={80}
+                height={80}
+                src={thumbnailUrl}
+                alt={child.name}
+                className="object-cover rounded-xl h-[80px] w-[80px] shadow-sm transition-transform group-hover:scale-105"
+              />
+              <div className="absolute inset-0 ring-1 ring-inset ring-black/5 rounded-xl" />
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-muted/50 text-muted-foreground group-hover:text-primary transition-colors">
+              <FaFile size={32} />
+            </div>
+          )}
+        </div>
+
+        <p className={cx(
+          "text-xs md:text-sm font-semibold text-center leading-tight line-clamp-2 break-words transition-colors px-1",
+          selected ? "text-primary" : "text-foreground/80 group-hover:text-foreground"
+        )}>
           {child.name}
         </p>
       </div>
@@ -260,44 +289,56 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
         onTouchMove={onTouchMove}
         onClick={clickHandler}
         onDoubleClick={doubleClickHandler}
+        onContextMenu={(e) => e.stopPropagation()}
         className={cx(
-          "relative grid grid-cols-[auto_1fr_120px_160px] items-center",
-          "px-3 py-2 gap-3 rounded-md cursor-pointer",
-          "hover:bg-muted/60",
-          selected && "bg-primary/10",
+          "relative grid grid-cols-[40px_1fr] sm:grid-cols-[48px_1fr_100px_140px] items-center",
+          "px-3 py-2 sm:px-4 sm:py-3 gap-3 sm:gap-4 rounded-xl cursor-pointer select-none",
+          "transition-all duration-200",
+          "hover:bg-muted/80 hover:shadow-sm",
+          selected && "bg-primary/5 ring-1 ring-inset ring-primary/10",
         )}
       >
-        {selected && (
-          <IoCheckmarkCircle
-            size={18}
-            className="absolute right-3 text-primary"
-          />
-        )}
-
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-muted/30 group-hover:bg-primary/5 transition-colors">
           {folder ? (
-            <FaFolder size={20} className="text-yellow-400" />
+            <FaFolder size={22} className="text-yellow-400" />
           ) : child.hasThumbnail ? (
-            <Image
-              unoptimized
-              width={28}
-              height={28}
-              src={thumbnailUrl}
-              alt={child.name}
-              className="h-[28px] object-cover rounded-md"
-            />
+            <div className="relative h-8 w-8">
+              <Image
+                unoptimized
+                width={32}
+                height={32}
+                src={thumbnailUrl}
+                alt={child.name}
+                className="h-full w-full object-cover rounded-md shadow-sm"
+              />
+              <div className="absolute inset-0 ring-1 ring-inset ring-black/5 rounded-md" />
+            </div>
           ) : (
             <FaFile size={20} className="text-muted-foreground" />
           )}
         </div>
 
-        <p className="truncate text-sm font-medium">{child.name}</p>
+        <div className="flex flex-col min-w-0">
+          <p className={cx(
+            "truncate text-sm font-bold tracking-tight",
+            selected ? "text-primary" : "text-foreground"
+          )}>{child.name}</p>
+          <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium sm:hidden">
+            {folder ? 'Folder' : size}
+          </span>
+        </div>
 
-        <span className="text-sm text-muted-foreground text-right">{size}</span>
+        <span className="hidden sm:block text-sm font-medium text-muted-foreground text-right">{size}</span>
 
-        <span className="text-sm text-muted-foreground text-right">
+        <span className="hidden sm:block text-sm font-medium text-muted-foreground text-right">
           {modified}
         </span>
+
+        {selected && (
+          <div className="absolute right-4 flex items-center h-full">
+            <IoCheckmarkCircle size={20} className="text-primary bg-background rounded-full" />
+          </div>
+        )}
       </div>
     );
 

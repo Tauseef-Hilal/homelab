@@ -69,117 +69,116 @@ export function AuthForm({ formType: defaultFormType }: AuthFormProps) {
     mutation.mutate(data as any);
   };
 
-  const fieldClassName = "bg-muted h-12 w-full shadow-none border rounded-lg";
+  const fieldClassName = "bg-muted/50 h-12 w-full shadow-none border-muted-foreground/10 rounded-xl focus-within:border-primary/30 transition-all";
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      noValidate
-      className="flex flex-col gap-6 w-full max-w-md mx-auto px-6 py-8"
-    >
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {formType == "login" && "Login to your account"}
-          {formType == "signup" && "Create an account"}
-          {formType == "verification" && "Request password reset"}
-        </h1>
-
-        <p className="text-sm text-muted-foreground">
-          {formType == "login" && "Enter your credentials to continue"}
-          {formType == "signup" && "Fill the form to create your account"}
-          {formType == "verification" && "Enter your email to receive an OTP"}
-        </p>
-      </div>
-
-      {formType == "signup" && (
-        <FormField
-          className={fieldClassName}
-          placeholder="Username"
-          type="text"
-          registration={register("username")}
-          error={"username" in errors ? errors.username?.message : undefined}
-        />
-      )}
-
-      <FormField
-        className={fieldClassName}
-        placeholder="Email"
-        type="email"
-        registration={register("email")}
-        error={errors.email?.message}
-      />
-
-      {formType != "verification" && (
-        <FormField
-          className={fieldClassName}
-          placeholder="Password"
-          type="password"
-          registration={register("password")}
-          error={"password" in errors ? errors.password?.message : undefined}
-        />
-      )}
-
-      <div className="flex flex-col gap-1 text-sm">
-        {formType != "verification" && (
-          <p>
-            Don't have an account?{" "}
-            <Button
-              type="button"
-              variant="link"
-              className="px-1"
-              onClick={() => setFormType("signup")}
-            >
-              Register
-            </Button>
-          </p>
-        )}
-
-        {formType == "login" && (
-          <p>
-            Forgot password?{" "}
-            <Button
-              type="button"
-              variant="link"
-              className="px-1"
-              onClick={() => setFormType("verification")}
-            >
-              Reset
-            </Button>
-          </p>
-        )}
-
-        {formType == "signup" && (
-          <p>
-            Already have an account?{" "}
-            <Button
-              type="button"
-              variant="link"
-              className="px-1"
-              onClick={() => setFormType("login")}
-            >
-              Login
-            </Button>
-          </p>
-        )}
-      </div>
-
-      <Button
-        type="submit"
-        disabled={mutation.isPending}
-        className="h-12 w-full"
+    <div className="min-h-[80vh] flex items-center justify-center p-4">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        noValidate
+        className="glass-card flex flex-col gap-10 w-full max-w-md mx-auto px-10 py-12 rounded-[2.5rem]"
       >
-        {formType == "login" && "Login"}
-        {formType == "signup" && "Signup"}
-        {formType == "verification" && "Send OTP"}
+        <div className="space-y-3 text-center">
+          <h1 className="text-4xl font-black tracking-tight">
+            {formType == "login" && "Welcome Back"}
+            {formType == "signup" && "Join Homelab"}
+            {formType == "verification" && "Reset Password"}
+          </h1>
 
-        {(mutation.isPending || isSubmitting) && (
-          <Loader className="animate-spin ml-2" />
+          <p className="text-sm text-muted-foreground font-semibold tracking-tight opacity-70">
+            {formType == "login" && "Access your digital sanctuary"}
+            {formType == "signup" && "Create your digital home today"}
+            {formType == "verification" && "Check your inbox for a code"}
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          {formType == "signup" && (
+            <FormField
+              className={fieldClassName}
+              placeholder="Username"
+              type="text"
+              registration={register("username")}
+              error={"username" in errors ? errors.username?.message : undefined}
+            />
+          )}
+
+          <FormField
+            className={fieldClassName}
+            placeholder="Email Address"
+            type="email"
+            registration={register("email")}
+            error={errors.email?.message}
+          />
+
+          {formType != "verification" && (
+            <FormField
+              className={fieldClassName}
+              placeholder="Password"
+              type="password"
+              registration={register("password")}
+              error={"password" in errors ? errors.password?.message : undefined}
+            />
+          )}
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <Button
+            type="submit"
+            disabled={mutation.isPending}
+            className="h-12 w-full rounded-xl font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all"
+          >
+            {formType == "login" && "Continue"}
+            {formType == "signup" && "Create Account"}
+            {formType == "verification" && "Send Reset Link"}
+
+            {(mutation.isPending || isSubmitting) && (
+              <Loader className="animate-spin ml-2 w-4 h-4" />
+            )}
+          </Button>
+
+          <div className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
+            {formType != "verification" && (
+              <p>
+                {formType === "login" ? "New here?" : "Already a member?"}{" "}
+                <button
+                  type="button"
+                  className="text-primary font-semibold hover:underline underline-offset-4"
+                  onClick={() => setFormType(formType === "login" ? "signup" : "login")}
+                >
+                  {formType === "login" ? "Register" : "Sign in"}
+                </button>
+              </p>
+            )}
+
+            {formType == "login" && (
+              <button
+                type="button"
+                className="text-xs hover:text-foreground transition-colors"
+                onClick={() => setFormType("verification")}
+              >
+                Forgot password?
+              </button>
+            )}
+
+            {formType == "verification" && (
+              <button
+                type="button"
+                className="text-primary font-semibold hover:underline underline-offset-4"
+                onClick={() => setFormType("login")}
+              >
+                Back to login
+              </button>
+            )}
+          </div>
+        </div>
+
+        {errorMsg && (
+          <div className="bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
+            <p className="text-xs text-destructive text-center font-medium">{errorMsg}</p>
+          </div>
         )}
-      </Button>
-
-      {errorMsg && (
-        <p className="text-sm text-destructive text-center">{errorMsg}</p>
-      )}
-    </form>
+      </form>
+    </div>
   );
 }

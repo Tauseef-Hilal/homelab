@@ -1,4 +1,7 @@
-// Keep the app font local so `next build` never depends on external network access.
-export const inter = {
-  className: 'font-sans',
+// Vercel-inspired Font System
+export const vercelFont = {
+  className: 'font-vercel',
 } as const;
+
+// Alias for layout compatibility
+export const inter = vercelFont;

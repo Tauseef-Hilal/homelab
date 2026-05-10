@@ -33,7 +33,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`dark:bg-black dark:text-white bg-gray-50 text-gray-900 noselect ${inter.className}`}
+        className={`bg-background text-foreground antialiased selection:bg-primary/10 selection:text-primary noselect ${inter.className}`}
       >
         <ReactQueryProvider>
           <AuthProvider>

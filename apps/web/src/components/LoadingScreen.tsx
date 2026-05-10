@@ -42,23 +42,26 @@ export function LoadingScreen() {
         </div>
 
         {/* Content Section */}
-        <div className="flex flex-col items-center gap-6 w-64">
-          <div className="flex flex-col items-center gap-1">
-            <h1 className="text-2xl font-bold tracking-[0.2em] text-foreground/90 ml-[0.2em]">
+        <div className="flex flex-col items-center gap-8 w-72">
+          <div className="flex flex-col items-center gap-2">
+            <h1 className="text-4xl font-black tracking-[-0.04em] text-foreground">
               HOMELAB
             </h1>
-            <p className="text-[10px] text-muted-foreground/60 uppercase tracking-[0.3em] font-medium">
-              Digital Sanctuary
-            </p>
+            <div className="h-0.5 w-8 bg-primary/40 rounded-full" />
           </div>
 
-          <div className="w-full space-y-3">
-            <Progress value={progress} className="h-1 bg-primary/5" />
-            <div className="flex justify-between items-center px-1">
-              <span className="text-[9px] text-muted-foreground/40 uppercase tracking-widest animate-pulse">
-                System Initializing
+          <div className="w-full space-y-4">
+            <div className="h-[2px] w-full bg-muted/50 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary transition-all duration-700 ease-out" 
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <div className="flex justify-between items-center px-0.5">
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] animate-pulse opacity-60">
+                Initializing Secure Session
               </span>
-              <span className="text-[9px] text-muted-foreground/40 font-mono">
+              <span className="text-[10px] text-muted-foreground font-mono font-bold opacity-80">
                 {Math.round(progress)}%
               </span>
             </div>
