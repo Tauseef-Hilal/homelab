@@ -12,6 +12,6 @@ export function useGetStats() {
     queryKey: ['stats'],
     queryFn: () => getStats(),
     enabled: !!user,
-    staleTime: Infinity,
+    staleTime: 5 * 60 * 1000,
   });
 }

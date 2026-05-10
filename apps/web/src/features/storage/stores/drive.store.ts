@@ -2,14 +2,26 @@ import { create } from 'zustand';
 import { Entry, File, Folder } from '../types/storage.types';
 import { isFolder } from '@client/lib/utils';
 
-type Clipboard = { type: 'copy' | 'move'; items: Entry[] };
-type ViewMode = 'grid' | 'list';
+export type ViewMode = 'grid' | 'list';
+export type Clipboard = { type: 'copy' | 'move'; items: Entry[] };
+export type ViewContext = 'personal' | 'shared' | 'link' | 'recent' | 'starred';
+
+export type HistoryEntry = {
+  path: string;
+  ownerId?: string;
+  shareToken?: string;
+  viewContext: ViewContext;
+};
 
 type DriveState = {
   path: string;
   inputPath: string;
 
-  history: string[];
+  ownerId?: string;
+  shareToken?: string;
+  viewContext: ViewContext;
+
+  history: HistoryEntry[];
   historyIndex: number;
 
   viewMode: ViewMode;
@@ -18,8 +30,15 @@ type DriveState = {
   selectedItems: Entry[];
   clipboard: Clipboard;
 
-  navigate: (path: string) => void;
-  replace: (path: string) => void;
+  navigate: (
+    path: string,
+    options?: {
+      ownerId?: string | null;
+      shareToken?: string | null;
+      viewContext?: ViewContext;
+      replace?: boolean;
+    },
+  ) => void;
   setInputPath: (path: string) => void;
 
   goBack: () => void;
@@ -37,7 +56,11 @@ const useDriveStore = create<DriveState>((set, get) => ({
   path: '/',
   inputPath: '/',
 
-  history: ['/'],
+  ownerId: undefined,
+  shareToken: undefined,
+  viewContext: 'personal',
+
+  history: [{ path: '/', viewContext: 'personal' }],
   historyIndex: 0,
 
   selectedItems: [],
@@ -46,31 +69,62 @@ const useDriveStore = create<DriveState>((set, get) => ({
   viewMode: 'grid',
   setViewMode: (mode) => set({ viewMode: mode }),
 
-  navigate: (path) => {
-    const { history, historyIndex } = get();
+  navigate: (path, options = {}) => {
+    const state = get();
+    
+    // We allow explicit null to unset values, otherwise we keep existing state
+    const targetOwnerId = options.ownerId !== undefined 
+      ? (options.ownerId === null ? undefined : options.ownerId) 
+      : state.ownerId;
+      
+    const targetShareToken = options.shareToken !== undefined 
+      ? (options.shareToken === null ? undefined : options.shareToken) 
+      : state.shareToken;
+      
+    const targetViewContext = options.viewContext !== undefined 
+      ? options.viewContext 
+      : state.viewContext;
 
-    const nextHistory = history.slice(0, historyIndex + 1);
+    const newEntry: HistoryEntry = {
+      path,
+      ownerId: targetOwnerId,
+      shareToken: targetShareToken,
+      viewContext: targetViewContext,
+    };
 
-    // prevent duplicate push
-    if (nextHistory[nextHistory.length - 1] === path) {
-      set({ path, inputPath: path });
-      return;
+    let nextHistory = state.history.slice(0, state.historyIndex + 1);
+    let nextIndex = state.historyIndex;
+
+    if (options.replace) {
+      if (nextHistory.length > 0) {
+        nextHistory[nextHistory.length - 1] = newEntry;
+      } else {
+        nextHistory = [newEntry];
+        nextIndex = 0;
+      }
+    } else {
+      const lastEntry = nextHistory[nextHistory.length - 1];
+      if (
+        !lastEntry ||
+        lastEntry.path !== newEntry.path ||
+        lastEntry.ownerId !== newEntry.ownerId ||
+        lastEntry.shareToken !== newEntry.shareToken ||
+        lastEntry.viewContext !== newEntry.viewContext
+      ) {
+        nextHistory.push(newEntry);
+        nextIndex = nextHistory.length - 1;
+      }
     }
 
-    nextHistory.push(path);
-
     set({
       path,
       inputPath: path,
+      ownerId: targetOwnerId,
+      shareToken: targetShareToken,
+      viewContext: targetViewContext,
       history: nextHistory,
-      historyIndex: nextHistory.length - 1,
-    });
-  },
-
-  replace: (path) => {
-    set({
-      path,
-      inputPath: path,
+      historyIndex: nextIndex,
+      selectedItems: [],
     });
   },
 
@@ -78,7 +132,6 @@ const useDriveStore = create<DriveState>((set, get) => ({
     if (!path.startsWith('/')) {
       path = '/' + path;
     }
-
     set({ inputPath: path });
   },
 
@@ -87,12 +140,16 @@ const useDriveStore = create<DriveState>((set, get) => ({
     if (historyIndex === 0) return;
 
     const newIndex = historyIndex - 1;
-    const path = history[newIndex];
+    const entry = history[newIndex];
 
     set({
       historyIndex: newIndex,
-      path,
-      inputPath: path,
+      path: entry.path,
+      inputPath: entry.path,
+      ownerId: entry.ownerId,
+      shareToken: entry.shareToken,
+      viewContext: entry.viewContext,
+      selectedItems: [],
     });
   },
 
@@ -101,12 +158,16 @@ const useDriveStore = create<DriveState>((set, get) => ({
     if (historyIndex >= history.length - 1) return;
 
     const newIndex = historyIndex + 1;
-    const path = history[newIndex];
+    const entry = history[newIndex];
 
     set({
       historyIndex: newIndex,
-      path,
-      inputPath: path,
+      path: entry.path,
+      inputPath: entry.path,
+      ownerId: entry.ownerId,
+      shareToken: entry.shareToken,
+      viewContext: entry.viewContext,
+      selectedItems: [],
     });
   },
 

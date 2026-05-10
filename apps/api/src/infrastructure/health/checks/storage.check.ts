@@ -1,4 +1,4 @@
-import { getStorageProvider } from '@homelab/infra/config/storage';
+import { getStorageProvider } from '@homelab/infra';
 import { timeout } from '@server/lib/timeout';
 import { HealthCheckResult } from '@server/types/health';
 

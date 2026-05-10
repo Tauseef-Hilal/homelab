@@ -20,7 +20,6 @@ import {
 
 import NewFolderDialog from "./NewFolderDialog";
 import UploadDialog from "./UploadDialog";
-import { useListDirectory } from "../hooks/useListDirectory";
 import { useLongPress } from "@client/hooks/useLongPress";
 import ExplorerList from "./ExplorerList";
 import { useCopyItems } from "../hooks/useCopyItems";
@@ -28,6 +27,7 @@ import { invalidateQueries, pollJobData } from "@client/lib/utils";
 import { toast } from "sonner";
 import { useMoveItems } from "../hooks/useMoveItems";
 import { useQueryClient } from "@tanstack/react-query";
+import { useDriveContents } from "../hooks/useDriveContents";
 
 const ExplorerContent: React.FC = () => {
   const queryClient = useQueryClient();
@@ -38,8 +38,10 @@ const ExplorerContent: React.FC = () => {
   const path = useDriveStore((s) => s.path);
   const selectAll = useDriveStore((s) => s.selectAll);
   const clipboard = useDriveStore((s) => s.clipboard);
+  const viewContext = useDriveStore((s) => s.viewContext);
+  const shareToken = useDriveStore((s) => s.shareToken);
 
-  const { isPending, data, error, refetch } = useListDirectory(path);
+  const { isPending, data, error, refetch } = useDriveContents();
 
   const copyMutation = useCopyItems({
     onSuccess: (data) =>
@@ -50,8 +52,16 @@ const ExplorerContent: React.FC = () => {
           completed: "Files copied successfully",
           failed: "Failed to copy files",
         },
-        () => invalidateQueries(queryClient, [["list", path], ["stats"]]),
-        () => invalidateQueries(queryClient, [["list", path], ["stats"]]),
+        () =>
+          invalidateQueries(queryClient, [
+            ["drive", viewContext, path],
+            ["stats"],
+          ]),
+        () =>
+          invalidateQueries(queryClient, [
+            ["drive", viewContext, path],
+            ["stats"],
+          ]),
       ),
     onError: (err) => toast.error(err),
   });
@@ -65,19 +75,19 @@ const ExplorerContent: React.FC = () => {
           completed: "Files moved successfully",
           failed: "Failed to move files",
         },
-        () => invalidateQueries(queryClient, [["list", path]]),
-        () => invalidateQueries(queryClient, [["list", path]]),
+        () => invalidateQueries(queryClient, [["drive", viewContext, path]]),
+        () => invalidateQueries(queryClient, [["drive", viewContext, path]]),
       ),
     onError: (err) => toast.error(err),
   });
 
   const folder = data?.folder;
-
   const entries = useMemo(() => {
     if (!folder) return [];
     return [...folder.children, ...folder.files];
   }, [folder]);
 
+  const canWrite = folder?.permissions?.write ?? true;
   const emptyFolder = entries.length === 0;
 
   const { onTouchStart, onTouchEnd, onTouchMove } =
@@ -99,6 +109,7 @@ const ExplorerContent: React.FC = () => {
       copyMutation.mutate({
         destinationFolderId: folder.id,
         items: clipboard.items,
+        shareToken,
       });
       return;
     }
@@ -106,6 +117,7 @@ const ExplorerContent: React.FC = () => {
     moveMutation.mutate({
       destinationFolderId: folder.id,
       items: clipboard.items,
+      shareToken,
     });
   }, [clipboard, folder, copyMutation, moveMutation]);
 
@@ -136,16 +148,13 @@ const ExplorerContent: React.FC = () => {
   }
 
   /* ---------------- UI ---------------- */
-
   return (
     <div className="h-full overflow-hidden">
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
             className="h-full overflow-y-auto px-4 py-3"
-            onTouchStart={onTouchStart}
-            onTouchEnd={onTouchEnd}
-            onTouchMove={onTouchMove}
+            {...{ onTouchStart, onTouchEnd, onTouchMove }} // Cleaned up props
           >
             {!emptyFolder ? (
               <ExplorerList entries={entries} path={path} />
@@ -155,44 +164,55 @@ const ExplorerContent: React.FC = () => {
                 <div>
                   <p className="font-medium">This folder is empty</p>
                   <p className="text-sm">
-                    Upload files or create a new folder to get started.
+                    {canWrite
+                      ? "Upload files or create a new folder to get started."
+                      : "No items have been shared with you yet."}
                   </p>
                 </div>
 
-                <div className="flex gap-2 mt-2">
-                  <Button size="sm" onClick={() => setShowUploadDialog(true)}>
-                    <UploadIcon size={16} className="mr-2" />
-                    Upload
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowFolderDialog(true)}
-                  >
-                    <FolderPlusIcon size={16} className="mr-2" />
-                    New Folder
-                  </Button>
-                </div>
+                {/* 3. Hide actions if the user doesn't have WRITE access */}
+                {canWrite && (
+                  <div className="flex gap-2 mt-2">
+                    <Button size="sm" onClick={() => setShowUploadDialog(true)}>
+                      <UploadIcon size={16} className="mr-2" />
+                      Upload
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowFolderDialog(true)}
+                    >
+                      <FolderPlusIcon size={16} className="mr-2" />
+                      New Folder
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </ContextMenuTrigger>
 
         <ContextMenuContent className="w-48">
-          <ContextMenuItem onClick={() => setShowFolderDialog(true)}>
+          {/* 4. Disable Context Menu items based on permissions */}
+          <ContextMenuItem
+            onClick={() => setShowFolderDialog(true)}
+            disabled={!canWrite}
+          >
             <FolderPlusIcon size={16} className="mr-2" />
             New Folder
           </ContextMenuItem>
 
-          <ContextMenuItem onClick={() => setShowUploadDialog(true)}>
+          <ContextMenuItem
+            onClick={() => setShowUploadDialog(true)}
+            disabled={!canWrite}
+          >
             <UploadIcon size={16} className="mr-2" />
             Upload
           </ContextMenuItem>
 
           <ContextMenuItem
             onClick={pasteHandler}
-            disabled={clipboard.items.length === 0}
+            disabled={clipboard.items.length === 0 || !canWrite}
           >
             Paste
           </ContextMenuItem>
@@ -203,18 +223,18 @@ const ExplorerContent: React.FC = () => {
         </ContextMenuContent>
       </ContextMenu>
 
+      {/* Dialogs stay exactly the same */}
       <NewFolderDialog
-        parentId={folder.id}
+        parentId={folder?.id}
         open={showFolderDialog}
         setOpen={setShowFolderDialog}
-        parentPath={folder.fullPath}
+        parentPath={folder?.fullPath}
       />
-
       <UploadDialog
-        folderId={folder.id}
+        folderId={folder?.id}
         open={showUploadDialog}
         setOpen={setShowUploadDialog}
-        folderPath={folder.fullPath}
+        folderPath={folder?.fullPath}
       />
     </div>
   );

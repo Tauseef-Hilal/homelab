@@ -32,6 +32,7 @@ import { useDownloadItems } from "../hooks/useDownloadItems";
 import { useDeleteItems } from "../hooks/useDeleteItems";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import ShareDialog from "./ShareDialog";
 
 interface FileSystemEntryProps {
   child: File | Folder;
@@ -44,17 +45,26 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
 
     const [showPreview, setShowPreview] = useState(false);
     const [showRename, setShowRename] = useState(false);
+    const [showShare, setShowShare] = useState(false);
 
     const { selectedItems, isSelected, onSelect, selectItem } = useSelect();
 
+    const viewContext = useDriveStore((s) => s.viewContext);
     const setClipboard = useDriveStore((s) => s.setClipboard);
     const deselectAll = useDriveStore((s) => s.deselectAll);
     const navigate = useDriveStore((s) => s.navigate);
     const viewMode = useDriveStore((s) => s.viewMode);
+    const shareToken = useDriveStore((s) => s.shareToken);
 
     const folder = isFolder(child);
     const selected = isSelected(child);
     const isGrid = viewMode === "grid";
+
+    const canWrite = true;
+    const canShare = true;
+    const canCopy = true;
+    const canDelete = true;
+    const canRead = true;
 
     const thumbnailUrl = `${env.API_URL}/storage/file/thumbnail/${child.userId}/${child.id}`;
 
@@ -83,14 +93,14 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
         return;
       }
 
-      if (folder) navigate(child.fullPath);
+      if (folder) navigate(child.fullPath, { ownerId: child.userId });
       else setShowPreview(true);
-    }, [selectedItems.length, child, folder]);
+    }, [selectedItems.length, child, folder, navigate, onSelect]);
 
     const doubleClickHandler = useCallback(() => {
-      if (folder) navigate(child.fullPath);
+      if (folder) navigate(child.fullPath, { ownerId: child.userId });
       else setShowPreview(true);
-    }, [child, folder]);
+    }, [child, folder, navigate]);
 
     /* ---------- Clipboard ---------- */
 
@@ -149,9 +159,15 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
             failed: "Failed to copy files",
           },
           () =>
-            invalidateQueries(queryClient, [["list", parentPath], ["stats"]]),
+            invalidateQueries(queryClient, [
+              ["drive", viewContext, parentPath],
+              ["stats"],
+            ]),
           () =>
-            invalidateQueries(queryClient, [["list", parentPath], ["stats"]]),
+            invalidateQueries(queryClient, [
+              ["drive", viewContext, parentPath],
+              ["stats"],
+            ]),
         ),
       onError: (err) => toast.error(err),
     });
@@ -159,6 +175,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
     const downloadHandler = () => {
       downloadMutation.mutate({
         items: selected ? selectedItems : [entryItem],
+        shareToken,
       });
       deselectAll();
     };
@@ -166,6 +183,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
     const deleteHandler = () => {
       deleteMutation.mutate({
         items: selected ? selectedItems : [entryItem],
+        shareToken,
       });
       deselectAll();
     };
@@ -293,23 +311,33 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
           </ContextMenuTrigger>
 
           <ContextMenuContent>
-            <ContextMenuItem onClick={() => setShowRename(true)}>
+            <ContextMenuItem
+              onClick={() => setShowRename(true)}
+              disabled={!canWrite}
+            >
               Rename
             </ContextMenuItem>
-
             <ContextMenuItem onClick={() => selectItem(child)}>
               Select
             </ContextMenuItem>
-
-            <ContextMenuItem onClick={copyHandler}>Copy</ContextMenuItem>
-
-            <ContextMenuItem onClick={cutHandler}>Cut</ContextMenuItem>
-
-            <ContextMenuItem onClick={downloadHandler}>
+            <ContextMenuItem onClick={copyHandler} disabled={!canCopy}>
+              Copy
+            </ContextMenuItem>
+            <ContextMenuItem onClick={cutHandler} disabled={!canWrite}>
+              Cut
+            </ContextMenuItem>
+            <ContextMenuItem onClick={downloadHandler} disabled={!canRead}>
               Download
             </ContextMenuItem>
-
-            <ContextMenuItem onClick={deleteHandler}>Delete</ContextMenuItem>
+            <ContextMenuItem
+              onClick={() => setShowShare(true)}
+              disabled={!canShare}
+            >
+              Share
+            </ContextMenuItem>
+            <ContextMenuItem onClick={deleteHandler} disabled={!canDelete}>
+              Delete
+            </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
 
@@ -322,6 +350,8 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
             child.fullPath.lastIndexOf("/"),
           )}
         />
+
+        <ShareDialog open={showShare} setOpen={setShowShare} item={child} />
 
         {!folder && (
           <Preview open={showPreview} setOpen={setShowPreview} file={child} />

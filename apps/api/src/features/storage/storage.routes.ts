@@ -1,6 +1,6 @@
 import { raw, Router } from 'express';
 import { requireAuth } from '@server/middleware/requireAuth.middleware';
-import { listController } from './controllers/list.controller';
+import { listDirectoryController } from './controllers/listDirectory.controller';
 import { copyItemsController } from './controllers/copyItems.controller';
 import { moveItemsController } from './controllers/moveItems.controller';
 import { deleteItemsController } from './controllers/deleteItems.controller';
@@ -30,6 +30,8 @@ import { uploadCancelController } from './controllers/uploadCancel.controller';
 import { uploadFinishController } from './controllers/uploadFinish.controller';
 import { uploadStatusController } from './controllers/uploadStatus.controller';
 import { thumbnailController } from './controllers/getThumbnail.controller';
+import { listSharedItemsController } from './controllers/listSharedItems.controller';
+import { getLinkItemController } from './controllers/getLinkItem.controller';
 
 const router = Router();
 const authProtected = [requireAuth, rateLimit(globalUserPolicy)];
@@ -41,7 +43,19 @@ router.get(
   '/list',
   ...authProtected,
   rateLimit(storageListPolicy),
-  listController,
+  listDirectoryController,
+);
+router.get(
+  '/list/shared',
+  ...authProtected,
+  rateLimit(storageListPolicy),
+  listSharedItemsController,
+);
+router.get(
+  '/list/link',
+  ...authProtected,
+  rateLimit(storageListPolicy),
+  getLinkItemController,
 );
 
 router.post(

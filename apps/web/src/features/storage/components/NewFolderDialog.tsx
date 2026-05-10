@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
+import useDriveStore from "../stores/drive.store";
 
 interface NewFolderDialogProps {
   parentId: string;
@@ -31,6 +32,8 @@ const NewFolderDialog: React.FC<NewFolderDialogProps> = ({
   parentPath,
 }) => {
   const queryClient = useQueryClient();
+  const viewContext = useDriveStore((s) => s.viewContext);
+  const shareToken = useDriveStore((s) => s.shareToken);
 
   const form = useForm<requestSchemas.CreateFolderInput>({
     defaultValues: { parentId, folderName: "" },
@@ -40,7 +43,7 @@ const NewFolderDialog: React.FC<NewFolderDialogProps> = ({
   const { mutate, isPending } = useCreateFolder({
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["list", parentPath],
+        queryKey: ["drive", viewContext, parentPath],
       });
       form.reset();
       setOpen(false);
@@ -53,7 +56,7 @@ const NewFolderDialog: React.FC<NewFolderDialogProps> = ({
   }, [open]);
 
   const onSubmit = (data: requestSchemas.CreateFolderInput) =>
-    mutate({ ...data, parentId });
+    mutate({ ...data, shareToken, parentId });
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

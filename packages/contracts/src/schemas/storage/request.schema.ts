@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const copyItemsSchema = z.object({
   destinationFolderId: z.uuidv4(),
+  shareToken: z.optional(z.string()),
   items: z.array(
     z.object({ type: z.enum(['folder', 'file']), id: z.uuidv4() }),
   ),
@@ -9,6 +10,7 @@ export const copyItemsSchema = z.object({
 
 export const moveItemsSchema = z.object({
   destinationFolderId: z.uuidv4(),
+  shareToken: z.optional(z.string()),
   items: z.array(
     z.object({
       type: z.enum(['folder', 'file']),
@@ -28,19 +30,22 @@ export const moveItemsSchema = z.object({
 });
 
 export const deleteItemsSchema = z.object({
+  shareToken: z.optional(z.string()),
   items: z.array(
     z.object({ id: z.uuidv4(), type: z.enum(['folder', 'file']) }),
   ),
 });
 
 export const downloadItemsSchema = z.object({
+  shareToken: z.optional(z.string()),
   items: z.array(
     z.object({ id: z.uuidv4(), type: z.enum(['folder', 'file']) }),
   ),
 });
 
 export const previewFileQuerySchema = z.object({
-  token: z.string().min(1),
+  accessToken: z.string().min(1),
+  shareToken: z.optional(z.string()),
 });
 
 export const getThumbnailParamSchema = z.object({
@@ -51,12 +56,15 @@ export const getThumbnailParamSchema = z.object({
 export const createFolderSchema = z.object({
   folderName: z.string().min(1, "Folder name can't be empty"),
   parentId: z.nullable(z.uuidv4()),
+  shareToken: z.optional(z.string()),
 });
 
 export const idParamSchema = z.uuidv4();
 
 export const listDirectorySchema = z.object({
   path: z.string(),
+  ownerId: z.optional(z.uuid()),
+  shareToken: z.optional(z.string()),
 });
 
 export const uploadInitSchema = z.object({
@@ -65,6 +73,7 @@ export const uploadInitSchema = z.object({
   folderId: z.uuid(),
   totalSize: z.number(),
   totalChunks: z.number(),
+  shareToken: z.optional(z.string()),
 });
 
 export const uploadChunkCheckSchema = z.object({
@@ -98,6 +107,10 @@ export const uploadCancelSchema = z.object({
   uploadId: z.uuid(),
 });
 
+export const getLinkItemSchema = z.object({
+  shareToken: z.string(),
+});
+
 export type CreateFolderInput = z.infer<typeof createFolderSchema>;
 export type ListDirectoryInput = z.infer<typeof listDirectorySchema>;
 export type CopyItemsInput = z.infer<typeof copyItemsSchema>;
@@ -111,3 +124,4 @@ export type UploadFinishInput = z.infer<typeof uploadFinishSchema>;
 export type UploadCancelInput = z.infer<typeof uploadCancelSchema>;
 export type UploadStatusInput = z.infer<typeof uploadStatusSchema>;
 export type GetThumbnailInput = z.infer<typeof getThumbnailParamSchema>;
+export type GetLinkItemSchema = z.infer<typeof getLinkItemSchema>;

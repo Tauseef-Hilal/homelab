@@ -14,6 +14,7 @@ import { Upload, X, Pause, Play, RotateCcw, Check } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useUploadManager } from "../hooks/useUploadManager";
 import { useQueryClient } from "@tanstack/react-query";
+import useDriveStore from "../stores/drive.store";
 
 interface UploadDialogProps {
   folderId: string;
@@ -29,6 +30,8 @@ export default function UploadDialog({
   folderPath,
 }: UploadDialogProps) {
   const queryClient = useQueryClient();
+  const viewContext = useDriveStore((s) => s.viewContext);
+  const shareToken = useDriveStore((s) => s.shareToken);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -41,7 +44,7 @@ export default function UploadDialog({
     cancelUpload,
     retryUpload,
     clear,
-  } = useUploadManager();
+  } = useUploadManager(shareToken);
 
   // Check if there are any files currently in a "working" state
   const isProcessing = items.some((i) =>
@@ -60,7 +63,7 @@ export default function UploadDialog({
         queryKey: ["stats"],
       });
       queryClient.invalidateQueries({
-        queryKey: ["list", folderPath],
+        queryKey: ["drive", viewContext, folderPath],
       });
     }
   }, [finished, folderId, queryClient]); // Added missing dependencies

@@ -53,6 +53,7 @@ The system provides:
 - multi-user file storage
 - asynchronous processing pipelines
 - real-time messaging
+- bitmask-based granular resource sharing
 
 while remaining **fully self-hostable**.
 
@@ -65,11 +66,12 @@ It was designed as a **systems engineering project** exploring patterns commonly
 
 ### Core Architectural Goals
 
-- separation of API and background processing
-- scalable real-time communication
-- asynchronous handling of heavy IO operations
-- strong domain contracts shared across services
-- containerized deployment
+- **Asynchronous Workflows**: Offloading heavy IO to isolated worker processes.
+- **Granular Security**: Bitmask-based permissions for folders and files.
+- **Scalable Messaging**: Real-time communication backed by Redis Pub/Sub.
+- **Contract-First Design**: Shared domain types and validation schemas across the monorepo.
+- **Infrastructure Protection**: Layered rate-limiting at both NGINX and application levels.
+- **Reproducibility**: Fully containerized deployment using Docker.
 
 ---
 

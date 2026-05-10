@@ -6,6 +6,7 @@ import {
   requestSchemas,
   responseSchemas,
 } from '@homelab/contracts/schemas/storage';
+import useDriveStore from '../stores/drive.store';
 
 export type UseCreateFolderOptions = {
   onSuccess: (data: responseSchemas.CreateFolderResponse) => void;
@@ -13,6 +14,8 @@ export type UseCreateFolderOptions = {
 };
 
 export function useCreateFolder(options: UseCreateFolderOptions) {
+  const path = useDriveStore((s) => s.path);
+  const viewContext = useDriveStore((s) => s.viewContext);
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -22,7 +25,7 @@ export function useCreateFolder(options: UseCreateFolderOptions) {
   >({
     mutationFn: createFolder,
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['paths'] });
+      queryClient.invalidateQueries({ queryKey: ['drive', viewContext, path] });
       options.onSuccess(data);
     },
     onError: (error) => {

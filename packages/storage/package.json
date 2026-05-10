@@ -15,12 +15,16 @@
       "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./constants": {
+      "types": "./dist/constants/index.d.ts",
+      "require": "./dist/constants/index.js",
+      "default": "./dist/constants/index.js"
     }
   },
   "dependencies": {
     "@homelab/contracts": "workspace:*",
     "@homelab/db": "workspace:*",
-    "@homelab/infra": "workspace:*",
     "@prisma/client": "^6.13.0"
   },
   "devDependencies": {

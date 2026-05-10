@@ -1,8 +1,13 @@
+import { Job } from 'bullmq';
+import { prisma } from '@homelab/db/prisma';
 import { File, Folder, Prisma } from '@prisma/client';
 import { MoveJobPayload, MoveJobResult } from '@homelab/contracts/jobs';
-import { prisma } from '@homelab/db/prisma';
+import { getJobLogger } from '@workers/utils/logger';
 import {
+  assertBulkPermission,
+  hasPermission,
   pathJoin,
+  resolveAccess,
   resolveFileName,
   resolveFolderName,
 } from '@homelab/storage';
@@ -11,14 +16,14 @@ import {
   HttpError,
   StorageErrorCode,
 } from '@homelab/contracts/errors';
-import { Job } from 'bullmq';
-import { getJobLogger } from '@workers/utils/logger';
+import { FilePermission } from '@homelab/storage/constants';
 
 type FileUpdate = {
   id: string;
   newName: string;
   newFolderId: string;
   newFullPath: string;
+  newDepth: number;
 };
 
 const BATCH_SIZE = 1000;
@@ -28,10 +33,55 @@ export const moveItems = async (
 ): Promise<MoveJobResult> => {
   try {
     const logger = getJobLogger('io-worker', job);
-    const { userId, items, destFolderId } = job.data;
+    const { userId, shareToken, items, destFolderId } = job.data;
     const { fileIds, folderIds, newNameMap } = splitItemIds(items);
     const { files, folders } = await fetchItems(fileIds, folderIds);
-    const destFolder = await getDestinationFolder(destFolderId);
+    const destFolder = await getDestinationFolder(
+      destFolderId,
+      userId,
+      shareToken,
+    );
+
+    // --- Permissions Check for Source Items ---
+    const sourceItemsToCheck = [
+      ...files.map((f) => ({ ...f, type: 'file' as const })),
+      ...folders.map((f) => ({ ...f, type: 'folder' as const })),
+    ];
+
+    if (sourceItemsToCheck.length !== items.length) {
+      throw new HttpError({
+        status: 404,
+        code: CommonErrorCode.NOT_FOUND,
+        message: 'One or more source items do not exist',
+      });
+    }
+
+    // We require WRITE access to move items,
+    // since we are modifying their paths
+    await assertBulkPermission(
+      sourceItemsToCheck,
+      { userId, token: shareToken },
+      FilePermission.WRITE,
+    );
+
+    const sourceOwnerIds = new Set(sourceItemsToCheck.map((item) => item.userId));
+    if (sourceOwnerIds.size !== 1) {
+      throw new HttpError({
+        status: 400,
+        code: StorageErrorCode.INVALID_OPERATION,
+        message: 'All source items must belong to the same owner',
+      });
+    }
+
+    const [srcOwnerId] = sourceOwnerIds;
+    if (srcOwnerId !== destFolder.userId) {
+      throw new HttpError({
+        status: 403,
+        code: CommonErrorCode.FORBIDDEN,
+        message: 'You dont have the permission to perform this operation',
+      });
+    }
+
     const existingNames = getExistingNames(destFolder);
 
     await moveFolders({
@@ -39,7 +89,6 @@ export const moveItems = async (
       destFolder,
       newNameMap,
       existingNames,
-      userId,
     });
 
     const updates = await prepareFileUpdates({
@@ -63,7 +112,11 @@ export const moveItems = async (
   }
 };
 
-async function getDestinationFolder(destFolderId: string) {
+async function getDestinationFolder(
+  destFolderId: string,
+  userId: string,
+  token: string | undefined,
+) {
   const folder = await prisma.folder.findUnique({
     where: { id: destFolderId },
     include: {
@@ -77,6 +130,23 @@ async function getDestinationFolder(destFolderId: string) {
       status: 404,
       code: CommonErrorCode.NOT_FOUND,
       message: 'Destination folder doesnt exist',
+    });
+  }
+
+  // Ensure user has WRITE permission to the destination
+  const destAccess = await resolveAccess(
+    { ...folder, type: 'folder' },
+    {
+      userId,
+      token,
+    },
+  );
+
+  if (!destAccess || !hasPermission(destAccess, FilePermission.WRITE)) {
+    throw new HttpError({
+      status: 403,
+      code: CommonErrorCode.UNAUTHORIZED,
+      message: 'You do not have permission to write to the destination folder',
     });
   }
 
@@ -126,13 +196,11 @@ async function moveFolders({
   destFolder,
   newNameMap,
   existingNames,
-  userId,
 }: {
   folders: Folder[];
   destFolder: Folder;
   newNameMap: Map<string, string | undefined>;
   existingNames: Set<string>;
-  userId: string;
 }) {
   for (const folder of folders) {
     // prevent moving folder into itself or its descendants
@@ -159,12 +227,15 @@ async function moveFolders({
     const newPrefix = pathJoin(destFolder.fullPath, resolvedName);
 
     await prisma.$transaction(async (tx) => {
+      const depthDiff = destFolder.depth + 1 - folder.depth;
+
       await tx.folder.update({
-        where: { userId, id: folder.id },
+        where: { id: folder.id },
         data: {
           name: resolvedName,
           fullPath: newPrefix,
           parentId: destFolder.id,
+          depth: { increment: depthDiff },
         },
       });
 
@@ -172,22 +243,23 @@ async function moveFolders({
       await tx.$executeRaw`
         UPDATE "Folder"
         SET "fullPath" =
-          ${newPrefix} || substring("fullPath" from ${oldPrefix.length + 1}::int)
+          ${newPrefix} || substring("fullPath" from ${oldPrefix.length + 1}::int),
+            depth = depth + ${depthDiff}
         WHERE (
-          "fullPath" = ${oldPrefix} OR
           "fullPath" LIKE ${oldPrefix + '/%'}
-        ) AND "userId" = ${userId}
+        )
       `;
 
       // update paths of files inside moved folder
       await tx.$executeRaw`
         UPDATE "File"
         SET "fullPath" =
-          ${newPrefix} || substring("fullPath" from ${oldPrefix.length + 1}::int)
+          ${newPrefix} || substring("fullPath" from ${oldPrefix.length + 1}::int),
+            depth = depth + ${depthDiff}
         WHERE (
           "fullPath" = ${oldPrefix} OR
           "fullPath" LIKE ${oldPrefix + '/%'}
-        ) AND "userId" = ${userId}
+        )
       `;
     });
   }
@@ -220,11 +292,13 @@ async function prepareFileUpdates({
       newName: resolvedName,
       newFolderId: destFolder.id,
       newFullPath: pathJoin(destFolder.fullPath, resolvedName),
+      newDepth: destFolder.depth + 1,
     });
   }
 
   return updates;
 }
+
 async function applyFileUpdates(updates: FileUpdate[]) {
   await prisma.$transaction(async (tx) => {
     for (let i = 0; i < updates.length; i += BATCH_SIZE) {
@@ -235,15 +309,16 @@ async function applyFileUpdates(updates: FileUpdate[]) {
         SET
           "name" = v."newName",
           "fullPath" = v."newFullPath",
-          "folderId" = v."newFolderId"
+          "folderId" = v."newFolderId",
+          "depth" = v."newDepth"::int
         FROM (
           VALUES ${Prisma.join(
             chunk.map(
               (u) =>
-                Prisma.sql`(${u.id}, ${u.newName}, ${u.newFullPath}, ${u.newFolderId})`,
+                Prisma.sql`(${u.id}, ${u.newName}, ${u.newFullPath}, ${u.newFolderId}, ${u.newDepth})`,
             ),
           )}
-        ) AS v("id", "newName", "newFullPath", "newFolderId")
+        ) AS v("id", "newName", "newFullPath", "newFolderId", "newDepth")
         WHERE f."id" = v."id";
       `;
     }

@@ -7,8 +7,10 @@ import {
   calculateSize,
   reserve,
   release,
-  copyFileOnDisk,
   pathJoin,
+  resolveAccess,
+  hasPermission,
+  assertBulkPermission,
 } from '@homelab/storage';
 
 import { HttpError, StorageErrorCode } from '@homelab/contracts/errors';
@@ -18,6 +20,7 @@ import pLimit from 'p-limit';
 import { Job } from 'bullmq';
 import { getJobLogger } from '@workers/utils/logger';
 import { getStorageProvider } from '@homelab/infra';
+import { FilePermission } from '@homelab/storage/constants';
 
 const FILE_BATCH_SIZE = 1000;
 const FOLDER_BATCH_SIZE = 1000;
@@ -30,6 +33,7 @@ type FileMeta = {
   size: number;
   folderId: string;
   fullPath: string;
+  depth: number;
   visibility: Visibility;
   userId: string;
   hasThumbnail: boolean;
@@ -37,6 +41,7 @@ type FileMeta = {
 
 type FileIdMap = {
   oldId: string;
+  oldUserId: string;
   newId: string;
 };
 
@@ -46,6 +51,7 @@ type FolderMeta = {
   userId: string;
   parentId: string;
   fullPath: string;
+  depth: number;
 };
 
 // Consolidated context type
@@ -60,7 +66,7 @@ export const copyItems = async (
   job: Job<CopyJobPayload>,
 ): Promise<CopyJobResult> => {
   const logger = getJobLogger('io-worker', job);
-  const { userId, items, destFolderId } = job.data;
+  const { userId, shareToken, items, destFolderId } = job.data;
 
   let totalCopySize = 0;
   let actualCopiedSize = 0;
@@ -72,6 +78,13 @@ export const copyItems = async (
     pendingCopiedSize: 0,
   };
 
+  let destFolder:
+    | (Folder & {
+        children: { name: string }[];
+        files: { name: string }[];
+      })
+    | null = null;
+
   try {
     const fileIds: string[] = [];
     const folderIds: string[] = [];
@@ -80,11 +93,8 @@ export const copyItems = async (
       item.type === 'file' ? fileIds.push(item.id) : folderIds.push(item.id),
     );
 
-    totalCopySize = await calculateSize(fileIds, folderIds);
-    await reserve(userId, totalCopySize);
-
-    const destFolder = await prisma.folder.findUnique({
-      where: { id: destFolderId, userId },
+    destFolder = await prisma.folder.findUnique({
+      where: { id: destFolderId },
       include: {
         children: { select: { name: true } },
         files: { select: { name: true } },
@@ -98,6 +108,81 @@ export const copyItems = async (
         message: "Destination folder doesn't exist",
       });
     }
+
+    const destAccess = await resolveAccess(
+      { ...destFolder, type: 'folder' },
+      {
+        userId,
+        token: shareToken,
+      },
+    );
+
+    if (!destAccess || !hasPermission(destAccess, FilePermission.WRITE)) {
+      throw new HttpError({
+        status: 403,
+        code: CommonErrorCode.UNAUTHORIZED,
+        message:
+          'You do not have permission to write to the destination folder',
+      });
+    }
+
+    // Fetch the fullPath and owner of the source items for the bulk check
+    const [sourceFiles, sourceFolders] = await Promise.all([
+      fileIds.length > 0
+        ? prisma.file.findMany({
+            where: { id: { in: fileIds } },
+          })
+        : Promise.resolve([]),
+      folderIds.length > 0
+        ? prisma.folder.findMany({
+            where: { id: { in: folderIds } },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const sourceItemsToCheck = [
+      ...sourceFiles.map((f) => ({ ...f, type: 'file' as const })),
+      ...sourceFolders.map((f) => ({ ...f, type: 'folder' as const })),
+    ];
+
+    // Sanity check: Ensure all requested items actually exist in the DB
+    if (sourceItemsToCheck.length !== items.length) {
+      throw new HttpError({
+        status: 404,
+        code: CommonErrorCode.NOT_FOUND,
+        message: 'One or more source items do not exist',
+      });
+    }
+
+    // Ensure user has READ permission on all source items
+    await assertBulkPermission(
+      sourceItemsToCheck,
+      { userId, token: shareToken },
+      FilePermission.COPY,
+    );
+
+    const sourceOwnerIds = new Set(
+      sourceItemsToCheck.map((item) => item.userId),
+    );
+    if (sourceOwnerIds.size !== 1) {
+      throw new HttpError({
+        status: 400,
+        code: StorageErrorCode.INVALID_OPERATION,
+        message: 'All source items must belong to the same owner',
+      });
+    }
+
+    const [srcOwnerId] = sourceOwnerIds;
+    if (srcOwnerId !== destFolder.userId) {
+      throw new HttpError({
+        status: 403,
+        code: CommonErrorCode.FORBIDDEN,
+        message: 'You dont have the permission to perform this operation',
+      });
+    }
+
+    totalCopySize = await calculateSize(fileIds, folderIds);
+    await reserve(destFolder.userId, totalCopySize);
 
     const flush = async () => {
       if (!ctx.fileMeta.length && !ctx.folderMeta.length) return;
@@ -119,7 +204,11 @@ export const copyItems = async (
 
       // Thumbnail errors should NOT fail the transaction
       try {
-        await copyThumbnails(userId, [...ctx.fileMeta], [...ctx.fileIdMap]);
+        await copyThumbnails(
+          destFolder!.userId,
+          [...ctx.fileMeta],
+          [...ctx.fileIdMap],
+        );
       } catch (err) {
         logger.error(err, 'Thumbnail copy failed');
       } finally {
@@ -135,9 +224,9 @@ export const copyItems = async (
     destFolder.files.forEach((f) => existingNames.add(f.name));
 
     await prepareCopyPlan(
-      userId,
-      fileIds,
-      folderIds,
+      destFolder.userId,
+      sourceFiles,
+      sourceFolders,
       { ...destFolder, childrenNames: existingNames },
       ctx,
       flush,
@@ -148,7 +237,10 @@ export const copyItems = async (
     return { copiedAt: new Date().toISOString() };
   } catch (err) {
     // Release the portion that wasn't successfully committed
-    await release(userId, totalCopySize - actualCopiedSize);
+    const unreleased = totalCopySize - actualCopiedSize;
+    if (destFolder?.userId && unreleased > 0) {
+      await release(destFolder.userId, unreleased);
+    }
     logger.error(err);
 
     throw err instanceof HttpError
@@ -162,27 +254,30 @@ export const copyItems = async (
 };
 
 async function prepareCopyPlan(
-  userId: string,
-  fileIds: string[],
-  folderIds: string[],
-  destFolder: { id: string; fullPath: string; childrenNames: Set<string> },
+  ownerId: string,
+  sourceFiles: File[],
+  sourceFolders: Folder[],
+  destFolder: {
+    id: string;
+    fullPath: string;
+    depth: number;
+    childrenNames: Set<string>;
+  },
   ctx: CopyContext,
   flush: () => Promise<void>,
 ) {
-  for (const folderId of folderIds) {
-    await copyFolderSubtree(userId, folderId, destFolder, ctx, flush);
+  for (const folder of sourceFolders) {
+    await copyFolderSubtree(ownerId, folder, destFolder, ctx, flush);
   }
 
-  if (fileIds.length) {
-    const files = await prisma.file.findMany({
-      where: { id: { in: fileIds }, userId },
-    });
-
-    for (const file of files) {
+  if (sourceFiles.length) {
+    for (const file of sourceFiles) {
       await buildFileCopyPlan(
+        ownerId,
         file,
         destFolder.id,
         destFolder.fullPath,
+        destFolder.depth,
         ctx,
         true,
         destFolder.childrenNames,
@@ -196,25 +291,17 @@ async function prepareCopyPlan(
 }
 
 async function copyFolderSubtree(
-  userId: string,
-  rootFolderId: string,
-  destFolder: { id: string; fullPath: string; childrenNames: Set<string> },
+  ownerId: string,
+  root: Folder,
+  destFolder: {
+    id: string;
+    fullPath: string;
+    depth: number;
+    childrenNames: Set<string>;
+  },
   ctx: CopyContext,
   flush: () => Promise<void>,
 ) {
-  const root = await prisma.folder.findUnique({
-    where: { id: rootFolderId, userId },
-    select: { id: true, name: true, fullPath: true, parentId: true },
-  });
-
-  if (!root) {
-    throw new HttpError({
-      status: 404,
-      code: CommonErrorCode.NOT_FOUND,
-      message: 'Folder doesnt exist',
-    });
-  }
-
   if (
     root.fullPath === destFolder.fullPath ||
     destFolder.fullPath.startsWith(root.fullPath + '/')
@@ -228,13 +315,13 @@ async function copyFolderSubtree(
 
   const folderIdMap = new Map<string, string>();
   const folderPathMap = new Map<string, string>();
+  const folderDepthMap = new Map<string, number>();
 
   let cursor: string | null = null;
 
   do {
     const folders: Folder[] = await prisma.folder.findMany({
       where: {
-        userId,
         AND: [
           {
             OR: [
@@ -277,18 +364,26 @@ async function copyFolderSubtree(
           ? destFolder.fullPath
           : folderPathMap.get(folder.parentId!)!;
 
+      const parentDepth =
+        folder.id === root.id
+          ? destFolder.depth
+          : folderDepthMap.get(folder.parentId!)!;
+
       const newPath = pathJoin(parentPath, newName);
+      const newDepth = parentDepth + 1;
 
       ctx.folderMeta.push({
         id: newId,
         name: newName,
         parentId: parentNewId,
         fullPath: newPath,
-        userId,
+        depth: newDepth,
+        userId: ownerId,
       });
 
       folderIdMap.set(folder.id, newId);
       folderPathMap.set(folder.id, newPath);
+      folderDepthMap.set(folder.id, newDepth);
 
       if (ctx.folderMeta.length >= FOLDER_BATCH_SIZE) {
         await flush();
@@ -299,20 +394,22 @@ async function copyFolderSubtree(
   } while (cursor);
 
   await copyFilesForSubtree(
-    userId,
+    ownerId,
     root,
     folderIdMap,
     folderPathMap,
+    folderDepthMap,
     ctx,
     flush,
   );
 }
 
 async function copyFilesForSubtree(
-  userId: string,
-  root: { id: string; name: string; fullPath: string; parentId: string | null },
+  ownerId: string,
+  root: Folder,
   folderIdMap: Map<string, string>,
   folderPathMap: Map<string, string>,
+  folderDepthMap: Map<string, number>,
   ctx: CopyContext,
   flush: () => Promise<void>,
 ) {
@@ -321,12 +418,15 @@ async function copyFilesForSubtree(
   do {
     const files: File[] = await prisma.file.findMany({
       where: {
-        userId,
-        OR: [
-          { folderId: root.id },
-          { fullPath: { startsWith: root.fullPath + '/' } },
+        AND: [
+          {
+            OR: [
+              { folderId: root.id },
+              { fullPath: { startsWith: root.fullPath + '/' } },
+            ],
+          },
+          ...(cursor ? [{ fullPath: { gt: cursor } }] : []),
         ],
-        ...(cursor ? [{ fullPath: { gt: cursor } }] : []),
       },
       orderBy: { fullPath: 'asc' },
       take: SCAN_BATCH_SIZE + 1,
@@ -336,10 +436,18 @@ async function copyFilesForSubtree(
     if (hasMore) files.pop();
 
     for (const file of files) {
-      const newFolderId = folderIdMap.get(file.folderId)!;
-      const newFolderPath = folderPathMap.get(file.folderId)!;
+      const destFolderId = folderIdMap.get(file.folderId)!;
+      const destFolderPath = folderPathMap.get(file.folderId)!;
+      const destFolderDepth = folderDepthMap.get(file.folderId)!;
 
-      await buildFileCopyPlan(file, newFolderId, newFolderPath, ctx);
+      await buildFileCopyPlan(
+        ownerId,
+        file,
+        destFolderId,
+        destFolderPath,
+        destFolderDepth,
+        ctx,
+      );
 
       if (ctx.fileMeta.length >= FILE_BATCH_SIZE) {
         await flush();
@@ -351,9 +459,11 @@ async function copyFilesForSubtree(
 }
 
 async function buildFileCopyPlan(
+  ownerId: string,
   file: File,
   destFolderId: string,
   destFolderPath: string,
+  destFolderDepth: number,
   ctx: CopyContext,
   resolveNameConflicts: boolean = false,
   existingNames?: Set<string>,
@@ -379,14 +489,19 @@ async function buildFileCopyPlan(
     name: newFileName,
     fullPath: newFilePath,
     folderId: destFolderId,
+    depth: destFolderDepth + 1,
     size: file.size,
-    userId: file.userId,
+    userId: ownerId,
     mimeType: file.mimeType,
     visibility: file.visibility,
     hasThumbnail: file.hasThumbnail,
   });
 
-  ctx.fileIdMap.push({ oldId: file.id, newId: newFileId });
+  ctx.fileIdMap.push({
+    oldId: file.id,
+    oldUserId: file.userId,
+    newId: newFileId,
+  });
   ctx.pendingCopiedSize += file.size;
 }
 
@@ -450,7 +565,10 @@ async function copyThumbnails(
       limit(async () => {
         if (!file.hasThumbnail) return;
 
-        const src = storage.keys.thumbnail(userId, fileIdMap[i].oldId);
+        const src = storage.keys.thumbnail(
+          fileIdMap[i].oldUserId,
+          fileIdMap[i].oldId,
+        );
         const dest = storage.keys.thumbnail(userId, file.id);
 
         try {

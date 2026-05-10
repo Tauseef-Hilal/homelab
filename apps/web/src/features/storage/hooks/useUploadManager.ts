@@ -17,7 +17,7 @@ const isActive = (status: UploadStatus) =>
   status === 'negotiating' ||
   status === 'uploading';
 
-export function useUploadManager() {
+export function useUploadManager(shareToken: string | undefined) {
   const { items, addFiles, updateItem, removeItem, clear } = useUploadStore();
 
   function startUploads() {
@@ -78,6 +78,7 @@ export function useUploadManager() {
           folderId: item.folderId,
           totalSize: item.file.size,
           totalChunks,
+          shareToken
         },
         id,
       );

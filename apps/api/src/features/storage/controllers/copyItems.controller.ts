@@ -8,9 +8,8 @@ import { CommonErrorCode, HttpError } from '@homelab/contracts/errors';
 
 export const copyItemsController = catchAsync(
   async (req: Request, res: Response) => {
-    const { destinationFolderId, items } = requestSchemas.copyItemsSchema.parse(
-      req.body,
-    );
+    const { destinationFolderId, items, shareToken } =
+      requestSchemas.copyItemsSchema.parse(req.body);
 
     const idempotencyKey = req.header('x-idempotency-key');
 
@@ -29,6 +28,7 @@ export const copyItemsController = catchAsync(
         destFolderId: destinationFolderId,
         requestId: req.id,
         userId: req.user.id,
+        shareToken,
       },
       idempotencyKey,
     );

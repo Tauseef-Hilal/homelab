@@ -11,7 +11,7 @@
 - Media thumbnail generation
 - Real-time broadcast chat
 - Secure authentication with JWT and refresh tokens
-- File sharing via expiring links
+- Bitmask-based granular permissions and resource sharing
 - Modular monorepo architecture
 
 The system is designed with **production-grade patterns**, such as:
@@ -204,6 +204,31 @@ File metadata is stored in **PostgreSQL**.
 
 ---
 
+# Permission & Sharing Engine
+
+Homelab implements a **bitmask-based permission system** allowing granular access control beyond simple ownership.
+
+### Permission Logic
+
+Permissions are represented as integers using bitwise flags:
+
+- `READ` (1)
+- `WRITE` (2)
+- `COPY` (4)
+- `DELETE` (8)
+- `SHARE` (16)
+
+### Sharing Models
+
+1.  **User-to-User (`UserShare`)**: Explicitly grants permissions to another registered user.
+2.  **Link-Based (`LinkShare`)**: Generates a secure token providing access to anyone with the URL, supported by optional expiration.
+
+### Access Resolution
+
+Access is resolved dynamically by the `@homelab/storage` package. If a user is not the owner, the system checks for direct shares or **inherited permissions** from the parent folder hierarchy. IO workers utilize `assertBulkPermission` to ensure every item in a batch operation is authorized before execution.
+
+---
+
 # Chat System
 
 Broadcast chat enables **real-time messaging**.
@@ -373,16 +398,10 @@ Files store:
 - public
 - shared
 
----
+### Sharing Metadata
 
-## File Sharing
-
-`SharedLink` enables **link-based sharing**.
-
-### Capabilities
-
-- expiring links
-- access tokens
+- `UserShare`: Maps users to resources with specific bitmasks.
+- `LinkShare`: Tokenized access for external resource sharing.
 
 ---
 

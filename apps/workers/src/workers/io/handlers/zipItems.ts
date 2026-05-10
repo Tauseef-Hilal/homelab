@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import archiver from 'archiver';
 import { ZipJobPayload, ZipJobResult } from '@homelab/contracts/jobs';
 import { prisma } from '@homelab/db/prisma';
@@ -9,6 +8,8 @@ import pLimit from 'p-limit';
 import { Job } from 'bullmq';
 import { getJobLogger } from '@workers/utils/logger';
 import { PassThrough } from 'stream';
+import { assertBulkPermission } from '@homelab/storage';
+import { FilePermission } from '@homelab/storage/constants';
 
 const BATCH_SIZE = 1000;
 
@@ -28,22 +29,73 @@ export const zipItems = async (
 ): Promise<ZipJobResult> => {
   const storage = getStorageProvider();
   const logger = getJobLogger('io-worker', job);
-  const { userId, items, requestId } = job.data;
+  const { userId, shareToken, items, requestId } = job.data;
 
-  const zipName = `${randomUUID()}.zip`;
+  const existingLink = await prisma.downloadLink.findFirst({
+    where: { userId, requestId },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (existingLink) {
+    await writeJobResult(job.id ?? '', existingLink.id);
+    return {
+      zippedAt: new Date().toISOString(),
+      zipPath: existingLink.artifactKey,
+    };
+  }
+
+  const zipName = buildZipName(userId, requestId);
   const zipKey = storage.keys.downloadPackage(zipName);
-
   const { archive, uploadPromise } = createArchive(zipKey, storage);
 
   try {
-    const fileIds = items.filter((i) => i.type !== 'folder').map((i) => i.id);
+    const fileIds = items.filter((i) => i.type === 'file').map((i) => i.id);
     const folderIds = items.filter((i) => i.type === 'folder').map((i) => i.id);
 
-    const folderPrefixes = await getFolderPrefixes(folderIds, userId);
+    // ---  Permissions Check ---
+    const [sourceFiles, sourceFolders] = await Promise.all([
+      fileIds.length > 0
+        ? prisma.file.findMany({
+            where: { id: { in: fileIds } },
+            select: { id: true, userId: true, fullPath: true },
+          })
+        : Promise.resolve([]),
+      folderIds.length > 0
+        ? prisma.folder.findMany({
+            where: { id: { in: folderIds } },
+            select: { id: true, userId: true, fullPath: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const sourceItemsToCheck = [
+      ...sourceFiles.map((f) => ({ ...f, type: 'file' as const })),
+      ...sourceFolders.map((f) => ({ ...f, type: 'folder' as const })),
+    ];
+
+    // Sanity check
+    if (sourceItemsToCheck.length !== items.length) {
+      throw new HttpError({
+        status: 404,
+        code: CommonErrorCode.NOT_FOUND,
+        message: 'One or more source items do not exist',
+      });
+    }
+
+    // Require READ access to zip the requested items
+    await assertBulkPermission(
+      sourceItemsToCheck,
+      { userId, token: shareToken },
+      FilePermission.READ,
+    );
+
+    // ---  Execute Zip ---
+    const folderPrefixes = sourceFolders.map((f) => ({
+      fullPath: { startsWith: `${f.fullPath}/` },
+    }));
 
     const hasFiles = await appendFilesToArchive(
       archive,
-      userId,
       fileIds,
       folderPrefixes,
     );
@@ -75,7 +127,6 @@ export const zipItems = async (
   }
 };
 
-// Updated helper function
 function createArchive(
   zipKey: string,
   storage: ReturnType<typeof getStorageProvider>,
@@ -97,20 +148,8 @@ function createArchive(
   return { archive, uploadPromise };
 }
 
-async function getFolderPrefixes(folderIds: string[], userId: string) {
-  const folders = await prisma.folder.findMany({
-    where: { id: { in: folderIds }, userId },
-    select: { fullPath: true },
-  });
-
-  return folders.map((f) => ({
-    fullPath: { startsWith: `${f.fullPath}/` },
-  }));
-}
-
 async function appendFilesToArchive(
   archive: archiver.Archiver,
-  userId: string,
   fileIds: string[],
   folderPrefixes: any[],
 ) {
@@ -120,11 +159,17 @@ async function appendFilesToArchive(
   let hasFiles = false;
   const limit = pLimit(4); // prevent too many parallel streams
 
+  // Build OR conditions dynamically to prevent Prisma errors on empty arrays
+  const orConditions: any[] = [];
+  if (fileIds.length > 0) orConditions.push({ id: { in: fileIds } });
+  if (folderPrefixes.length > 0) orConditions.push(...folderPrefixes);
+
+  if (orConditions.length === 0) return false;
+
   do {
     const batchFiles: PartialFileWithChunks[] = await prisma.file.findMany({
       where: {
-        userId,
-        OR: [{ id: { in: fileIds } }, ...folderPrefixes],
+        OR: orConditions,
         ...(cursor ? { id: { gt: cursor } } : {}),
       },
       orderBy: { id: 'asc' },
@@ -157,7 +202,7 @@ async function appendFilesToArchive(
 
           // append file stream to zip
           archive.append(stream, {
-            name: file.fullPath.replace(/^\//, ''), // remove leading slash for zip path
+            name: file.fullPath.replace(/^\//, ''),
           });
 
           // wait for stream completion before processing next file
@@ -182,23 +227,58 @@ async function finalizeJob(
   zipName: string,
 ) {
   await prisma.$transaction(async (tx) => {
-    const link = await tx.downloadLink.create({
-      data: {
-        userId,
-        requestId,
-        displayName: zipName,
-        artifactKey: getStorageProvider().keys.downloadPackage(zipName),
-        expiresAt: new Date(Date.now() + zipConstants.DOWNLOAD_LINK_EXPIRY_MS),
-      },
+    const artifactKey = getStorageProvider().keys.downloadPackage(zipName);
+    const expiresAt = new Date(
+      Date.now() + zipConstants.DOWNLOAD_LINK_EXPIRY_MS,
+    );
+
+    const existingLink = await tx.downloadLink.findFirst({
+      where: { userId, requestId },
+      orderBy: { createdAt: 'desc' },
     });
 
-    await tx.job.update({
-      where: { id: prismaJobId },
-      data: {
-        result: {
-          downloadLink: `${env.API_BASE_URL}/storage/download/${link.id}`,
+    const link = existingLink
+      ? await tx.downloadLink.update({
+          where: { id: existingLink.id },
+          data: { displayName: zipName, artifactKey, expiresAt },
+        })
+      : await tx.downloadLink.create({
+          data: {
+            userId,
+            requestId,
+            displayName: zipName,
+            artifactKey,
+            expiresAt,
+          },
+        });
+
+    if (prismaJobId) {
+      await tx.job.update({
+        where: { id: prismaJobId },
+        data: {
+          result: {
+            downloadLink: `${env.API_BASE_URL}/storage/download/${link.id}`,
+          },
         },
+      });
+    }
+  });
+}
+
+function buildZipName(userId: string, requestId: string) {
+  const sanitizedUserId = userId.replace(/[^a-zA-Z0-9-_]/g, '_');
+  const sanitizedRequestId = requestId.replace(/[^a-zA-Z0-9-_]/g, '_');
+  return `${sanitizedUserId}-${sanitizedRequestId}.zip`;
+}
+
+async function writeJobResult(prismaJobId: string, linkId: string) {
+  if (!prismaJobId) return;
+  await prisma.job.update({
+    where: { id: prismaJobId },
+    data: {
+      result: {
+        downloadLink: `${env.API_BASE_URL}/storage/download/${linkId}`,
       },
-    });
+    },
   });
 }

@@ -8,7 +8,9 @@ import { CommonErrorCode, HttpError } from '@homelab/contracts/errors';
 
 export const deleteItemsController = catchAsync(
   async (req: Request, res: Response) => {
-    const { items } = requestSchemas.deleteItemsSchema.parse(req.body);
+    const { items, shareToken } = requestSchemas.deleteItemsSchema.parse(
+      req.body,
+    );
 
     const idempotencyKey = req.header('x-idempotency-key');
 
@@ -26,6 +28,7 @@ export const deleteItemsController = catchAsync(
         items,
         requestId: req.id,
         userId: req.user.id,
+        shareToken,
       },
       idempotencyKey,
     );

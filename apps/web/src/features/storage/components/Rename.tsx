@@ -23,6 +23,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import z from "zod";
 import { useEffect } from "react";
+import useDriveStore from "../stores/drive.store";
 
 interface RenameProps {
   item: File | Folder;
@@ -51,8 +52,10 @@ const RenameDialog: React.FC<RenameProps> = ({
   parentPath,
 }) => {
   const queryClient = useQueryClient();
+  const viewContext = useDriveStore((s) => s.viewContext);
+  const shareToken = useDriveStore((s) => s.shareToken);
 
-  const ext = item.name.includes(".") ? item.name.split(".").pop() : undefined;
+  const ext = item.name.includes(".") ? item.name.split(".").pop() : "";
   const baseName = ext ? item.name.slice(0, -(ext.length + 1)) : item.name;
 
   const form = useForm<RenameInput>({
@@ -75,21 +78,32 @@ const RenameDialog: React.FC<RenameProps> = ({
           completed: "Files moved successfully",
           failed: "Failed to move files",
         },
-        () => invalidateQueries(queryClient, [["list", parentPath], ["stats"]]),
+        () =>
+          invalidateQueries(queryClient, [
+            ["drive", viewContext, parentPath],
+            ["stats"],
+          ]),
       ),
     onError: (err) => toast.error(err),
   });
 
   const onSubmit = (data: RenameInput) => {
+    const newName = `${data.name}${ext ? `.${ext}` : ""}`;
+
+    if (newName == item.name) {
+      return;
+    }
+
     mutation.mutate({
       destinationFolderId: isFolder(item) ? item.parentId : item.folderId,
       items: [
         {
           id: item.id,
-          newName: `${data.name}.${ext}`,
+          newName: newName,
           type: isFolder(item) ? "folder" : "file",
         },
       ],
+      shareToken,
     });
   };
 

@@ -4,6 +4,7 @@ import useAuthStore from "@client/stores/auth.store";
 import { IoClose } from "react-icons/io5";
 import { useEffect, useRef } from "react";
 import { cx } from "class-variance-authority";
+import useDriveStore from "../stores/drive.store";
 
 interface PreviewProps {
   file: File;
@@ -14,8 +15,9 @@ interface PreviewProps {
 const Preview: React.FC<PreviewProps> = ({ file, open, setOpen }) => {
   const token = useAuthStore().accessToken;
   const videoRef = useRef<HTMLVideoElement>(null);
+  const shareToken = useDriveStore((s) => s.shareToken);
 
-  const src = `${process.env.NEXT_PUBLIC_API_URL}/storage/file/${file.id}/preview?token=${token}`;
+  const src = `${process.env.NEXT_PUBLIC_API_URL}/storage/file/${file.id}/preview?accessToken=${token}${shareToken ? `&shareToken=${shareToken}` : ""}`;
 
   const close = () => {
     if (videoRef.current && !videoRef.current.paused) {

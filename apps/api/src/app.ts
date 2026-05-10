@@ -1,6 +1,5 @@
 /// <reference path="./types/express.d.ts" />
 
-import path from 'path';
 import cors from 'cors';
 import express from 'express';
 import cookieParser from 'cookie-parser';
@@ -18,6 +17,7 @@ import {
 } from './infrastructure/health/health.controller';
 import { setupBullBoard } from './infrastructure/queues/bull-board';
 import expressBasicAuth from 'express-basic-auth';
+import sharingRoutes from './features/sharing/sharing.routes';
 
 const app = express();
 const bullBoard = setupBullBoard();
@@ -51,6 +51,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/storage', storageRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/sharing', sharingRoutes);
 
 app.use(errorHandler);
 

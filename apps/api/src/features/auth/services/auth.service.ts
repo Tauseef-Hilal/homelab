@@ -59,7 +59,7 @@ export async function signup(
     });
 
     await prisma.folder.create({
-      data: { name: '', fullPath: '/', userId: user.id },
+      data: { name: '', fullPath: '/', userId: user.id, depth: 0 },
     });
 
     const payload = buildTokenPayload({

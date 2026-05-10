@@ -11,15 +11,12 @@
       "@homelab/contracts": ["../contracts/src/index.ts"],
       "@homelab/contracts/*": ["../contracts/src/*"],
       "@homelab/db": ["../db/src/index.ts"],
-      "@homelab/db/*": ["../db/src/*"],
-      "@homelab/infra": ["../infra/src/index.ts"],
-      "@homelab/infra/*": ["../infra/src/*"]
+      "@homelab/db/*": ["../db/src/*"]
     }
   },
   "references": [
     { "path": "../contracts" },
-    { "path": "../db" },
-    { "path": "../infra" }
+    { "path": "../db" }
   ],
   "include": ["src"]
 }

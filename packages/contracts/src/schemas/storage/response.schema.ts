@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+export const permissionsSchema = z.object({
+  read: z.boolean(),
+  write: z.boolean(),
+  share: z.boolean(),
+  delete: z.boolean(),
+  copy: z.boolean(),
+});
+
 export const getStatsSchema = z.object({
   storageUsed: z.number(),
   storageQuota: z.number(),
@@ -14,6 +22,7 @@ export const listDirectorySchema = z.object({
     userId: z.string(),
     updatedAt: z.string(),
     parentId: z.union([z.string(), z.null()]),
+    permissions: permissionsSchema,
     files: z.array(
       z.object({
         id: z.string(),
@@ -21,6 +30,7 @@ export const listDirectorySchema = z.object({
         fullPath: z.string(),
         mimeType: z.string(),
         size: z.number(),
+        depth: z.number(),
         visibility: z.enum(['private', 'public']),
         hasThumbnail: z.boolean(),
         userId: z.string(),
@@ -33,6 +43,7 @@ export const listDirectorySchema = z.object({
         id: z.string(),
         name: z.string(),
         fullPath: z.string(),
+        depth: z.number(),
         createdAt: z.string(),
         userId: z.string(),
         updatedAt: z.string(),
@@ -42,6 +53,36 @@ export const listDirectorySchema = z.object({
   }),
 });
 
+export const listSharedItemsSchema = z.object({
+  files: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      fullPath: z.string(),
+      mimeType: z.string(),
+      size: z.number(),
+      depth: z.number(),
+      visibility: z.enum(['private', 'public']),
+      hasThumbnail: z.boolean(),
+      userId: z.string(),
+      updatedAt: z.string(),
+      folderId: z.string(),
+    }),
+  ),
+  folders: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      fullPath: z.string(),
+      depth: z.number(),
+      createdAt: z.string(),
+      userId: z.string(),
+      updatedAt: z.string(),
+      parentId: z.string(),
+    }),
+  ),
+});
+
 export const createFolderSchema = z.object({
   folder: z.object({
     id: z.string(),
@@ -49,6 +90,7 @@ export const createFolderSchema = z.object({
     fullPath: z.string(),
     createdAt: z.string(),
     userId: z.string(),
+    depth: z.number(),
     updatedAt: z.string(),
     parentId: z.string(),
   }),

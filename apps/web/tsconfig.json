@@ -23,7 +23,9 @@
     "paths": {
       "@client/*": ["./src/*"],
       "@homelab/contracts": ["../../packages/contracts/src/index.ts"],
-      "@homelab/contracts/*": ["../../packages/contracts/src/*"]
+      "@homelab/contracts/*": ["../../packages/contracts/src/*"],
+      "@homelab/storage": ["../../packages/storage/src/index.ts"],
+      "@homelab/storage/*": ["../../packages/storage/src/*"]
     }
   },
   "references": [{ "path": "../../packages/contracts" }],

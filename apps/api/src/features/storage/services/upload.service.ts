@@ -10,7 +10,10 @@ import {
   release,
   reserve,
   resolveFileName,
+  resolveAccess,
+  hasPermission,
 } from '@homelab/storage';
+import { FilePermission, OWNER_PERMISSIONS } from '@homelab/storage/constants';
 import { UploadStatus, Visibility } from '@prisma/client';
 import { enqueueThumbnailJob } from '@server/lib/jobs/thumbnailQueue';
 import { randomUUID, createHash } from 'crypto';
@@ -26,7 +29,7 @@ import { getStorageProvider } from '@homelab/infra';
  * Initializes a new upload session or returns existing one
  */
 export async function initUpload(
-  userId: string,
+  reqUserId: string,
   input: requestSchemas.UploadInitInput & { uploadId: string },
 ) {
   const { name, mimeType, folderId, totalSize, totalChunks, uploadId } = input;
@@ -40,13 +43,13 @@ export async function initUpload(
   }
 
   const count = await prisma.uploadSession.aggregate({
-    where: { userId, status: UploadStatus.active },
+    where: { userId: reqUserId, status: UploadStatus.active },
     _count: {
       id: true,
     },
   });
 
-  if (count._count.id > MAX_CONCURRENT_UPLOADS) {
+  if (count._count.id >= MAX_CONCURRENT_UPLOADS) {
     throw new HttpError({
       status: 429,
       code: CommonErrorCode.RATE_LIMITED,
@@ -54,16 +57,96 @@ export async function initUpload(
     });
   }
 
+  let ownerId = '';
+  let quotaReserved = false;
+
   try {
-    const existingSession = await prisma.uploadSession.findUnique({
-      where: { id: uploadId, userId },
-      select: { file: { select: { id: true } } },
+    // Fetch the required fields for the permission check
+    const parent = await prisma.folder.findUnique({
+      where: { id: folderId },
+      select: { id: true, depth: true, fullPath: true, userId: true },
     });
 
-    // Idempotency check: return existing session if present
-    if (existingSession) return { fileId: existingSession.file?.id, uploadId };
+    if (!parent) {
+      throw new HttpError({
+        status: 404,
+        code: CommonErrorCode.NOT_FOUND,
+        message: 'Destination folder does not exist',
+      });
+    }
 
-    await reserve(userId, totalSize);
+    // Ensure the user has WRITE permission to upload into this folder
+    const access = await resolveAccess(
+      { ...parent, type: 'folder' },
+      { userId: reqUserId, token: input.shareToken },
+    );
+
+    if (!access || !hasPermission(access, FilePermission.WRITE)) {
+      throw new HttpError({
+        status: 403,
+        code: CommonErrorCode.FORBIDDEN,
+        message:
+          'Forbidden: You do not have permission to upload to this folder',
+      });
+    }
+
+    const existingSession = await prisma.uploadSession.findUnique({
+      where: { id: uploadId, userId: reqUserId },
+      select: {
+        status: true,
+        totalChunks: true,
+        totalSize: true,
+        file: {
+          select: { id: true, folderId: true, mimeType: true },
+        },
+      },
+    });
+
+    if (existingSession) {
+      if (!existingSession.file) {
+        throw new HttpError({
+          status: 500,
+          code: CommonErrorCode.INTERNAL_SERVER_ERROR,
+          message: 'Upload session is missing its file record',
+        });
+      }
+
+      if (existingSession.status === UploadStatus.cancelled) {
+        throw new HttpError({
+          status: 400,
+          code: CommonErrorCode.BAD_REQUEST,
+          message: 'Upload session was cancelled',
+        });
+      }
+
+      if (existingSession.status === UploadStatus.expired) {
+        throw new HttpError({
+          status: 410,
+          code: StorageErrorCode.UPLOAD_EXPIRED,
+          message: 'Upload session expired',
+        });
+      }
+
+      const paramsMismatch =
+        existingSession.totalChunks !== totalChunks ||
+        existingSession.totalSize !== totalSize ||
+        existingSession.file.folderId !== folderId ||
+        existingSession.file.mimeType !== mimeType;
+
+      if (paramsMismatch) {
+        throw new HttpError({
+          status: 400,
+          code: CommonErrorCode.BAD_REQUEST,
+          message: 'Upload id conflicts with different upload parameters',
+        });
+      }
+
+      return { fileId: existingSession.file.id, uploadId };
+    }
+
+    ownerId = parent.userId;
+    await reserve(ownerId, totalSize);
+    quotaReserved = true;
 
     const fileId = randomUUID();
     const { resolvedName, resolvedPath } = await resolveFileName({
@@ -71,41 +154,65 @@ export async function initUpload(
       destFolderId: folderId,
     });
 
-    await prisma.uploadSession.create({
-      data: {
-        id: uploadId,
-        totalChunks,
-        totalSize,
-        uploadedChunks: 0,
-        status: UploadStatus.active,
-        expiresAt: new Date(Date.now() + UPLOAD_EXPIRY),
-        userId,
-        file: {
-          create: {
-            id: fileId,
-            name: resolvedName,
-            size: totalSize,
-            fullPath: resolvedPath,
-            visibility: Visibility.private,
-            folderId,
-            mimeType,
-            userId,
+    await prisma.$transaction(async (tx) => {
+      const session = await tx.uploadSession.create({
+        data: {
+          id: uploadId,
+          totalChunks,
+          totalSize,
+          uploadedChunks: 0,
+          status: UploadStatus.active,
+          expiresAt: new Date(Date.now() + UPLOAD_EXPIRY),
+          userId: reqUserId,
+          file: {
+            create: {
+              id: fileId,
+              name: resolvedName,
+              size: totalSize,
+              fullPath: resolvedPath,
+              depth: parent.depth + 1,
+              visibility: Visibility.private,
+              folderId,
+              mimeType,
+              userId: ownerId,
+            },
           },
         },
-      },
+        include: { file: true },
+      });
+
+      // Give perms to reqUserId
+      if (ownerId != reqUserId) {
+        await tx.userShare.create({
+          data: {
+            fileId: session.file?.id,
+            userId: reqUserId,
+            permissions: OWNER_PERMISSIONS,
+          },
+        });
+      }
     });
 
     return { fileId, uploadId };
-  } catch (err: any) {
-    // Only release quota if the error wasn't already a quota/limit rejection
-    const isLimitError = [
-      StorageErrorCode.QUOTA_EXCEEDED,
-      StorageErrorCode.SERVER_LIMIT_EXCEEDED,
-    ].includes(err.code);
-    if (err.code && !isLimitError) {
-      await release(userId, totalSize);
-    }
+  } catch (err: unknown) {
+    const errCode =
+      err instanceof HttpError
+        ? err.code
+        : err &&
+            typeof err === 'object' &&
+            'code' in err &&
+            typeof (err as { code: unknown }).code === 'string'
+          ? (err as { code: string }).code
+          : undefined;
 
+    const isLimitError =
+      errCode === StorageErrorCode.QUOTA_EXCEEDED ||
+      errCode === StorageErrorCode.SERVER_LIMIT_EXCEEDED;
+
+    if (quotaReserved && !isLimitError) {
+      await release(ownerId, totalSize);
+    }
+    console.error(err);
     throw err instanceof HttpError
       ? err
       : new HttpError({
@@ -125,24 +232,28 @@ export async function resolveExistingChunks(
 ) {
   await validateUploadSession(uploadId, userId);
 
-  const chunkHashes = [...new Set(chunks.map((c) => c.hash))];
+  const chunkByIndex = new Map<number, (typeof chunks)[number]>();
+  for (const c of chunks) {
+    if (!chunkByIndex.has(c.index)) chunkByIndex.set(c.index, c);
+  }
+  const dedupedChunks = [...chunkByIndex.values()];
+
+  const chunkHashes = [...new Set(dedupedChunks.map((c) => c.hash))];
   const existingBlobs = await prisma.blob.findMany({
     where: { hash: { in: chunkHashes } },
     select: { id: true, hash: true },
   });
 
   if (existingBlobs.length === 0) {
-    return { missingChunks: chunks.map((c) => c.index) };
+    return { missingChunks: dedupedChunks.map((c) => c.index) };
   }
 
   const blobByHash = new Map(existingBlobs.map((b) => [b.hash, b]));
-  const blobRefIncrements = new Map<string, number>();
 
-  const fileChunks = chunks
+  const fileChunks = dedupedChunks
     .filter((chunk) => blobByHash.has(chunk.hash))
     .map((chunk) => {
       const blob = blobByHash.get(chunk.hash)!;
-      blobRefIncrements.set(blob.id, (blobRefIncrements.get(blob.id) ?? 0) + 1);
       return {
         fileId,
         blobId: blob.id,
@@ -151,7 +262,7 @@ export async function resolveExistingChunks(
       };
     });
 
-  const missingChunks = chunks
+  const missingChunks = dedupedChunks
     .filter((c) => !blobByHash.has(c.hash))
     .map((c) => c.index);
 
@@ -159,23 +270,36 @@ export async function resolveExistingChunks(
   await prisma.$transaction(async (tx) => {
     if (fileChunks.length === 0) return;
 
-    const created = await tx.fileChunk.createMany({
-      data: fileChunks,
-      skipDuplicates: true,
-    });
+    let insertedCount = 0;
+    const blobDelta = new Map<string, number>();
 
-    if (created.count === 0) return;
+    for (const fc of fileChunks) {
+      try {
+        await tx.fileChunk.create({ data: fc });
+        insertedCount += 1;
+        blobDelta.set(fc.blobId, (blobDelta.get(fc.blobId) ?? 0) + 1);
+      } catch (e: unknown) {
+        const code =
+          e && typeof e === 'object' && 'code' in e
+            ? (e as { code: string }).code
+            : undefined;
+        if (code === 'P2002') continue;
+        throw e;
+      }
+    }
+
+    if (insertedCount === 0) return;
 
     await tx.uploadSession.update({
       where: { id: uploadId },
-      data: { uploadedChunks: { increment: created.count } },
+      data: { uploadedChunks: { increment: insertedCount } },
     });
 
     await Promise.all(
-      [...blobRefIncrements.entries()].map(([blobId, count]) =>
+      [...blobDelta.entries()].map(([blobId, delta]) =>
         tx.blob.update({
           where: { id: blobId },
-          data: { refCount: { increment: count } },
+          data: { refCount: { increment: delta } },
         }),
       ),
     );
@@ -238,7 +362,8 @@ export async function saveChunk(
       });
       blobId = newBlob.id;
     } catch (e: any) {
-      // Handle race condition where blob was created between writeFile and tx.blob.create
+      // Handle race condition where blob was created
+      // between writeFile and tx.blob.create
       if (e.code === 'P2002') {
         const blob = await tx.blob.update({
           where: { hash: chunkHash },
@@ -272,9 +397,18 @@ export async function finishUpload(
 
   if (session.uploadedChunks !== session.totalChunks) {
     throw new HttpError({
-      status: 500,
+      status: 400,
       code: StorageErrorCode.UPLOAD_INCOMPLETE,
       message: 'Upload is yet to complete',
+    });
+  }
+
+  const fileId = session.file?.id;
+  if (!fileId) {
+    throw new HttpError({
+      status: 500,
+      code: CommonErrorCode.INTERNAL_SERVER_ERROR,
+      message: 'Upload session is missing its file record',
     });
   }
 
@@ -287,10 +421,10 @@ export async function finishUpload(
     jobNames.thumbnailJobName,
     {
       userId,
-      fileId: session.file?.id ?? '',
+      fileId,
       requestId: reqId,
     },
-    session.file?.id ?? '',
+    fileId,
   );
 }
 
@@ -300,16 +434,59 @@ export async function cancelUpload(
   requestId: string,
   idempotencyKey: string,
 ) {
-  const session = await validateUploadSession(uploadId, userId);
+  const session = await prisma.uploadSession.findFirst({
+    where: { id: uploadId, userId },
+    include: { file: { select: { id: true, userId: true } } },
+  });
 
-  if (session.status === UploadStatus.cancelled) return;
+  if (!session) {
+    throw new HttpError({
+      status: 404,
+      code: CommonErrorCode.NOT_FOUND,
+      message: 'Upload session not found',
+    });
+  }
+
+  if (
+    session.status === UploadStatus.active &&
+    session.expiresAt < new Date()
+  ) {
+    throw new HttpError({
+      status: 410,
+      code: StorageErrorCode.UPLOAD_EXPIRED,
+      message: 'Upload session expired',
+    });
+  }
+
+  if (
+    session.status === UploadStatus.cancelled ||
+    session.status === UploadStatus.expired
+  ) {
+    return;
+  }
+
+  if (session.status === UploadStatus.completed) {
+    throw new HttpError({
+      status: 400,
+      code: CommonErrorCode.BAD_REQUEST,
+      message: 'Cannot cancel a completed upload',
+    });
+  }
+
+  if (!session.file) {
+    throw new HttpError({
+      status: 500,
+      code: CommonErrorCode.INTERNAL_SERVER_ERROR,
+      message: 'Upload session is missing its file record',
+    });
+  }
 
   await prisma.uploadSession.update({
     where: { id: session.id },
     data: { status: UploadStatus.cancelled },
   });
 
-  await release(userId, session.totalSize);
+  await release(session.file.userId, session.totalSize);
 
   await enqueueUploadCleanupJob(
     jobNames.uploadCleanupJobName,
@@ -323,7 +500,28 @@ export async function cancelUpload(
 }
 
 export async function getUploadStatus(userId: string, uploadId: string) {
-  const session = await validateUploadSession(uploadId, userId);
+  const session = await prisma.uploadSession.findFirst({
+    where: { id: uploadId, userId },
+  });
+
+  if (!session) {
+    throw new HttpError({
+      status: 404,
+      code: CommonErrorCode.NOT_FOUND,
+      message: 'Upload session not found',
+    });
+  }
+
+  if (
+    session.status === UploadStatus.active &&
+    session.expiresAt < new Date()
+  ) {
+    throw new HttpError({
+      status: 410,
+      code: StorageErrorCode.UPLOAD_EXPIRED,
+      message: 'Upload session expired',
+    });
+  }
 
   return {
     status: session.status,
@@ -338,7 +536,7 @@ export async function getUploadStatus(userId: string, uploadId: string) {
 export async function validateUploadSession(sessionId: string, userId: string) {
   const uploadSession = await prisma.uploadSession.findFirst({
     where: { id: sessionId, userId, status: UploadStatus.active },
-    include: { file: { select: { id: true } } },
+    include: { file: { select: { id: true, userId: true } } },
   });
 
   if (!uploadSession) {

@@ -1,16 +1,38 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import useDriveStore from "../stores/drive.store";
 import ExplorerContent from "./ExplorerContent";
 import ExplorerHeader from "./ExplorerHeader";
 import { Button } from "@client/components/ui/button";
 import { XIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 
-const Explorer: React.FC = () => {
+interface ExplorerProps {
+  shareToken?: string;
+}
+
+const Explorer: React.FC<ExplorerProps> = ({ shareToken }) => {
   const selectedCount = useDriveStore((s) => s.selectedItems.length);
   const deselectAll = useDriveStore((s) => s.deselectAll);
+  const navigate = useDriveStore((s) => s.navigate);
+  const viewContext = useDriveStore((s) => s.viewContext);
+  const router = useRouter();
+  
+  const initialized = useRef(false);
 
   const hasSelection = selectedCount > 0;
+
+  useEffect(() => {
+    if (initialized.current) return;
+    
+    if (shareToken) {
+      navigate("/", { viewContext: "link", shareToken: shareToken, ownerId: null, replace: true });
+      initialized.current = true;
+    } else if (viewContext === "link") {
+      router.replace("/drive");
+    }
+  }, [shareToken, navigate, router, viewContext]);
 
   return (
     <div className="flex flex-col h-full">

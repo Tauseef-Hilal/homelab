@@ -1,8 +1,7 @@
 import { catchAsync } from '@server/lib/catchAsync';
 import { Request, Response } from 'express';
-import { createReadStream } from 'fs';
 import { requestSchemas } from '@homelab/contracts/schemas/storage';
-import { validateLinkAndGetDownloadMeta } from '../services/folder.service';
+import { validateLinkAndGetDownloadMeta } from '../services/storage.service';
 
 export const downloadController = catchAsync(
   async (req: Request, res: Response) => {

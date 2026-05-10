@@ -5,6 +5,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { clsx, type ClassValue } from 'clsx';
 import { toast } from 'sonner';
 import { twMerge } from 'tailwind-merge';
+import { FilePermission } from '@homelab/storage/constants';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -98,3 +99,33 @@ export function invalidateQueries(
 ) {
   queryKeys.forEach((key) => queryClient.invalidateQueries({ queryKey: key }));
 }
+
+export type PermissionState = {
+  read: boolean;
+  write: boolean;
+  copy: boolean;
+  delete: boolean;
+  share: boolean;
+};
+
+// Convert UI state to Backend Integer
+export const permissionsToBitmask = (state: PermissionState): number => {
+  let mask = 0;
+  if (state.read) mask |= FilePermission.READ;
+  if (state.write) mask |= FilePermission.WRITE;
+  if (state.copy) mask |= FilePermission.COPY;
+  if (state.delete) mask |= FilePermission.DELETE;
+  if (state.share) mask |= FilePermission.SHARE;
+  return mask;
+};
+
+// Convert Backend Integer to UI state
+export const bitmaskToPermissions = (mask: number): PermissionState => {
+  return {
+    read: (mask & FilePermission.READ) === FilePermission.READ,
+    write: (mask & FilePermission.WRITE) === FilePermission.WRITE,
+    copy: (mask & FilePermission.COPY) === FilePermission.COPY,
+    delete: (mask & FilePermission.DELETE) === FilePermission.DELETE,
+    share: (mask & FilePermission.SHARE) === FilePermission.SHARE,
+  };
+};

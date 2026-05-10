@@ -4,6 +4,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 import { pipeline } from 'stream/promises';
 import type { Readable } from 'stream';
+import { randomUUID } from 'crypto';
 import { Job } from 'bullmq';
 import sharp from 'sharp';
 import ffmpeg from 'fluent-ffmpeg';
@@ -15,17 +16,21 @@ import { CommonErrorCode, HttpError } from '@homelab/contracts/errors';
 import { env, getStorageProvider } from '@homelab/infra/config';
 
 export const generateThumbnail = async (job: Job<ThumbnailJobPayload>) => {
-  const { fileId, userId } = job.data;
+  const { fileId } = job.data;
   const logger = getJobLogger('thumbnail-worker', job);
 
   const file = await prisma.file.findUnique({
-    where: { id: fileId, userId },
+    where: { id: fileId },
     select: {
       name: true,
       mimeType: true,
+      userId: true,
       chunks: {
         orderBy: { chunkIndex: 'asc' },
-        select: { size: true, blob: { select: { blobKey: true } } },
+        select: {
+          size: true,
+          blob: { select: { blobKey: true } },
+        },
       },
     },
   });
@@ -39,9 +44,29 @@ export const generateThumbnail = async (job: Job<ThumbnailJobPayload>) => {
   }
 
   const storage = getStorageProvider();
-  const outputKey = storage.keys.thumbnail(userId, fileId);
+  const outputKey = storage.keys.thumbnail(file.userId, fileId);
+  const tempSuffix = `${fileId}-${job.id ?? 'no-job-id'}-${randomUUID()}`;
 
   try {
+    if (await storage.artifacts.exists(outputKey)) {
+      return {
+        thumbnailPath: outputKey,
+        generatedAt: new Date().toISOString(),
+      };
+    }
+
+    if (
+      !file.mimeType.startsWith('image/') &&
+      !file.mimeType.startsWith('video/') &&
+      file.mimeType !== 'application/pdf'
+    ) {
+      throw new HttpError({
+        status: 400,
+        code: CommonErrorCode.UNSUPPORTED_MEDIA_TYPE,
+        message: `Unsupported mime type: ${file.mimeType}`,
+      });
+    }
+
     const chunks = file.chunks.map((chunk) => ({
       blobKey: chunk.blob.blobKey,
       size: chunk.size,
@@ -55,19 +80,12 @@ export const generateThumbnail = async (job: Job<ThumbnailJobPayload>) => {
         break;
 
       case file.mimeType === 'application/pdf':
-        await generatePdfThumbnail(fileStream, outputKey, fileId, file.name);
+        await generatePdfThumbnail(fileStream, outputKey, tempSuffix);
         break;
 
       case file.mimeType.startsWith('video/'):
-        await generateVideoThumbnail(fileStream, outputKey, fileId, file.name);
+        await generateVideoThumbnail(fileStream, outputKey, tempSuffix);
         break;
-
-      default:
-        throw new HttpError({
-          status: 400,
-          code: CommonErrorCode.UNSUPPORTED_MEDIA_TYPE,
-          message: `Unsupported mime type: ${file.mimeType}`,
-        });
     }
 
     return {
@@ -75,7 +93,15 @@ export const generateThumbnail = async (job: Job<ThumbnailJobPayload>) => {
       generatedAt: new Date().toISOString(),
     };
   } catch (err) {
-    logger.error(err);
+    logger.error(
+      {
+        err,
+        fileId,
+        mimeType: file.mimeType,
+        outputKey,
+      },
+      'Thumbnail generation failed',
+    );
 
     throw err instanceof HttpError
       ? err
@@ -96,16 +122,15 @@ async function generateImageThumbnail(fileStream: Readable, outputKey: string) {
 async function generatePdfThumbnail(
   fileStream: Readable,
   outputKey: string,
-  fileId: string,
-  fileName: string,
+  tempSuffix: string,
 ) {
   const storage = getStorageProvider();
   const sourceTempFile = path.resolve(
-    path.join(env.ROOT_DIR_PATH, storage.keys.temp(fileName)),
+    path.join(env.ROOT_DIR_PATH, storage.keys.temp(`${tempSuffix}-source.pdf`)),
   );
 
   const outFilePrefix = path.resolve(
-    path.join(env.ROOT_DIR_PATH, storage.keys.temp(`${fileId}-pdf`)),
+    path.join(env.ROOT_DIR_PATH, storage.keys.temp(`${tempSuffix}-pdf`)),
   );
   const outFilePath = `${outFilePrefix}.png`;
 
@@ -146,15 +171,17 @@ async function generatePdfThumbnail(
 async function generateVideoThumbnail(
   fileStream: Readable,
   outputKey: string,
-  fileId: string,
-  fileName: string,
+  tempSuffix: string,
 ) {
   const storage = getStorageProvider();
   const sourceTempFile = path.resolve(
-    path.join(env.ROOT_DIR_PATH, storage.keys.temp(fileName)),
+    path.join(
+      env.ROOT_DIR_PATH,
+      storage.keys.temp(`${tempSuffix}-source.video`),
+    ),
   );
   const outActualFile = path.resolve(
-    path.join(env.ROOT_DIR_PATH, storage.keys.temp(`${fileId}-video.png`)),
+    path.join(env.ROOT_DIR_PATH, storage.keys.temp(`${tempSuffix}-video.png`)),
   );
 
   try {

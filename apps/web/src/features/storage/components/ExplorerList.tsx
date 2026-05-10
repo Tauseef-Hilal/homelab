@@ -29,7 +29,11 @@ const ExplorerList = memo(({ entries, path }: Props) => {
       )}
     >
       {entries.map((child) => (
-        <FileSystemEntry key={child.id} child={child} parentPath={path} />
+        <FileSystemEntry
+          key={child.id}
+          child={child}
+          parentPath={path}
+        />
       ))}
     </div>
   );

@@ -9,6 +9,7 @@ The system provides:
 - secure multi-user storage
 - asynchronous processing
 - real-time communication
+- granular resource sharing
 
 while remaining **fully self-hostable**.
 
@@ -33,6 +34,7 @@ Homelab is designed to resemble simplified infrastructure used in real-world bac
 - separate metadata storage from file storage
 - enforce clear boundaries between services
 - maintain reproducible containerized deployment
+- provide granular access control for shared resources
 
 ### Non-Functional Goals
 
@@ -153,6 +155,36 @@ Stored data includes:
 - temporary archives
 
 Future improvements may include support for **S3-compatible storage backends**.
+
+---
+
+# Permission & Sharing Engine
+
+Homelab uses a **bitmask-based permission system** to manage access to files and folders beyond simple ownership.
+
+### Permission Bitmasks
+
+Permissions are defined as power-of-two integers, allowing multiple permissions to be combined into a single value:
+
+- `READ` (1): View metadata and download content.
+- `WRITE` (2): Upload files and create subfolders.
+- `COPY` (4): Copy resources to other locations.
+- `DELETE` (8): Remove resources.
+- `SHARE` (16): Manage sharing settings for the resource.
+
+### Sharing Mechanisms
+
+1.  **User-to-User Sharing (`UserShare`)**: Grants specific bitmask permissions to another registered user. Access is resolved by checking direct shares or inherited permissions from parent folders.
+2.  **Link-Based Sharing (`LinkShare`)**: Generates a secure, tokenized URL that provides specific access levels to anyone with the link (optionally protected by expiration).
+
+### Access Resolution
+
+Access is resolved dynamically:
+
+- Owners always have full permissions.
+- For non-owners, the system checks for explicit `UserShare` records.
+- If no direct share exists, the system traverses up the folder hierarchy to find inherited permissions.
+- Bulk operations (like zipping or moving multiple items) perform atomic validation to ensure the requester has sufficient rights for every item in the set.
 
 ---
 

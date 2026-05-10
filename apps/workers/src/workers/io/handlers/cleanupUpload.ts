@@ -1,4 +1,3 @@
-import fs from 'fs/promises';
 import {
   UploadCleanupJobPayload,
   UploadCleanupJobResult,
@@ -16,11 +15,14 @@ export const cleanupUpload = async (
     const { uploadId } = job.data;
     const logger = getJobLogger('io-worker', job);
 
+    //  Fetch userId and hasThumbnail alongside id and size
     const file = await prisma.file.findUnique({
       where: { uploadSessionId: uploadId },
       select: {
         id: true,
         size: true,
+        userId: true,
+        hasThumbnail: true,
       },
     });
 
@@ -29,66 +31,70 @@ export const cleanupUpload = async (
       return { cleanedAt: new Date().toISOString() };
     }
 
-    const deletedBlobKeys: string[] = [];
+    const deletedStorageKeys: string[] = [];
 
     await prisma.$transaction(async (tx) => {
-      // Aggregate blob usage for this file
-      const blobUsage = await tx.fileChunk.groupBy({
-        by: ['blobId'],
-        where: { fileId: file.id },
-        _count: { blobId: true },
-      });
+      const updatedBlobs = await tx.$queryRaw<
+        { id: string; refCount: number; blobKey: string }[]
+      >`
+        UPDATE "Blob"
+        SET "refCount" = GREATEST("refCount" - counts.count, 0)
+        FROM (
+          SELECT "blobId", COUNT(*) as count
+          FROM "FileChunk"
+          WHERE "fileId" = ${file.id}
+          GROUP BY "blobId"
+        ) counts
+        WHERE "Blob"."id" = counts."blobId"
+        RETURNING "Blob"."id", "Blob"."refCount", "Blob"."blobKey"
+      `;
 
-      if (blobUsage.length === 0) {
-        await tx.file.delete({ where: { id: file.id } });
-        return;
-      }
-
-      // Decrement blob reference counts
-      await Promise.all(
-        blobUsage.map(({ blobId, _count }) =>
-          tx.blob.update({
-            where: { id: blobId },
-            data: {
-              refCount: { decrement: _count.blobId },
-            },
-          }),
-        ),
-      );
-
-      // Delete the file
-      // fileChunk rows should cascade via schema
+      // Delete the file (FileChunks should cascade)
       await tx.file.delete({
         where: { id: file.id },
       });
 
-      // Find blobs that are no longer referenced
-      const deletableBlobs = await tx.blob.findMany({
-        where: {
-          id: { in: blobUsage.map((b) => b.blobId) },
-          refCount: { lte: 0 },
-        },
-        select: {
-          id: true,
-          blobKey: true,
-        },
+      const orphanedBlobIds: string[] = [];
+
+      updatedBlobs.forEach((b) => {
+        if (b.refCount <= 0) {
+          orphanedBlobIds.push(b.id);
+          deletedStorageKeys.push(b.blobKey); // Add blob key to physical deletion list
+        }
       });
 
       // Delete orphaned blobs from DB
-      if (deletableBlobs.length > 0) {
+      if (orphanedBlobIds.length > 0) {
         await tx.blob.deleteMany({
-          where: {
-            id: { in: deletableBlobs.map((b) => b.id) },
-          },
+          where: { id: { in: orphanedBlobIds } },
         });
-
-        deletedBlobKeys.push(...deletableBlobs.map((b) => b.blobKey));
       }
     });
 
-    // Delete files from disk AFTER DB commit
+    //  Queue thumbnail for physical deletion if it exists
     const storage = getStorageProvider();
-    await storage.blobs.deleteMany(deletedBlobKeys);
+    if (file.hasThumbnail) {
+      deletedStorageKeys.push(storage.keys.thumbnail(file.userId, file.id));
+    }
+
+    //  Delete all physical files from disk AFTER DB commit
+    const blobKeys = deletedStorageKeys.filter((k) => k.startsWith('blobs'));
+    const thumbKeys = deletedStorageKeys.filter((k) =>
+      k.startsWith('thumbnails'),
+    );
+
+    try {
+      await Promise.all([
+        blobKeys.length > 0
+          ? storage.blobs.deleteMany([...new Set(blobKeys)])
+          : Promise.resolve(),
+        thumbKeys.length > 0
+          ? storage.artifacts.deleteMany([...new Set(thumbKeys)])
+          : Promise.resolve(),
+      ]);
+    } catch (err) {
+      logger.error(err, 'Failed to delete physical files after upload cleanup');
+    }
 
     return { cleanedAt: new Date().toISOString() };
   } catch (err: unknown) {
