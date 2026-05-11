@@ -20,7 +20,7 @@ import pLimit from 'p-limit';
 import { Job } from 'bullmq';
 import { getJobLogger } from '@workers/utils/logger';
 import { getStorageProvider } from '@homelab/infra';
-import { FilePermission } from '@homelab/storage/constants';
+import { FilePermission, OWNER_PERMISSIONS } from '@homelab/storage/constants';
 
 const FILE_BATCH_SIZE = 1000;
 const FOLDER_BATCH_SIZE = 1000;
@@ -54,11 +54,17 @@ type FolderMeta = {
   depth: number;
 };
 
+type CopyRoot = {
+  type: 'file' | 'folder';
+  id: string;
+};
+
 // Consolidated context type
 type CopyContext = {
   fileMeta: FileMeta[];
   fileIdMap: FileIdMap[];
   folderMeta: FolderMeta[];
+  copyRoots: CopyRoot[];
   pendingCopiedSize: number;
 };
 
@@ -66,7 +72,7 @@ export const copyItems = async (
   job: Job<CopyJobPayload>,
 ): Promise<CopyJobResult> => {
   const logger = getJobLogger('io-worker', job);
-  const { userId, shareToken, items, destFolderId } = job.data;
+  const { userId: reqUserId, shareToken, items, destFolderId } = job.data;
 
   let totalCopySize = 0;
   let actualCopiedSize = 0;
@@ -75,6 +81,7 @@ export const copyItems = async (
     fileMeta: [],
     fileIdMap: [],
     folderMeta: [],
+    copyRoots: [],
     pendingCopiedSize: 0,
   };
 
@@ -112,7 +119,7 @@ export const copyItems = async (
     const destAccess = await resolveAccess(
       { ...destFolder, type: 'folder' },
       {
-        userId,
+        userId: reqUserId,
         token: shareToken,
       },
     );
@@ -157,7 +164,7 @@ export const copyItems = async (
     // Ensure user has READ permission on all source items
     await assertBulkPermission(
       sourceItemsToCheck,
-      { userId, token: shareToken },
+      { userId: reqUserId, token: shareToken },
       FilePermission.COPY,
     );
 
@@ -185,20 +192,22 @@ export const copyItems = async (
     await reserve(destFolder.userId, totalCopySize);
 
     const flush = async () => {
-      if (!ctx.fileMeta.length && !ctx.folderMeta.length) return;
-
-      const batchSize = ctx.fileMeta.reduce((s, f) => s + f.size, 0);
+      if (
+        !ctx.fileMeta.length &&
+        !ctx.folderMeta.length &&
+        !ctx.copyRoots.length
+      )
+        return;
 
       try {
         await executeCopyTransaction(
-          ctx.fileMeta,
-          ctx.fileIdMap,
-          ctx.folderMeta,
+          ctx,
+          reqUserId,
+          destFolder?.userId !== reqUserId,
         );
 
         actualCopiedSize += ctx.pendingCopiedSize;
       } catch (err) {
-        ctx.pendingCopiedSize -= batchSize;
         throw err;
       }
 
@@ -215,6 +224,7 @@ export const copyItems = async (
         ctx.fileMeta.length = 0;
         ctx.fileIdMap.length = 0;
         ctx.folderMeta.length = 0;
+        ctx.copyRoots.length = 0;
         ctx.pendingCopiedSize = 0;
       }
     };
@@ -281,6 +291,7 @@ async function prepareCopyPlan(
         ctx,
         true,
         destFolder.childrenNames,
+        true,
       );
 
       if (ctx.fileMeta.length >= FILE_BATCH_SIZE) {
@@ -340,9 +351,12 @@ async function copyFolderSubtree(
     if (hasMore) folders.pop();
 
     for (const folder of folders) {
+      const newId = randomUUID();
       let newName = folder.name;
 
       if (folder.id === root.id) {
+        ctx.copyRoots.push({ id: newId, type: 'folder' });
+
         const { resolvedName } = await resolveFolderName({
           name: folder.name,
           existingNames: destFolder.childrenNames,
@@ -353,7 +367,6 @@ async function copyFolderSubtree(
         destFolder.childrenNames.add(resolvedName);
       }
 
-      const newId = randomUUID();
       const parentNewId =
         folder.id === root.id
           ? destFolder.id
@@ -467,10 +480,15 @@ async function buildFileCopyPlan(
   ctx: CopyContext,
   resolveNameConflicts: boolean = false,
   existingNames?: Set<string>,
+  isTopLevelFile = false,
 ) {
   const newFileId = randomUUID();
   let newFilePath = pathJoin(destFolderPath, file.name);
   let newFileName = file.name;
+
+  if (isTopLevelFile) {
+    ctx.copyRoots.push({ id: newFileId, type: 'file' });
+  }
 
   if (resolveNameConflicts) {
     const { resolvedName, resolvedPath } = await resolveFileName({
@@ -506,17 +524,17 @@ async function buildFileCopyPlan(
 }
 
 async function executeCopyTransaction(
-  fileMeta: FileMeta[],
-  fileIdMap: FileIdMap[],
-  folderMeta: FolderMeta[],
+  ctx: CopyContext,
+  reqUserId: string,
+  shouldCreateShares = false,
 ) {
   await prisma.$transaction(async (tx) => {
-    if (folderMeta.length) {
-      await tx.folder.createMany({ data: folderMeta });
+    if (ctx.folderMeta.length) {
+      await tx.folder.createMany({ data: ctx.folderMeta });
     }
 
-    if (fileMeta.length) {
-      await tx.file.createMany({ data: fileMeta });
+    if (ctx.fileMeta.length) {
+      await tx.file.createMany({ data: ctx.fileMeta });
 
       await tx.$executeRaw`
         INSERT INTO "FileChunk" ("id", "fileId","blobId","chunkIndex","size")
@@ -529,7 +547,7 @@ async function executeCopyTransaction(
         FROM "FileChunk" fc
         JOIN (
           VALUES ${Prisma.join(
-            fileIdMap.map((m) => Prisma.sql`(${m.oldId}, ${m.newId})`),
+            ctx.fileIdMap.map((m) => Prisma.sql`(${m.oldId}, ${m.newId})`),
           )}
         ) AS map("oldFileId","newFileId")
         ON fc."fileId" = map."oldFileId"
@@ -542,12 +560,25 @@ async function executeCopyTransaction(
           SELECT "blobId", COUNT(*) as count
           FROM "FileChunk"
           WHERE "fileId" IN (${Prisma.join(
-            fileMeta.map((m) => Prisma.sql`${m.id}`),
+            ctx.fileMeta.map((m) => Prisma.sql`${m.id}`),
           )})
           GROUP BY "blobId"
         ) counts
         WHERE "Blob"."id" = counts."blobId"
       `;
+    }
+
+    if (shouldCreateShares && ctx.copyRoots.length > 0) {
+      await tx.userShare.createMany({
+        data: ctx.copyRoots.map((item) => ({
+          userId: reqUserId,
+          permissions: OWNER_PERMISSIONS,
+          ...(item.type === 'file'
+            ? { fileId: item.id }
+            : { folderId: item.id }),
+        })),
+        skipDuplicates: true,
+      });
     }
   });
 }
