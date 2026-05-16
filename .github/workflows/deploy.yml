@@ -1,0 +1,41 @@
+name: Deploy Homelab
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to Oracle VM
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            set -e
+
+            cd /opt/homelab/app
+
+            echo "Pulling latest code..."
+            git pull origin main
+
+            echo "Stopping containers..."
+            docker compose -f docker/docker-compose.prod.yml down
+
+            echo "Cleaning Docker..."
+            docker system prune -af
+            docker builder prune -af
+
+            echo "Rebuilding + redeploying..."
+            docker compose -f docker/docker-compose.prod.yml up -d --build
+
+            echo "Deployment complete"
