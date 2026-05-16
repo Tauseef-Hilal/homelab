@@ -34,6 +34,7 @@
   },
   "dependencies": {
     "@homelab/contracts": "workspace:*",
+    "@homelab/storage": "workspace:*",
     "dotenv": "^17.2.0",
     "ioredis": "^5.7.0",
     "pino": "^9.7.0",
