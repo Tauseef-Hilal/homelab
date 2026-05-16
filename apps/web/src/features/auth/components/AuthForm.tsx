@@ -2,6 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { mapServerFieldErrors } from "../utils/fieldErrors";
 import { requestSchemas } from "@homelab/contracts/schemas/auth";
 import FormField from "@client/components/FormField";
@@ -10,7 +11,8 @@ import { Button } from "@client/components/ui/button";
 import { useLogin } from "../hooks/useLogin";
 import { useSignup } from "../hooks/useSignup";
 import { useRequestChangePassword } from "../hooks/useRequestChangePassword";
-import { Loader } from "lucide-react";
+import { Loader, SparklesIcon, ArrowRightIcon } from "lucide-react";
+import { AuthLayout } from "./AuthLayout";
 
 type FormType = "login" | "signup" | "verification";
 
@@ -27,7 +29,7 @@ export function AuthForm({ formType: defaultFormType }: AuthFormProps) {
     | requestSchemas.SignupInput
     | requestSchemas.RequestChangePasswordInput;
 
-  const schemas: Record<FormType, any> = {
+  const schemas: Record<FormType, z.ZodType<any, any, any>> = {
     login: requestSchemas.loginSchema,
     signup: requestSchemas.signupSchema,
     verification: requestSchemas.requestChangePasswordSchema,
@@ -47,7 +49,7 @@ export function AuthForm({ formType: defaultFormType }: AuthFormProps) {
     onGlobalError: setErrorMsg,
   });
 
-  const mutations = {
+  const mutations: Record<FormType, { mutate: (data: any) => void; isPending: boolean }> = {
     login: loginMutation,
     signup: signupMutation,
     verification: verificationMutation,
@@ -66,105 +68,126 @@ export function AuthForm({ formType: defaultFormType }: AuthFormProps) {
 
   const onSubmit = (data: FormValues) => {
     setErrorMsg(null);
-    mutation.mutate(data as any);
+    mutation.mutate(data);
   };
 
-  const fieldClassName = "bg-muted/50 h-12 w-full shadow-none border-muted-foreground/10 rounded-xl focus-within:border-primary/30 transition-all";
+  const fieldClassName = "bg-background/40 backdrop-blur-md h-12 w-full border-white/5 dark:border-white/5 rounded-2xl focus-within:border-primary/30 focus-within:bg-background/60 transition-all duration-300";
+
+  const errorData = errors as Record<string, any>;
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-4">
+    <AuthLayout>
       <form
         onSubmit={handleSubmit(onSubmit)}
         noValidate
-        className="glass-card flex flex-col gap-10 w-full max-w-md mx-auto px-10 py-12 rounded-[2.5rem]"
+        className="opacity-0 animate-fade-in-up [animation-delay:0.1s] glass-card flex flex-col gap-8 w-full p-8 sm:p-10 rounded-[2.5rem] border border-white/5 dark:border-white/10"
       >
-        <div className="space-y-3 text-center">
-          <h1 className="text-4xl font-black tracking-tight">
-            {formType == "login" && "Welcome Back"}
-            {formType == "signup" && "Join Homelab"}
-            {formType == "verification" && "Reset Password"}
-          </h1>
+        <div className="flex flex-col gap-6 text-left">
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 w-fit">
+            <SparklesIcon className="w-3.5 h-3.5 text-primary" />
+            <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
+              {formType === "login" ? "Welcome Back" : formType === "signup" ? "Get Started" : "Security"}
+            </span>
+          </div>
 
-          <p className="text-sm text-muted-foreground font-semibold tracking-tight opacity-70">
-            {formType == "login" && "Access your digital sanctuary"}
-            {formType == "signup" && "Create your digital home today"}
-            {formType == "verification" && "Check your inbox for a code"}
-          </p>
+          <div className="space-y-1.5">
+            <h1 className="text-3xl sm:text-4xl font-heading font-bold text-foreground tracking-tight leading-none">
+              {formType === "login" && "Login to Homelab"}
+              {formType === "signup" && "Create your account"}
+              {formType === "verification" && "Reset your password"}
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground font-medium opacity-80 leading-snug">
+              {formType === "login" && "Enter your credentials to access your workspace."}
+              {formType === "signup" && "Join the secure ecosystem for files and chat."}
+              {formType === "verification" && "We'll send you a secure link to recover access."}
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-col gap-4">
-          {formType == "signup" && (
-            <FormField
-              className={fieldClassName}
-              placeholder="Username"
-              type="text"
-              registration={register("username")}
-              error={"username" in errors ? errors.username?.message : undefined}
-            />
+          {formType === "signup" && (
+            <div className="space-y-1.5">
+              <FormField
+                className={fieldClassName}
+                placeholder="Username"
+                type="text"
+                registration={register("username" as never)}
+                error={errorData.username?.message}
+              />
+            </div>
           )}
 
-          <FormField
-            className={fieldClassName}
-            placeholder="Email Address"
-            type="email"
-            registration={register("email")}
-            error={errors.email?.message}
-          />
-
-          {formType != "verification" && (
+          <div className="space-y-1.5">
             <FormField
               className={fieldClassName}
-              placeholder="Password"
-              type="password"
-              registration={register("password")}
-              error={"password" in errors ? errors.password?.message : undefined}
+              placeholder="Email Address"
+              type="email"
+              registration={register("email" as never)}
+              error={errorData.email?.message}
             />
+          </div>
+
+          {formType !== "verification" && (
+            <div className="space-y-1.5">
+              <FormField
+                className={fieldClassName}
+                placeholder="Password"
+                type="password"
+                registration={register("password" as never)}
+                error={errorData.password?.message}
+              />
+            </div>
           )}
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
           <Button
             type="submit"
             disabled={mutation.isPending}
-            className="h-12 w-full rounded-xl font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all"
+            className="h-13 w-full rounded-2xl font-bold text-base shadow-xl shadow-primary/10 hover:shadow-primary/20 hover:scale-[1.01] active:scale-[0.98] transition-all duration-300"
           >
-            {formType == "login" && "Continue"}
-            {formType == "signup" && "Create Account"}
-            {formType == "verification" && "Send Reset Link"}
+            {formType === "login" && "Sign In"}
+            {formType === "signup" && "Create Account"}
+            {formType === "verification" && "Send Link"}
 
-            {(mutation.isPending || isSubmitting) && (
+            {mutation.isPending || isSubmitting ? (
               <Loader className="animate-spin ml-2 w-4 h-4" />
+            ) : (
+              <ArrowRightIcon className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
             )}
           </Button>
 
-          <div className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
-            {formType != "verification" && (
-              <p>
-                {formType === "login" ? "New here?" : "Already a member?"}{" "}
+          <div className="flex flex-col items-center gap-3 text-sm">
+            {formType !== "verification" && (
+              <p className="text-muted-foreground font-medium">
+                {formType === "login" ? "New to Homelab?" : "Already have an account?"}{" "}
                 <button
                   type="button"
-                  className="text-primary font-semibold hover:underline underline-offset-4"
-                  onClick={() => setFormType(formType === "login" ? "signup" : "login")}
+                  className="text-primary font-bold hover:underline underline-offset-4"
+                  onClick={() => {
+                    setFormType(formType === "login" ? "signup" : "login");
+                    setErrorMsg(null);
+                  }}
                 >
-                  {formType === "login" ? "Register" : "Sign in"}
+                  {formType === "login" ? "Sign up" : "Sign in"}
                 </button>
               </p>
             )}
 
-            {formType == "login" && (
+            {formType === "login" && (
               <button
                 type="button"
-                className="text-xs hover:text-foreground transition-colors"
+                className="text-xs font-medium text-muted-foreground/60 hover:text-primary transition-colors"
                 onClick={() => setFormType("verification")}
               >
-                Forgot password?
+                Forgot your password?
               </button>
             )}
 
-            {formType == "verification" && (
+            {formType === "verification" && (
               <button
                 type="button"
-                className="text-primary font-semibold hover:underline underline-offset-4"
+                className="text-primary font-bold hover:underline underline-offset-4"
                 onClick={() => setFormType("login")}
               >
                 Back to login
@@ -174,11 +197,11 @@ export function AuthForm({ formType: defaultFormType }: AuthFormProps) {
         </div>
 
         {errorMsg && (
-          <div className="bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
-            <p className="text-xs text-destructive text-center font-medium">{errorMsg}</p>
+          <div className="bg-destructive/10 border border-destructive/20 p-4 rounded-2xl animate-in fade-in zoom-in-95 duration-300">
+            <p className="text-xs sm:text-sm text-destructive text-center font-bold tracking-tight">{errorMsg}</p>
           </div>
         )}
       </form>
-    </div>
+    </AuthLayout>
   );
 }

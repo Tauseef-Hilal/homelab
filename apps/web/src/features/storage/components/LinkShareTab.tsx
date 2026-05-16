@@ -204,7 +204,7 @@ const ExpiryInput = ({ control, error }: { control: any; error?: string }) => (
         )}
       />
     </div>
-    {error && <p className="text-[10px] text-destructive">{error}</p>}
+    {error && <p className="text-xs text-destructive">{error}</p>}
   </div>
 );
 

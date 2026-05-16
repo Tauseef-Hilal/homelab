@@ -10,8 +10,6 @@ export default async function VerificationPage({
     return <h1>Invalid token</h1>;
   }
   return (
-    <main className="h-full flex items-center justify-center">
-      <VerificationForm token={tfaToken} />
-    </main>
+    <VerificationForm token={tfaToken} />
   );
 }

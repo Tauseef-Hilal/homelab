@@ -253,7 +253,10 @@ export async function allowPasswordChange(email: string) {
 }
 
 export async function refreshTokens(refreshToken: string, meta: TokenMeta) {
-  let result: { tokens: { access: string; refresh: string } } | null = null;
+  let result: {
+    tokens: { access: string; refresh: string };
+    user: { id: string; username: string; email: string; role: any };
+  } | null = null;
 
   await prisma.$transaction(async (tx) => {
     const hashedToken = hashTokenSync(refreshToken);
@@ -282,7 +285,15 @@ export async function refreshTokens(refreshToken: string, meta: TokenMeta) {
 
     await storeRefreshToken(tx, newRefreshToken, storedToken.userId, meta);
 
-    result = { tokens: { access: newAccessToken, refresh: newRefreshToken } };
+    result = {
+      tokens: { access: newAccessToken, refresh: newRefreshToken },
+      user: {
+        id: storedToken.user.id,
+        username: storedToken.user.username,
+        email: storedToken.user.email,
+        role: storedToken.user.role,
+      },
+    };
   });
 
   if (!result) {
@@ -293,5 +304,8 @@ export async function refreshTokens(refreshToken: string, meta: TokenMeta) {
     });
   }
 
-  return result as { tokens: { access: string; refresh: string } };
+  return result as {
+    tokens: { access: string; refresh: string };
+    user: { id: string; username: string; email: string; role: any };
+  };
 }

@@ -1,7 +1,14 @@
-// Vercel-inspired Font System
-export const vercelFont = {
-  className: 'font-vercel',
-} as const;
+import { League_Spartan, Lato } from "next/font/google";
 
-// Alias for layout compatibility
-export const inter = vercelFont;
+export const leagueSpartan = League_Spartan({
+  subsets: ["latin"],
+  variable: "--font-league-spartan",
+  display: "swap",
+});
+
+export const lato = Lato({
+  weight: ["100", "300", "400", "700", "900"],
+  subsets: ["latin"],
+  variable: "--font-lato",
+  display: "swap",
+});

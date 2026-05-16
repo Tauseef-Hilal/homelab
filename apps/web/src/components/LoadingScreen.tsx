@@ -44,7 +44,7 @@ export function LoadingScreen() {
         {/* Content Section */}
         <div className="flex flex-col items-center gap-8 w-72">
           <div className="flex flex-col items-center gap-2">
-            <h1 className="text-4xl font-black tracking-[-0.04em] text-foreground">
+            <h1 className="text-4xl font-bold tracking-[-0.04em] text-foreground">
               HOMELAB
             </h1>
             <div className="h-0.5 w-8 bg-primary/40 rounded-full" />
@@ -58,10 +58,10 @@ export function LoadingScreen() {
               />
             </div>
             <div className="flex justify-between items-center px-0.5">
-              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] animate-pulse opacity-60">
+              <span className="text-xs text-muted-foreground font-bold uppercase tracking-[0.2em] animate-pulse opacity-60">
                 Initializing Secure Session
               </span>
-              <span className="text-[10px] text-muted-foreground font-mono font-bold opacity-80">
+              <span className="text-xs text-muted-foreground font-mono font-bold opacity-80">
                 {Math.round(progress)}%
               </span>
             </div>
@@ -72,7 +72,7 @@ export function LoadingScreen() {
       {/* Subtle Bottom Credit */}
       <div className="absolute bottom-12 flex flex-col items-center gap-2 opacity-40">
         <div className="w-1 h-1 bg-primary rounded-full animate-ping" />
-        <span className="text-[10px] uppercase tracking-[0.4em] font-light">
+        <span className="text-xs uppercase tracking-[0.4em] font-light">
           Secure Connection Active
         </span>
       </div>

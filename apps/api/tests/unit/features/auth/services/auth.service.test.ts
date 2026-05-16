@@ -326,10 +326,11 @@ describe('refreshTokens()', () => {
   const mockHashedToken = 'hashed-token';
   const mockTokenRecord = {
     id: 'token-id',
-    userId: 'user-123',
+    userId: mockUser.id,
     expiresAt: new Date(Date.now() + 10000),
     revokedAt: null,
-  } as RefreshToken;
+    user: mockUser,
+  } as any;
 
   beforeEach(() => {
     vi.resetAllMocks();

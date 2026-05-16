@@ -34,16 +34,16 @@ const StorageStats: React.FC = () => {
         data.storageQuota,
       )}`}
     >
-      <div className="flex flex-col gap-0">
+      <div className="flex flex-col gap-0 justify-center">
         <div className="flex items-center gap-1.5">
-          <span className="text-[8px] sm:text-[10px] font-black text-foreground/80 uppercase tracking-widest hidden sm:inline">
+          <span className="text-[10px] sm:text-xs font-bold text-foreground/80 uppercase tracking-widest hidden sm:inline">
             Storage
           </span>
-          <span className="text-[9px] sm:text-[10px] font-bold text-muted-foreground">
+          <span className="text-xs sm:text-sm font-bold text-muted-foreground">
             {Math.round(percent)}%
           </span>
         </div>
-        <span className="text-[10px] sm:text-xs font-bold text-muted-foreground/70 tracking-tight hidden sm:inline">
+        <span className="text-xs sm:text-sm font-bold text-muted-foreground/70 tracking-tight hidden sm:inline">
           {formatSize(data.storageUsed)}
         </span>
       </div>

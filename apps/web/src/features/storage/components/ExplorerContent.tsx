@@ -20,7 +20,6 @@ import {
 
 import NewFolderDialog from "./NewFolderDialog";
 import UploadDialog from "./UploadDialog";
-import { useLongPress } from "@client/hooks/useLongPress";
 import ExplorerList from "./ExplorerList";
 import { useCopyItems } from "../hooks/useCopyItems";
 import { invalidateQueries, pollJobData } from "@client/lib/utils";
@@ -90,18 +89,6 @@ const ExplorerContent: React.FC = () => {
   const canWrite = folder?.permissions?.write ?? true;
   const emptyFolder = entries.length === 0;
 
-  const { onTouchStart, onTouchEnd, onTouchMove } =
-    useLongPress<HTMLDivElement>((x, y) => {
-      const el = document.elementFromPoint(x, y);
-      el?.dispatchEvent(
-        new MouseEvent("contextmenu", {
-          bubbles: true,
-          clientX: x,
-          clientY: y,
-        }),
-      );
-    });
-
   const pasteHandler = useCallback(() => {
     if (!folder || clipboard.items.length === 0) return;
 
@@ -121,28 +108,30 @@ const ExplorerContent: React.FC = () => {
     });
   }, [clipboard, folder, copyMutation, moveMutation]);
 
-  /* ---------------- Loading ---------------- */
-
-  if (isPending || !folder) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center gap-4 text-muted-foreground">
-        <Loader2Icon className="animate-spin" size={36} />
-        <p className="text-sm">Loading files...</p>
-      </div>
-    );
-  }
-
   /* ---------------- Error ---------------- */
 
   if (error) {
     return (
       <div className="h-full flex flex-col justify-center items-center gap-4 text-center">
         <AlertTriangleIcon size={28} className="text-destructive" />
-        <p className="text-sm text-muted-foreground">{error.message}</p>
+        <p className="text-base sm:text-lg font-medium text-muted-foreground">
+          {error.response?.status === 404 ? "Folder not found" : error.message}
+        </p>
 
-        <Button onClick={() => refetch()} variant="outline">
+        <Button onClick={() => refetch()} variant="outline" className="rounded-xl">
           Retry
         </Button>
+      </div>
+    );
+  }
+
+  /* ---------------- Loading ---------------- */
+
+  if (isPending || !folder) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-4 text-muted-foreground">
+        <Loader2Icon className="animate-spin" size={36} />
+        <p className="text-base font-medium">Loading files...</p>
       </div>
     );
   }
@@ -153,8 +142,7 @@ const ExplorerContent: React.FC = () => {
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
-            className="h-full overflow-y-auto px-4 py-3"
-            {...{ onTouchStart, onTouchEnd, onTouchMove }} // Cleaned up props
+            className="h-full overflow-y-auto px-4 pt-3 pb-8"
           >
             {!emptyFolder ? (
               <ExplorerList entries={entries} path={path} />

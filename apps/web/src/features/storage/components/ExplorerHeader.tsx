@@ -106,7 +106,7 @@ const ExplorerHeader: React.FC = () => {
             onKeyDown={(e) => {
               if (e.key === "Enter") navigate(inputPath, { replace: false });
             }}
-            className="border-none shadow-none p-0 h-auto bg-transparent text-sm font-medium focus-visible:ring-0 disabled:opacity-50 placeholder:text-muted-foreground/50"
+            className="border-none shadow-none p-0 h-auto bg-transparent text-base font-medium focus-visible:ring-0 disabled:opacity-50 placeholder:text-muted-foreground/50"
           />
         </div>
 
@@ -148,7 +148,7 @@ const ExplorerHeader: React.FC = () => {
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
               className={cx(
-                "relative flex items-center gap-2 px-4 py-4 text-xs md:text-sm font-bold transition-all whitespace-nowrap uppercase tracking-widest",
+                "relative flex items-center gap-2 px-4 py-4 text-sm md:text-base font-bold transition-all whitespace-nowrap uppercase tracking-widest",
                 isActive
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground",

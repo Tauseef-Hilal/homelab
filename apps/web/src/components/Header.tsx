@@ -25,33 +25,37 @@ const Header: React.FC<HeaderProps> = ({
         className,
       )}
     >
-      <nav className="flex items-center justify-between px-4 sm:px-8 py-4">
+      <nav className="flex items-center justify-between px-4 sm:px-8 h-16 sm:h-20">
         {/* Left */}
-        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0 h-full">
           {showBackBtn && (
-            <div className="hover:scale-110 active:scale-95 transition-transform shrink-0">
+            <div className="hover:scale-110 active:scale-95 transition-transform shrink-0 flex items-center">
               <BackButton />
             </div>
           )}
 
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0 group">
-            <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 group h-full">
+            <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300 shrink-0 flex items-center justify-center">
               {icon}
             </div>
 
-            <h1 className="font-black text-sm sm:text-lg md:text-xl tracking-tight truncate text-foreground/90">
+            <h1 className="font-bold text-lg sm:text-xl md:text-2xl tracking-tight truncate text-foreground/90 leading-none">
               {title}
             </h1>
           </div>
         </div>
 
         {/* Right */}
-        <div className="flex items-center gap-1.5 sm:gap-6 shrink-0 ml-2">
-          <StorageStats />
-          <div className="flex items-center gap-0.5 sm:gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-6 shrink-0 ml-2 h-full">
+          <div className="flex items-center">
+            <StorageStats />
+          </div>
+          <div className="flex items-center gap-1 sm:gap-3 h-full">
             <ThemeSwitch />
-            <div className="w-px h-6 bg-border/60 mx-0.5 sm:mx-2" />
-            <LogoutDialog />
+            <div className="w-px h-6 bg-border/60 mx-1 sm:mx-2 self-center" />
+            <div className="flex items-center">
+              <LogoutDialog />
+            </div>
           </div>
         </div>
       </nav>

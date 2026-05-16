@@ -1,7 +1,7 @@
 import "@client/styles/global.css";
 import type { Metadata } from "next";
 import { ReactQueryProvider } from "@client/providers/reactQuery.provider";
-import { inter } from "@client/styles/fonts";
+import { leagueSpartan, lato } from "@client/styles/fonts";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@client/components/AuthProvider";
 import Me from "@client/components/Me";
@@ -33,7 +33,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`bg-background text-foreground antialiased selection:bg-primary/10 selection:text-primary noselect ${inter.className}`}
+        className={`bg-background text-foreground antialiased selection:bg-primary/10 selection:text-primary noselect font-sans ${leagueSpartan.variable} ${lato.variable}`}
       >
         <ReactQueryProvider>
           <AuthProvider>

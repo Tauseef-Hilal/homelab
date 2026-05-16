@@ -10,13 +10,11 @@ export default async function DrivePage({
   const shareToken = (await searchParams).shareToken;
 
   return (
-    <>
-      <div className="flex flex-col h-screen overflow-clip">
-        <Header icon={<HardDrive />} title="Drive" showBackBtn />
-        <main className="h-full">
-          <Explorer shareToken={shareToken} />
-        </main>
-      </div>
-    </>
+    <div className="fixed inset-0 flex flex-col overflow-hidden">
+      <Header icon={<HardDrive />} title="Drive" showBackBtn />
+      <main className="flex-1 overflow-hidden">
+        <Explorer shareToken={shareToken} />
+      </main>
+    </div>
   );
 }

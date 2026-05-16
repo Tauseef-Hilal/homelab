@@ -47,6 +47,12 @@ export const requestChangePasswordSchema = z.object({
 });
 
 export const refreshSchema = z.object({
+  user: z.object({
+    id: z.uuidv4(),
+    username: z.string(),
+    email: z.email(),
+    role: z.enum(['USER', 'ADMIN']),
+  }),
   tokens: z.object({ access: z.string().min(1) }),
 });
 

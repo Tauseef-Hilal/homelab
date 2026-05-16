@@ -23,7 +23,7 @@ const MessageView: React.FC<MessageViewProps> = ({ messages }) => {
       <div className="flex flex-col leading-snug min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1.5">
           <span className="font-bold text-sm tracking-tight text-foreground/90">{author.username}</span>
-          <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">{time}</span>
+          <span className="text-xs font-bold text-muted-foreground/40 uppercase tracking-widest">{time}</span>
         </div>
 
         <div className="flex flex-col gap-1">

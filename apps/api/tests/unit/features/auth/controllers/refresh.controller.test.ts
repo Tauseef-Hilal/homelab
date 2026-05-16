@@ -11,6 +11,12 @@ vi.mock('@server/features/auth/services/auth.service');
 
 describe('refreshController', () => {
   const mockTokens = { access: 'access-token', refresh: 'refresh-token' };
+  const mockUser = {
+    id: 'user-123',
+    username: 'testuser',
+    email: 'user@example.com',
+    role: 'USER',
+  };
   const mockOldToken = 'old-token';
 
   let req: any;
@@ -43,6 +49,7 @@ describe('refreshController', () => {
 
     vi.spyOn(AuthService, 'refreshTokens').mockResolvedValue({
       tokens: mockTokens,
+      user: mockUser as any,
     });
   });
 
@@ -65,7 +72,7 @@ describe('refreshController', () => {
       },
     );
     expect(res.json).toHaveBeenCalledWith(
-      success({ tokens: { access: mockTokens.access } }),
+      success({ tokens: { access: mockTokens.access }, user: mockUser }),
     );
   });
 

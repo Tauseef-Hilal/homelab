@@ -6,6 +6,7 @@ import useAuthStore from '@client/stores/auth.store';
 export function useAuthInit() {
   const queryClient = useQueryClient();
   const setAccessToken = useAuthStore((s) => s.setAccessToken);
+  const setUser = useAuthStore((s) => s.setUser);
   const setAuthInitialized = useAuthStore((s) => s.setAuthInitialized);
   const router = useRouter();
 
@@ -15,6 +16,7 @@ export function useAuthInit() {
     retry: 1,
     onSuccess: (data) => {
       setAccessToken(data.tokens.access);
+      setUser(data.user);
       setAuthInitialized(true);
     },
     onError: () => {

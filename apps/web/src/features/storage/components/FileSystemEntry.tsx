@@ -24,7 +24,6 @@ import {
   isFolder,
   pollJobData,
 } from "@client/lib/utils";
-import { useLongPress } from "@client/hooks/useLongPress";
 import { env } from "@client/config/env";
 
 import useDriveStore from "../stores/drive.store";
@@ -71,30 +70,6 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
     const entryItem = {
       id: child.id,
       type: folder ? "folder" : ("file" as "folder" | "file"),
-    };
-
-    const lp = useLongPress<HTMLDivElement>((x, y) => {
-      const el = document.elementFromPoint(x, y);
-      el?.dispatchEvent(
-        new MouseEvent("contextmenu", {
-          bubbles: true,
-          clientX: x,
-          clientY: y,
-        }),
-      );
-    });
-
-    const onTouchStart: React.TouchEventHandler<HTMLDivElement> = (e) => {
-      e.stopPropagation();
-      lp.onTouchStart(e);
-    };
-    const onTouchEnd: React.TouchEventHandler<HTMLDivElement> = (e) => {
-      e.stopPropagation();
-      lp.onTouchEnd(e);
-    };
-    const onTouchMove: React.TouchEventHandler<HTMLDivElement> = (e) => {
-      e.stopPropagation();
-      lp.onTouchMove(e);
     };
 
     /* ---------- Click logic ---------- */
@@ -216,9 +191,6 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
 
     const gridView = (
       <div
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-        onTouchMove={onTouchMove}
         onClick={clickHandler}
         onDoubleClick={doubleClickHandler}
         onContextMenu={(e) => e.stopPropagation()}
@@ -270,7 +242,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
         </div>
 
         <p className={cx(
-          "text-xs md:text-sm font-semibold text-center leading-tight line-clamp-2 break-words transition-colors px-1",
+          "text-sm md:text-base font-semibold text-center leading-tight line-clamp-2 break-words transition-colors px-1",
           selected ? "text-primary" : "text-foreground/80 group-hover:text-foreground"
         )}>
           {child.name}
@@ -284,9 +256,6 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
 
     const listView = (
       <div
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-        onTouchMove={onTouchMove}
         onClick={clickHandler}
         onDoubleClick={doubleClickHandler}
         onContextMenu={(e) => e.stopPropagation()}
@@ -320,17 +289,17 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
 
         <div className="flex flex-col min-w-0">
           <p className={cx(
-            "truncate text-sm font-bold tracking-tight",
+            "truncate text-base font-bold tracking-tight",
             selected ? "text-primary" : "text-foreground"
           )}>{child.name}</p>
-          <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium sm:hidden">
+          <span className="text-xs text-muted-foreground uppercase tracking-widest font-medium sm:hidden">
             {folder ? 'Folder' : size}
           </span>
         </div>
 
-        <span className="hidden sm:block text-sm font-medium text-muted-foreground text-right">{size}</span>
+        <span className="hidden sm:block text-base font-medium text-muted-foreground text-right">{size}</span>
 
-        <span className="hidden sm:block text-sm font-medium text-muted-foreground text-right">
+        <span className="hidden sm:block text-base font-medium text-muted-foreground text-right">
           {modified}
         </span>
 

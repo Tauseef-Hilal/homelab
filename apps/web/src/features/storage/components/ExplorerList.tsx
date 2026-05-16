@@ -17,7 +17,7 @@ const ExplorerList = memo(({ entries, path }: Props) => {
   return (
     <div className="flex flex-col gap-2">
       {viewMode === "list" && (
-        <div className="hidden sm:grid grid-cols-[48px_1fr_100px_140px] px-4 py-2 gap-4 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40 border-b border-border/5">
+        <div className="hidden sm:grid grid-cols-[48px_1fr_100px_140px] px-4 py-2 gap-4 text-xs sm:text-sm font-bold uppercase tracking-[0.3em] text-muted-foreground/40 border-b border-border/5">
           <div />
           <div>Name</div>
           <div className="text-right">Size</div>

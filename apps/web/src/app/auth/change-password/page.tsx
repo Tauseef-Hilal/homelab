@@ -8,8 +8,6 @@ export default async function ChangePasswordPage({
   const token = (await searchParams).token;
   console.log(await searchParams)
   return (
-    <main className="h-full flex items-center justify-center">
-      <ChangePasswordForm token={token} />
-    </main>
+    <ChangePasswordForm token={token} />
   );
 }

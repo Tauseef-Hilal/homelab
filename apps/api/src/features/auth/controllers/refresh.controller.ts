@@ -13,7 +13,7 @@ export const refreshController = catchAsync(
       throw throwUnauthorized('Missing refresh token');
     }
 
-    const { tokens } = await AuthService.refreshTokens(
+    const { tokens, user } = await AuthService.refreshTokens(
       refreshToken,
       req.clientMeta ?? {}
     );
@@ -26,6 +26,6 @@ export const refreshController = catchAsync(
         sameSite: env.NODE_ENV == 'production' ? 'none' : 'lax',
         maxAge: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
       })
-      .json(success({ tokens: { access: tokens.access } }));
+      .json(success({ tokens: { access: tokens.access }, user }));
   }
 );
