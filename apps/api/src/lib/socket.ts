@@ -7,6 +7,7 @@ let io: SocketIOServer;
 
 export const initSocket = (server: HTTPServer) => {
   io = new SocketIOServer(server, {
+    path: '/api/ws',
     cors: {
       origin: env.CLIENT_URL,
     },

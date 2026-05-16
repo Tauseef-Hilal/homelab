@@ -22,6 +22,7 @@ export function useMessaging() {
     }
 
     const socket = io(url, {
+      path: "/api/ws",
       transports: ['websocket'],
       auth: {
         token: accessToken,
