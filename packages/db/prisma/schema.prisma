@@ -23,7 +23,7 @@ model User {
   email        String   @unique
   username     String
   password     String
-  storageQuota Int      @default(524288000)
+  storageQuota Int
   storageUsed  Int      @default(0)
   createdAt    DateTime @default(now())
 

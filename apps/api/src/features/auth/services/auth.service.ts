@@ -26,6 +26,7 @@ import { redis, RedisKeys } from '@homelab/infra/redis';
 import { authConfig } from '../auth.config';
 import { TfaPurpose } from '../constants/TfaPurpose';
 import * as OtpService from '../services/otp.service';
+import { USER_STORAGE_QUOTA } from '@homelab/contracts';
 
 export async function getUserById(id: string) {
   return await prisma.user.findUnique({ where: { id } });
@@ -48,7 +49,12 @@ export async function signup(
     const hashedPassword = await hashPassword(password);
 
     const user = await prisma.user.create({
-      data: { username, email, password: hashedPassword },
+      data: {
+        username,
+        email,
+        password: hashedPassword,
+        storageQuota: USER_STORAGE_QUOTA,
+      },
       select: {
         id: true,
         email: true,
