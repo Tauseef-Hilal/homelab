@@ -11,13 +11,45 @@ import { AuthErrorCode } from '@server/features/auth/constants/AuthErrorCode';
 import { JwtPayload } from '@server/types/jwt.types';
 import { redis, RedisKeys } from '@homelab/infra/redis';
 import { authConfig } from '@server/features/auth/auth.config';
+import { TfaPurpose } from '@server/features/auth/constants/TfaPurpose';
 
-vi.mock('@homelab/db/prisma');
-vi.mock('@homelab/infra/redis');
-vi.mock('@server/features/auth/services/otp.service')
-vi.mock('@server/lib/bcrypt')
-vi.mock('@server/lib/jwt')
-vi.mock('@server/features/auth/utils/token.util')
+vi.mock('@homelab/db/prisma', () => {
+  const mockPrisma = {
+    refreshToken: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      create: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    user: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    folder: {
+      create: vi.fn(),
+    },
+    $transaction: vi.fn(),
+  };
+  return { prisma: mockPrisma };
+});
+vi.mock('@homelab/infra/redis', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@homelab/infra/redis')>();
+  return {
+    ...actual,
+    redis: {
+      set: vi.fn(),
+      get: vi.fn(),
+      del: vi.fn(),
+    },
+  };
+});
+vi.mock('@server/features/auth/services/otp.service');
+vi.mock('@server/lib/bcrypt');
+vi.mock('@server/lib/jwt');
+vi.mock('@server/features/auth/utils/token.util');
 
 const meta = { ipAddress: '127.0.0.1', userAgent: 'Vitest' };
 const mockUser = {
@@ -58,7 +90,7 @@ describe('signup()', () => {
     );
     const storeRefreshToken = vi
       .spyOn(tokenUtils, 'storeRefreshToken')
-      .mockResolvedValue();
+      .mockResolvedValue('family-id');
 
     const res = await authService.signup(
       mockUser.username,
@@ -163,6 +195,7 @@ describe('logout()', () => {
   const tokenRecord = {
     id: 'token-id',
     userId: mockUser.id,
+    familyId: 'family-id',
     revokedAt: null,
   } as any as RefreshToken;
 
@@ -176,8 +209,8 @@ describe('logout()', () => {
     vi.spyOn(prisma.refreshToken, 'findUnique').mockResolvedValue(tokenRecord);
 
     const updateSpy = vi
-      .spyOn(prisma.refreshToken, 'update')
-      .mockResolvedValue({ ...tokenRecord, revokedAt: new Date() });
+      .spyOn(prisma.refreshToken, 'updateMany')
+      .mockResolvedValue({ count: 1 } as Prisma.BatchPayload);
 
     const result = await authService.logout(mockToken, meta, false);
 
@@ -185,15 +218,15 @@ describe('logout()', () => {
 
     expect(prisma.refreshToken.findUnique).toHaveBeenCalledWith({
       where: { tokenHash: mockTokenHash },
-      select: { id: true, userId: true, revokedAt: true },
+      select: { id: true, userId: true, revokedAt: true, familyId: true },
     });
 
     expect(updateSpy).toHaveBeenCalledWith({
-      where: { id: tokenRecord.id },
+      where: { familyId: tokenRecord.familyId },
       data: { revokedAt: expect.any(Date) },
     });
 
-    expect(result).toHaveProperty('revokedAt');
+    expect(result).toHaveProperty('count');
   });
 
   it('should revoke all tokens if logoutAll is true', async () => {
@@ -228,8 +261,8 @@ describe('logout()', () => {
       revokedAt: new Date(),
     });
 
-    const revokeMatchingTokensSpy = vi
-      .spyOn(tokenUtils, 'revokeMatchingTokens')
+    const revokeFamilyTokensSpy = vi
+      .spyOn(tokenUtils, 'revokeFamilyTokens')
       .mockResolvedValue();
 
     await expect(authService.logout(mockToken, meta)).rejects.toMatchObject({
@@ -237,7 +270,7 @@ describe('logout()', () => {
       code: AuthErrorCode.TOKEN_REUSED,
     });
 
-    expect(revokeMatchingTokensSpy).toHaveBeenCalled();
+    expect(revokeFamilyTokensSpy).toHaveBeenCalled();
   });
 });
 
@@ -304,20 +337,22 @@ describe('allowPasswordChange()', () => {
     });
   });
 
-  it('should set password change identifier for user in redis', async () => {
+  it('should send OTP and return a TFA token', async () => {
     vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser);
-    vi.spyOn(redis, 'get').mockResolvedValue(null);
     vi.spyOn(otpService, 'sendOtp').mockResolvedValue();
+    vi.spyOn(jwtUtils, 'generateTfaToken').mockReturnValue('tfa-token');
 
-    const redisSpy = vi.spyOn(redis, 'set');
-    await authService.allowPasswordChange(mockUser.email);
+    const result = await authService.allowPasswordChange(mockUser.email);
 
-    expect(redisSpy).toHaveBeenCalledWith(
-      RedisKeys.auth.allowPasswordChange(mockUser.id),
-      expect.any(String),
-      'EX',
-      authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS,
+    expect(otpService.sendOtp).toHaveBeenCalledWith(mockUser.id, mockUser.email);
+    expect(jwtUtils.generateTfaToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: mockUser.id,
+        email: mockUser.email,
+        purpose: TfaPurpose.CHANGE_PASSWORD,
+      }),
     );
+    expect(result).toBe('tfa-token');
   });
 });
 
@@ -327,6 +362,7 @@ describe('refreshTokens()', () => {
   const mockTokenRecord = {
     id: 'token-id',
     userId: mockUser.id,
+    familyId: 'family-id',
     expiresAt: new Date(Date.now() + 10000),
     revokedAt: null,
     user: mockUser,
@@ -336,6 +372,7 @@ describe('refreshTokens()', () => {
     vi.resetAllMocks();
     vi.spyOn(tokenUtils, 'hashTokenSync').mockReturnValue(mockHashedToken);
     vi.spyOn(prisma, '$transaction');
+    vi.spyOn(jwtUtils, 'verifyRefreshToken').mockReturnValue({} as JwtPayload);
   });
 
   it('should throw if token is invalid', async () => {
@@ -393,7 +430,10 @@ describe('refreshTokens()', () => {
   });
 
   it('should revoke other tokens and throw if token is reused', async () => {
-    const reusedToken = { ...mockTokenRecord, revokedAt: new Date() };
+    const reusedToken = {
+      ...mockTokenRecord,
+      revokedAt: new Date(Date.now() - 60000), // 1 minute ago, past grace period
+    };
 
     const tx = {
       refreshToken: {
@@ -404,24 +444,17 @@ describe('refreshTokens()', () => {
 
     (prisma.$transaction as any).mockImplementation(
       async (fn: (tx: any) => Promise<any>) => {
-        await fn(tx);
+        return await fn(tx);
       },
     );
 
-    const revokeMatchingTokensSpy = vi.spyOn(
-      tokenUtils,
-      'revokeMatchingTokens',
-    );
+    const revokeFamilyTokensSpy = vi.spyOn(tokenUtils, 'revokeFamilyTokens');
 
     await expect(
       authService.refreshTokens(mockToken, meta),
     ).rejects.toMatchObject({ status: 401, code: AuthErrorCode.TOKEN_REUSED });
 
-    expect(revokeMatchingTokensSpy).toBeCalledWith(
-      tx,
-      reusedToken.userId,
-      meta,
-    );
+    expect(revokeFamilyTokensSpy).toBeCalledWith(tx, reusedToken.familyId);
   });
 
   it('should refresh tokens successfully', async () => {
@@ -437,7 +470,7 @@ describe('refreshTokens()', () => {
 
     (prisma.$transaction as any).mockImplementation(
       async (fn: (tx: any) => Promise<any>) => {
-        await fn(tx);
+        return await fn(tx);
       },
     );
 
@@ -448,7 +481,7 @@ describe('refreshTokens()', () => {
 
     const storeRefreshTokenSpy = vi
       .spyOn(tokenUtils, 'storeRefreshToken')
-      .mockResolvedValue();
+      .mockResolvedValue('new-family-id');
 
     const result = await authService.refreshTokens(mockToken, meta);
 
@@ -459,6 +492,7 @@ describe('refreshTokens()', () => {
       newRefreshToken,
       mockTokenRecord.userId,
       meta,
+      mockTokenRecord.familyId,
     );
   });
 });

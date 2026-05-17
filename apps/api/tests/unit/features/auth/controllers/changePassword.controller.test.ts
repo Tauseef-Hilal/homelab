@@ -8,6 +8,7 @@ import { TfaPayload } from '@server/types/jwt.types';
 import * as AuthService from '@server/features/auth/services/auth.service';
 import * as Jwt from '@server/lib/jwt';
 import { success } from '@server/lib/response';
+import { TfaPurpose } from '@server/features/auth/constants/TfaPurpose';
 
 vi.mock('@server/features/auth/services/auth.service');
 vi.mock('@server/lib/jwt');
@@ -57,6 +58,7 @@ describe('changePasswordController', () => {
     const mockEmail = 'email@example.com';
     vi.spyOn(Jwt, 'verifyTfaToken').mockReturnValue({
       email: mockEmail,
+      purpose: TfaPurpose.PASSWORD_RESET_AUTHORIZED,
     } as TfaPayload);
     vi.spyOn(AuthService, 'changePassword').mockResolvedValue();
 

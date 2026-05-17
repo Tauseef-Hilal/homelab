@@ -8,7 +8,17 @@ import * as emailService from '@server/lib/email/email.service';
 import { tokenExpirations } from '@server/constants/token.constants';
 
 vi.mock('@server/features/auth/utils/token.util');
-vi.mock('@homelab/infra/redis');
+vi.mock('@homelab/infra/redis', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@homelab/infra/redis')>();
+  return {
+    ...actual,
+    redis: {
+      set: vi.fn(),
+      get: vi.fn(),
+      del: vi.fn(),
+    },
+  };
+});
 
 const mockOtp = '123456';
 const mockHashed = 'hashed123';
@@ -74,11 +84,10 @@ describe('verifyOtp', () => {
       'Incorrect OTP',
     );
 
-    expect(redisSet).toHaveBeenCalledWith(
+    expect(redis.set).toHaveBeenCalledWith(
       RedisKeys.auth.otp(userId),
       expect.stringContaining('"attempts":2'),
-      'EX',
-      Math.floor(tokenExpirations.OTP_TOKEN_EXPIRY_MS / 1000),
+      'KEEPTTL',
     );
   });
 

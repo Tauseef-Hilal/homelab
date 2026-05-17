@@ -58,7 +58,7 @@ describe('verifyOtpController', () => {
       errorHandler(err, req, res, next);
     });
 
-    vi.spyOn(AuthService, 'allowPasswordChange').mockResolvedValue(mockToken);
+    vi.spyOn(AuthService, 'authorizePasswordChange').mockResolvedValue(mockToken);
   });
 
   it('should verify OTP and allow password change', async () => {
@@ -73,7 +73,8 @@ describe('verifyOtpController', () => {
       mockOtp,
     );
     expect(next).not.toHaveBeenCalled();
-    expect(AuthService.allowPasswordChange).toHaveBeenCalledWith(
+    expect(AuthService.authorizePasswordChange).toHaveBeenCalledWith(
+      mockTokenPayload.userId,
       mockTokenPayload.email,
     );
     expect(res.status).toHaveBeenCalledWith(200);
@@ -89,7 +90,7 @@ describe('verifyOtpController', () => {
     const payload = { ...mockTokenPayload, purpose: TfaPurpose.LOGIN };
 
     vi.spyOn(OtpService, 'verifyOtp').mockResolvedValue();
-    vi.spyOn(TokenUtils, 'storeRefreshToken').mockResolvedValue();
+    vi.spyOn(TokenUtils, 'storeRefreshToken').mockResolvedValue('family-id');
     vi.spyOn(JwtUtils, 'generateAccessToken').mockReturnValue(
       mockTokens.access,
     );
