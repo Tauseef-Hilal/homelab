@@ -116,10 +116,12 @@ services:
       context: ..
       dockerfile: ./apps/web/docker/Dockerfile.prod
       target: prod
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     env_file:
       - ../apps/web/.env.production
-    volumes:
-      - /opt/homelab/data:/app/data
     dns:
       - 8.8.8.8
       - 8.8.4.4
