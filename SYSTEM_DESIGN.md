@@ -1,523 +1,138 @@
 # Homelab System Design
 
-## Overview
+Homelab is a high-performance, LAN-first personal cloud platform engineered with a focus on **distributed systems patterns**, **asynchronous processing**, and **security-first resource management**.
 
-Homelab is a modular personal cloud platform designed to demonstrate production-style backend architecture patterns.
-
-The system provides:
-
-- secure multi-user storage
-- asynchronous processing
-- real-time communication
-- granular resource sharing
-
-while remaining **fully self-hostable**.
-
-The project explores architectural patterns commonly used in modern backend systems, including:
-
-- asynchronous job queues
-- worker service isolation
-- event-based messaging
-- modular service architecture
-- containerized deployment
-
-Homelab is designed to resemble simplified infrastructure used in real-world backend platforms such as file storage services or collaboration systems.
+This document provides a deep dive into the architectural decisions, data flows, and engineering trade-offs that drive the platform.
 
 ---
 
-# System Goals
+## 1. High-Level Architecture
 
-### Primary Design Goals
+Homelab employs a **modular monolith** backend (Express.js) that orchestrates work across a distributed infrastructure. Heavy computational and I/O tasks are decoupled from the request-response cycle via a persistent task queue.
 
-- maintain responsive APIs by offloading heavy tasks to workers
-- support scalable real-time communication
-- separate metadata storage from file storage
-- enforce clear boundaries between services
-- maintain reproducible containerized deployment
-- provide granular access control for shared resources
+```mermaid
+graph TD
+    Client[Web Client - Next.js] --> Nginx[NGINX Reverse Proxy]
+    Nginx --> API[API Gateway - Express]
 
-### Non-Functional Goals
+    subgraph "State & Messaging"
+        DB[(PostgreSQL)]
+        Redis[(Redis - BullMQ/Cache)]
+    end
 
-- reliability
-- scalability
-- modularity
-- security
-- maintainability
+    API --> DB
+    API --> Redis
 
----
+    subgraph "Worker Tier"
+        IO[IO Worker]
+        TN[Thumbnail Worker]
+    end
 
-# High-Level Architecture
+    Redis -- Jobs --> IO
+    Redis -- Jobs --> TN
 
-The system follows a **layered architecture**.
+    IO --> DB
+    TN --> DB
 
-```text
-Client (Next.js)
-      ↓
-Reverse Proxy / Load Balancer
-      ↓
-API Server (Express + Prisma)
-      ↓
-Redis (Queues + Pub/Sub)
-      ↓
-Workers (BullMQ)
-      ↓
-PostgreSQL
-      ↓
-File Storage
+    API -- Real-time --> Sockets[Socket.io]
+    Sockets --> Client
 ```
 
-### Key Principles
+---
 
-- API servers remain **stateless**
-- heavy tasks are processed **asynchronously**
-- Redis acts as the **event backbone**
-- PostgreSQL stores **structured metadata**
-- filesystem stores **binary file data**
+## 2. Core Pillars & Implementation
+
+### A. Authentication & Session Management
+
+Homelab implements a robust **JWT-based authentication** system with advanced security features:
+
+- **Dual-Token Strategy:** Short-lived Access Tokens (JWT) + Long-lived Refresh Tokens (Database-backed).
+- **Refresh Token Rotation:** Every refresh cycle issues a new token pair, invalidating the old refresh token.
+- **Token Families & Reuse Detection:** All refresh tokens in a "session" belong to a family. If a revoked token is reused (indicating a potential breach), the entire family is immediately invalidated.
+- **Race Condition Resilience:** A **30-second grace period** is implemented for rotated tokens to handle concurrent network requests without forcing a logout.
+- **TFA/OTP:** Multi-factor authentication via email for sensitive operations (login, password reset).
+
+### B. Storage Engine: Content-Addressable Storage (CAS)
+
+Unlike naive storage systems, Homelab uses **CAS principles** to maximize efficiency and data integrity:
+
+- **Blob Deduplication:** Files are broken into chunks, and each chunk is hashed. Identical data across different files points to the same underlying `Blob` record.
+- **Reference Counting:** A `refCount` is maintained for each blob to allow safe garbage collection.
+- **Chunked Upload Pipeline:**
+  1. Client initiates an `UploadSession`.
+  2. Concurrent chunk uploads to the API.
+  3. API verifies hashes and links chunks to `Blobs`.
+  4. Upon completion, chunks are reassembled (virtually) into a `File`.
+- **Bitmask Permissions:** A high-performance bitmask system (`READ`, `WRITE`, `SHARE`, etc.) allows for granular access control and inheritance across the virtual file system.
+
+### C. Distributed Rate Limiting
+
+To prevent abuse and ensure QoS, Homelab implements a **Distributed Token Bucket** algorithm:
+
+- **Atomic Lua Scripts:** Rate limit logic is executed within Redis using Lua to ensure atomicity across distributed API instances.
+- **Layered Scope:** Limits can be applied globally, per-IP, per-User, or per-Resource (e.g., login attempts).
+- **Dynamic TTL:** Redis keys for buckets are automatically cleaned up based on their refill rate.
+
+### D. Asynchronous Task Queue (Workers)
+
+Heavy operations are offloaded to **BullMQ** workers to keep the API responsive:
+
+- **IO Queue:** Handles folder zipping, bulk moves, and large file copies.
+- **Thumbnail Queue:** Generates optimized previews for media files using `sharp`.
+- **Worker Isolation:** Workers run as separate processes (or containers), allowing them to be scaled independently of the API.
 
 ---
 
-# Core System Components
+## 3. Data Schema & Integrity
 
-## Client Application
+The system uses **PostgreSQL with Prisma ORM** for structured metadata.
 
-The frontend application is built using:
-
-- Next.js (App Router)
-- React
-- TypeScript
-- TailwindCSS
-- TanStack Query
-- Zustand
-
-### Responsibilities
-
-- authentication interface
-- file browsing and management
-- file uploads and downloads
-- chat interface
-- displaying job progress
+| Model                   | Purpose                                                                      |
+| :---------------------- | :--------------------------------------------------------------------------- |
+| **User**                | Identity, Role-based access, Storage quotas.                                 |
+| **Folder/File**         | Virtual File System hierarchy with optimized indexes for path-based lookups. |
+| **Blob/FileChunk**      | The backbone of the CAS engine, enabling deduplication.                      |
+| **UserShare/LinkShare** | Granular access control mapping users/tokens to resources.                   |
+| **Job**                 | Persistence for background tasks, enabling progress tracking and retries.    |
 
 ---
 
-## API Server
+## 4. Real-time Infrastructure
 
-The API server acts as the **central orchestration layer**.
+Homelab leverages **Socket.io** for bidirectional communication:
 
-### Responsibilities
-
-- authentication and authorization
-- rate limiting
-- file metadata management
-- folder hierarchy operations
-- job creation and status tracking
-- WebSocket integration
-
-### Technologies
-
-- Node.js
-- Express.js
-- Prisma ORM
-- PostgreSQL
-- Redis
-- Socket.IO
-
-The API server delegates heavy workloads to background workers through Redis queues.
+- **Broadcast System:** Instant updates for chat and system announcements.
+- **Job Notifications:** Real-time feedback to the UI when background tasks (e.g., thumbnail generation) complete.
+- **Presence:** (Planned) tracking active users in shared folders.
 
 ---
 
-# Storage Architecture
+## 5. Engineering Trade-offs
 
-Homelab separates **file metadata** from **binary file storage**.
+### Local Filesystem vs. S3
 
-## Metadata Storage
+- **Decision:** Initial implementation uses Local Storage with an abstraction layer.
+- **Rationale:** Prioritizes "LAN-first" performance and simplicity for self-hosting.
+- **Future-Proofing:** The `StoragePlatform` interface allows for seamless S3/Minio integration.
 
-PostgreSQL stores structured metadata including:
+### Redis vs. Kafka
 
-- user accounts
-- folder hierarchy
-- file metadata
-- job status
-- chat messages
-- shared links
-
-This enables efficient querying, indexing, and relational data integrity.
+- **Decision:** Redis (BullMQ).
+- **Rationale:** Lower operational complexity for self-hosted environments while still providing the throughput required for high-frequency small tasks (like thumbnail generation).
 
 ---
 
-## File Storage
+## 6. Security Posture
 
-Binary files are stored on the filesystem.
-
-Stored data includes:
-
-- uploaded files
-- generated thumbnails
-- temporary archives
-
-Future improvements may include support for **S3-compatible storage backends**.
+- **Password Hashing:** Argon2/Bcrypt for secure credential storage.
+- **Data Isolation:** Strict tenant isolation ensured at the database query level (Prisma middleware/services).
+- **Auditability:** Every major file operation is tracked via `Job` records and system logs.
+- **Least Privilege:** Default-private visibility for all resources.
 
 ---
 
-# Permission & Sharing Engine
-
-Homelab uses a **bitmask-based permission system** to manage access to files and folders beyond simple ownership.
-
-### Permission Bitmasks
-
-Permissions are defined as power-of-two integers, allowing multiple permissions to be combined into a single value:
-
-- `READ` (1): View metadata and download content.
-- `WRITE` (2): Upload files and create subfolders.
-- `COPY` (4): Copy resources to other locations.
-- `DELETE` (8): Remove resources.
-- `SHARE` (16): Manage sharing settings for the resource.
-
-### Sharing Mechanisms
-
-1.  **User-to-User Sharing (`UserShare`)**: Grants specific bitmask permissions to another registered user. Access is resolved by checking direct shares or inherited permissions from parent folders.
-2.  **Link-Based Sharing (`LinkShare`)**: Generates a secure, tokenized URL that provides specific access levels to anyone with the link (optionally protected by expiration).
-
-### Access Resolution
-
-Access is resolved dynamically:
-
-- Owners always have full permissions.
-- For non-owners, the system checks for explicit `UserShare` records.
-- If no direct share exists, the system traverses up the folder hierarchy to find inherited permissions.
-- Bulk operations (like zipping or moving multiple items) perform atomic validation to ensure the requester has sufficient rights for every item in the set.
-
----
-
-# Real-Time Messaging
-
-Homelab includes a broadcast chat system supporting real-time communication.
-
-### Message Flow
-
-```text
-User sends message
-      ↓
-Message stored in PostgreSQL
-      ↓
-Message published to Redis Pub/Sub
-      ↓
-Delivered to WebSocket clients
-```
-
-### Benefits
-
-- persistent chat history
-- real-time message delivery
-- horizontal scaling of WebSocket servers
-
-Redis acts as the communication bridge between WebSocket instances.
-
----
-
-# Authentication and Security
-
-Authentication uses **JWT access tokens with refresh tokens**.
-
-### Features
-
-- user signup
-- login
-- refresh token rotation
-- password reset via OTP
-- password change
-- authenticated session tracking
-
-### Security Mechanisms
-
-- rate limiting
-- bcrypt password hashing
-- hashed refresh tokens
-- token revocation
-- device metadata tracking
-
-Authorization is enforced using middleware layers within the API server.
-
-### Rate Limiting
-
-Homelab implements **layered rate limiting** to protect the system from abuse while maintaining a smooth user experience. The design separates **infrastructure protection** from **application-level protection**.
-
-#### Architecture
-
-Rate limiting is applied in two layers:
-
-```
-Client
- ↓
-NGINX
-  global IP protection
- ↓
-Express
-  requireAuth
- ↓
-  global user limiter
- ↓
-  endpoint limiters
- ↓
-  controller
-```
-
-- **NGINX** handles global IP-based rate limiting at the edge to prevent abusive traffic from reaching the application.
-- **Express middleware** enforces user-level and endpoint-specific limits using Redis.
-
-This layered approach ensures that infrastructure resources (CPU, database, Redis, workers) are protected before expensive application logic runs.
-
----
-
-#### Algorithm
-
-The API rate limiter uses the **Token Bucket algorithm** implemented through **Redis Lua scripts**.
-
-Key characteristics:
-
-- **Atomic execution** via Lua scripts prevents race conditions.
-- **Token refill over time** allows short bursts of traffic while maintaining average limits.
-- **Redis-based storage** ensures consistency across multiple API instances.
-
-Each request:
-
-1. Loads the bucket state from Redis.
-2. Refills tokens based on elapsed time.
-3. Consumes a token if available.
-4. Rejects the request if the bucket is empty.
-
-Redis keys automatically expire to avoid long-term memory growth.
-
----
-
-#### Key Structure
-
-Rate limit keys follow a structured naming format:
-
-```
-rate:{scope}:{identifier}:{resource}:{action}
-```
-
-Examples:
-
-```
-rate:user:42:chat:send
-rate:user:42:storage:upload
-rate:email:abc123:auth:login
-```
-
-This structure keeps keys predictable and allows easy grouping by resource or action.
-
-Scopes currently supported:
-
-- `user`
-- `email`
-- `ip`
-
----
-
-#### Global User Protection
-
-Authenticated requests are protected by a **global per-user rate limit** to prevent runaway clients or abusive scripts.
-
-Policy:
-
-```
-300 requests / minute per user
-```
-
-This is applied automatically after authentication through a shared middleware stack.
-
----
-
-#### Endpoint Policies
-
-Specific endpoints have stricter limits depending on their cost and security sensitivity.
-
-Authentication:
-
-```
-login            → 5 requests / minute per email
-signup           → 3 requests / minute per IP
-password reset   → 3 requests / hour per email
-```
-
-Chat:
-
-```
-send message     → 60 requests / minute per user
-```
-
-Storage:
-
-```
-list             → 120 requests / minute per user
-upload           → 20 requests / minute per user
-copy             → 5 requests / minute per user
-move             → 5 requests / minute per user
-delete           → 5 requests / minute per user
-download         → 60 requests / minute per user
-```
-
-Operations that trigger filesystem work or background jobs use stricter limits to protect worker resources.
-
----
-
-#### Middleware Design
-
-Rate limiting is implemented using a **middleware factory** that accepts a policy configuration. Policies define:
-
-- identity scope
-- bucket capacity
-- refill rate
-- resource/action classification
-
-This approach allows policies to be reused across routes while keeping route definitions clean and explicit.
-
----
-
-#### Design Considerations
-
-Key decisions made during implementation:
-
-- **Edge protection via NGINX** instead of duplicating IP limits in Express.
-- **Token bucket algorithm** to allow bursts while controlling sustained traffic.
-- **Lua scripts** to guarantee atomic Redis updates.
-- **Explicit endpoint policies** instead of tier abstractions for clarity.
-- **Global per-user limiter** to protect the system from abusive authenticated clients.
-- **Structured Redis keys** for maintainability and observability.
-
----
-
-# Deployment Model
-
-Homelab supports **containerized deployment using Docker**.
-
-### Typical Deployment Stack
-
-- reverse proxy (NGINX)
-- api server
-- worker services
-- redis
-- postgres
-- client application
-
-### Benefits
-
-- reproducible environments
-- simplified local deployment
-- scalable service architecture
-
----
-
-# Scalability Strategy
-
-The architecture supports **horizontal scaling of system components**.
-
-### API Servers
-
-- stateless containers
-- scaled behind a load balancer
-
-### Workers
-
-- multiple worker instances
-- independently scalable background processing
-
-### Redis
-
-- acts as the central messaging and queue system
-
-### Database
-
-- single PostgreSQL instance for simplicity
-- read replicas possible for larger deployments
-
----
-
-# Observability
-
-Production systems require visibility into system health and behavior.
-
-Recommended observability features include:
-
-- structured logging
-- request IDs
-- job status tracking
-- health check endpoints
-
-### Example Endpoints
-
-```
-/health
-/ready
-```
-
-Monitoring systems such as **Prometheus** and **Grafana** can be integrated for metrics and visualization.
-
----
-
-# Design Tradeoffs
-
-## Filesystem vs Object Storage
-
-The current implementation uses **filesystem storage**.
-
-### Advantages
-
-- simple setup
-- efficient for local deployments
-
-### Tradeoff
-
-- limited horizontal scalability
-
-Possible future improvements:
-
-- S3-compatible storage
-- distributed object storage
-
----
-
-## Redis vs Kafka
-
-Redis is used for **queues and pub/sub messaging**.
-
-### Advantages
-
-- simple deployment
-- low latency
-- strong queue ecosystem with BullMQ
-
-### Tradeoff
-
-- weaker durability guarantees compared to Kafka
-
----
-
-# Future Improvements
-
-Potential enhancements include:
-
-- S3-compatible storage providers
-- virus scanning workers
-- file versioning
-- folder-level sharing
-- advanced chat features
-- monitoring and metrics dashboards
-
----
-
-# Conclusion
-
-Homelab demonstrates modern backend architecture patterns including:
-
-- asynchronous processing pipelines
-- worker-based background processing
-- Redis-based messaging
-- real-time WebSocket communication
-- modular monorepo architecture
-
-The system serves both as:
-
-- a **practical self-hosted cloud platform**
-- a **backend engineering case study demonstrating production-style system design**
+## 7. Scalability Roadmap
+
+1. **Vertical Scaling:** Increase worker concurrency for higher IO throughput.
+2. **Horizontal Scaling:** Deploy multiple API instances behind NGINX; Redis handles shared state.
+3. **Storage Decoupling:** Move from local volumes to distributed object storage (S3) for multi-node deployments.
