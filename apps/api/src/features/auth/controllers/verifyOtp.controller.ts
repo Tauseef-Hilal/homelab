@@ -24,7 +24,7 @@ export const verifyOtpController = catchAsync(
     const { email, userId, purpose } = verifyTfaToken(token);
 
     await OtpService.verifyOtp(userId, otp);
-    await handleOtpPurpose[purpose](res, email, req.clientMeta ?? {}, token);
+    await handleOtpPurpose[purpose](res, email, userId, req.clientMeta ?? {}, token);
   },
 );
 
@@ -32,6 +32,7 @@ const handleOtpPurpose = {
   [TfaPurpose.LOGIN]: async (
     res: Response,
     email: string,
+    userId: string,
     meta: TokenMeta,
     token: string,
   ) => {
@@ -80,15 +81,23 @@ const handleOtpPurpose = {
 
   [TfaPurpose.CHANGE_PASSWORD]: async (
     res: Response,
+    email: string,
     userId: string,
     meta: TokenMeta,
     token: string,
   ) => {
-    await AuthService.allowPasswordChange(userId);
+    const newToken = await AuthService.authorizePasswordChange(userId, email);
     return res
       .status(200)
       .json(
-        success({ changePasswordToken: token }, 'Continue to change password'),
+        success({ changePasswordToken: newToken }, 'Continue to change password'),
       );
+  },
+  [TfaPurpose.PASSWORD_RESET_AUTHORIZED]: async () => {
+    throw new HttpError({
+      status: 400,
+      code: AuthErrorCode.INVALID_TOKEN,
+      message: 'Token cannot be used for this purpose',
+    });
   },
 };

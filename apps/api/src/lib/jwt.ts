@@ -5,19 +5,19 @@ import { tokenExpirations } from '@server/constants/token.constants';
 
 export function generateAccessToken(payload: JwtPayload): string {
   return jwt.sign(payload, env.ACCESS_TOKEN_SECRET, {
-    expiresIn: tokenExpirations.ACCESS_TOKEN_EXPIRY_MS,
+    expiresIn: Math.floor(tokenExpirations.ACCESS_TOKEN_EXPIRY_MS / 1000),
   } as jwt.SignOptions);
 }
 
 export function generateRefreshToken(payload: JwtPayload): string {
   return jwt.sign(payload, env.REFRESH_TOKEN_SECRET, {
-    expiresIn: tokenExpirations.REFRESH_TOKEN_EXPIRY_MS,
+    expiresIn: Math.floor(tokenExpirations.REFRESH_TOKEN_EXPIRY_MS / 1000),
   } as jwt.SignOptions);
 }
 
 export function generateTfaToken(payload: TfaPayload): string {
   return jwt.sign(payload, env.TFA_TOKEN_SECRET, {
-    expiresIn: tokenExpirations.OTP_TOKEN_EXPIRY_MS,
+    expiresIn: Math.floor(tokenExpirations.OTP_TOKEN_EXPIRY_MS / 1000),
   } as jwt.SignOptions);
 }
 

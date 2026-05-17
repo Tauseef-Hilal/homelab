@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { DefaultArgs } from '@prisma/client/runtime/library';
 import { UserPayload } from '../types/user.types';
@@ -18,19 +18,16 @@ export function buildTokenPayload(user: UserPayload): JwtPayload {
   };
 }
 
-export async function revokeMatchingTokens(
+export async function revokeFamilyTokens(
   tx: Omit<
     PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>,
     '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
   >,
-  userId: string,
-  meta: TokenMeta
+  familyId: string
 ) {
   await tx.refreshToken.updateMany({
     where: {
-      userId,
-      ipAddress: meta.ipAddress,
-      userAgent: meta.userAgent,
+      familyId,
       revokedAt: null,
       expiresAt: { gt: new Date() },
     },
@@ -45,12 +42,15 @@ export async function storeRefreshToken(
   >,
   token: string,
   userId: string,
-  meta: TokenMeta
+  meta: TokenMeta,
+  familyId?: string
 ) {
+  const newFamilyId = familyId || randomUUID();
   await prisma.refreshToken.create({
     data: {
       tokenHash: hashTokenSync(token),
       userId,
+      familyId: newFamilyId,
       userAgent: meta.userAgent,
       ipAddress: meta.ipAddress,
       expiresAt: new Date(
@@ -58,4 +58,5 @@ export async function storeRefreshToken(
       ), // 7d
     },
   });
+  return newFamilyId;
 }

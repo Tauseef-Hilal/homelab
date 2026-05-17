@@ -34,8 +34,7 @@ export const verifyOtp = async (
     await redis.set(
       RedisKeys.auth.otp(userId),
       JSON.stringify(data),
-      'EX',
-      Math.floor(tokenExpirations.OTP_TOKEN_EXPIRY_MS / 1000),
+      'KEEPTTL'
     );
 
     return throwUnauthorized('Incorrect OTP');

@@ -3,10 +3,11 @@ import { CommonErrorCode } from '@homelab/contracts/errors';
 import { HttpError } from '@homelab/contracts/errors';
 import { prisma } from '@homelab/db/prisma';
 import { hashPassword, isValidPassword } from '@server/lib/bcrypt';
+import { domainEvents, DomainEvent } from '@server/lib/events';
 import {
   buildTokenPayload,
   hashTokenSync,
-  revokeMatchingTokens,
+  revokeFamilyTokens,
   storeRefreshToken,
 } from '../utils/token.util';
 import {
@@ -64,9 +65,7 @@ export async function signup(
       },
     });
 
-    await prisma.folder.create({
-      data: { name: '', fullPath: '/', userId: user.id, depth: 0 },
-    });
+    domainEvents.emit(DomainEvent.USER_CREATED, { userId: user.id });
 
     const payload = buildTokenPayload({
       id: user.id,
@@ -146,18 +145,18 @@ export async function logout(
   verifyRefreshToken(token);
   const storedToken = await prisma.refreshToken.findUnique({
     where: { tokenHash: hashTokenSync(token) },
-    select: { id: true, userId: true, revokedAt: true },
+    select: { id: true, userId: true, revokedAt: true, familyId: true },
   });
 
   if (!storedToken) return throwInvalidToken();
   if (storedToken.revokedAt) {
-    await revokeMatchingTokens(prisma, storedToken.userId, meta);
+    await revokeFamilyTokens(prisma, storedToken.familyId);
     return throwTokenReused();
   }
 
   if (!logoutAll) {
-    return await prisma.refreshToken.update({
-      where: { id: storedToken.id },
+    return await prisma.refreshToken.updateMany({
+      where: { familyId: storedToken.familyId },
       data: { revokedAt: new Date() },
     });
   }
@@ -224,7 +223,8 @@ export async function allowPasswordChange(email: string) {
     });
   }
 
-  const existing = await redis.get(RedisKeys.auth.allowPasswordChange(user.id));
+  await OtpService.sendOtp(user.id, user.email);
+
   const token = generateTfaToken({
     userId: user.id,
     email: user.email,
@@ -232,22 +232,27 @@ export async function allowPasswordChange(email: string) {
     createdAt: Date.now(),
   });
 
-  if (existing && Number(existing) > Date.now()) {
-    return token;
-  }
+  return token;
+}
 
-  await OtpService.sendOtp(user.id, user.email);
-
+export async function authorizePasswordChange(userId: string, email: string) {
   const expiresAt = String(
     Date.now() + authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS * 1000,
   );
 
   await redis.set(
-    RedisKeys.auth.allowPasswordChange(user.id),
+    RedisKeys.auth.allowPasswordChange(userId),
     expiresAt,
     'EX',
     authConfig.PASSWORD_CHANGE_EXPIRY_SECONDS,
   );
+
+  const token = generateTfaToken({
+    userId,
+    email,
+    purpose: TfaPurpose.PASSWORD_RESET_AUTHORIZED,
+    createdAt: Date.now(),
+  });
 
   return token;
 }
@@ -269,21 +274,25 @@ export async function refreshTokens(refreshToken: string, meta: TokenMeta) {
     if (storedToken.expiresAt < new Date()) return throwExpiredToken();
 
     if (storedToken.revokedAt) {
-      // Replay protection may need improvement
-      await revokeMatchingTokens(tx, storedToken.userId, meta);
-      return throwTokenReused();
+      const timeSinceRevoked = Date.now() - storedToken.revokedAt.getTime();
+      if (timeSinceRevoked < 30 * 1000) {
+        // Grace period: allow rotation without immediate logout
+      } else {
+        await revokeFamilyTokens(tx, storedToken.familyId);
+        return throwTokenReused();
+      }
+    } else {
+      await tx.refreshToken.update({
+        where: { tokenHash: hashedToken },
+        data: { revokedAt: new Date() },
+      });
     }
-
-    await tx.refreshToken.update({
-      where: { tokenHash: hashedToken },
-      data: { revokedAt: new Date() },
-    });
 
     const payload = buildTokenPayload(storedToken.user);
     const newAccessToken = generateAccessToken(payload);
     const newRefreshToken = generateRefreshToken(payload);
 
-    await storeRefreshToken(tx, newRefreshToken, storedToken.userId, meta);
+    await storeRefreshToken(tx, newRefreshToken, storedToken.userId, meta, storedToken.familyId);
 
     result = {
       tokens: { access: newAccessToken, refresh: newRefreshToken },

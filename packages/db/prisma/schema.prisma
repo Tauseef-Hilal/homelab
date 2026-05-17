@@ -43,6 +43,7 @@ model User {
 model RefreshToken {
   id        String    @id @default(uuid())
   tokenHash String    @unique
+  familyId  String
   userAgent String?
   ipAddress String?
   expiresAt DateTime
@@ -51,6 +52,8 @@ model RefreshToken {
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([familyId])
 }
 
 model Folder {

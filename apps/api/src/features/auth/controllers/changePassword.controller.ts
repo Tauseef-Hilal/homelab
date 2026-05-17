@@ -4,6 +4,9 @@ import { requestSchemas } from '@homelab/contracts/schemas/auth';
 import { success } from '@server/lib/response';
 import { verifyTfaToken } from '@server/lib/jwt';
 import * as AuthService from '../services/auth.service';
+import { TfaPurpose } from '../constants/TfaPurpose';
+import { HttpError } from '@homelab/contracts/errors';
+import { AuthErrorCode } from '../constants/AuthErrorCode';
 
 export const changePasswordController = catchAsync(
   async (req: Request, res: Response) => {
@@ -11,7 +14,15 @@ export const changePasswordController = catchAsync(
       req.body
     );
 
-    const { email } = verifyTfaToken(token);
+    const { email, purpose } = verifyTfaToken(token);
+
+    if (purpose !== TfaPurpose.PASSWORD_RESET_AUTHORIZED) {
+      throw new HttpError({
+        status: 403,
+        code: AuthErrorCode.INVALID_TOKEN,
+        message: 'Invalid token purpose for password reset',
+      });
+    }
 
     await AuthService.changePassword(email, newPassword);
 

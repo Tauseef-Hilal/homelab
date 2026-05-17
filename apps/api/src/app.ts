@@ -18,9 +18,12 @@ import {
 import { setupBullBoard } from './infrastructure/queues/bull-board';
 import expressBasicAuth from 'express-basic-auth';
 import sharingRoutes from './features/sharing/sharing.routes';
+import { registerStorageListeners } from './features/storage/listeners/user.listener';
 
 const app = express();
 const bullBoard = setupBullBoard();
+
+registerStorageListeners();
 
 app.use(
   cors({
