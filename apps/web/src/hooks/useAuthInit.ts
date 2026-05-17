@@ -17,6 +17,7 @@ export function useAuthInit() {
     onSuccess: (data) => {
       setAccessToken(data.tokens.access);
       setUser(data.user);
+      queryClient.setQueryData(['me'], { user: data.user });
       setAuthInitialized(true);
     },
     onError: () => {

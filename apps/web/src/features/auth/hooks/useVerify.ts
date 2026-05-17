@@ -4,7 +4,7 @@ import { verify } from '../api/verify';
 import { ServerError } from '@homelab/contracts/types';
 import { requestSchemas, responseSchemas } from '@homelab/contracts/schemas/auth';
 import { useRouter } from 'next/navigation';
-import useAuthStore from '../../../stores/auth.store';
+import useAuthStore from '@client/stores/auth.store';
 
 export type UseVerifyOtpOptions = {
   onFieldError: (errors: Record<string, string[]>) => void;
@@ -28,7 +28,7 @@ export function useVerifyOtp(options: UseVerifyOtpOptions) {
         setAccessToken(data.tokens.access);
         setUser(data.user!);
 
-        queryClient.invalidateQueries({ queryKey: ['me'] });
+        queryClient.setQueryData(['me'], { user: data.user });
 
         router.push('/');
         return;

@@ -4,7 +4,7 @@ import { signup } from '../api/signup';
 import { useRouter } from 'next/navigation';
 import { ServerError } from '@homelab/contracts/types';
 import { requestSchemas, responseSchemas } from '@homelab/contracts/schemas/auth';
-import useAuthStore from '../../../stores/auth.store';
+import useAuthStore from '@client/stores/auth.store';
 
 export type UseSignupOptions = {
   onFieldError: (errors: Record<string, string[]>) => void;
@@ -28,7 +28,7 @@ export function useSignup(options: UseSignupOptions) {
       setUser(data.user);
       setAccessToken(data.tokens.access);
 
-      queryClient.setQueryData(['me'], data.user);
+      queryClient.setQueryData(['me'], { user: data.user });
 
       router.replace('/');
     },

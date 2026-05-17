@@ -1,6 +1,6 @@
 import { AxiosError } from 'axios';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import useAuthStore from '../../../stores/auth.store';
+import useAuthStore from '@client/stores/auth.store';
 import { logout } from '../api/logout';
 import { useRouter } from 'next/navigation';
 import { ServerError } from '@homelab/contracts/types';

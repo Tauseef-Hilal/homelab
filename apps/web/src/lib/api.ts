@@ -84,7 +84,7 @@ api.interceptors.response.use(
 
         return api(originalRequest);
       } catch (err) {
-        if (err instanceof AxiosError && err.status == 401) {
+        if (err instanceof AxiosError && err.response?.status == 401) {
           window.location.href = '/auth/login';
           return;
         }
