@@ -102,7 +102,7 @@ const GroupChat: React.FC = () => {
         {/* Messages */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto flex flex-col gap-2 px-4 md:px-8 py-8 no-scrollbar"
+          className="flex-1 overflow-y-auto flex flex-col justify-end gap-2 px-4 md:px-8 py-8 no-scrollbar"
         >
           <Paginator paginate={fetchNextPage} hasMoreData={hasNextPage} />
 

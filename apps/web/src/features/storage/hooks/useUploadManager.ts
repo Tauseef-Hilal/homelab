@@ -68,34 +68,44 @@ export function useUploadManager(shareToken: string | undefined) {
       const item = getItem();
       if (!item || item.status !== 'pending') return;
 
-      updateItem(id, { status: 'initiating' });
+      let { fileId, uploadId, chunks } = item;
+
+      if (!fileId || !uploadId) {
+        updateItem(id, { status: 'initiating' });
+        const totalChunks = Math.ceil(item.file.size / MAX_CHUNK_SIZE);
+
+        const initResult = await uploadInit(
+          {
+            name: item.file.name,
+            mimeType: item.file.type,
+            folderId: item.folderId,
+            totalSize: item.file.size,
+            totalChunks,
+            shareToken,
+          },
+          id,
+        );
+        fileId = initResult.fileId;
+        uploadId = initResult.uploadId;
+
+        if (isInterrupted()) return;
+        updateItem(id, { fileId, uploadId });
+      }
+
       const totalChunks = Math.ceil(item.file.size / MAX_CHUNK_SIZE);
+      if (!chunks || chunks.length < totalChunks) {
+        updateItem(id, { status: 'hashing' });
+        chunks = await hashChunks(item.file, id);
+        if (isInterrupted()) return;
+        updateItem(id, { chunks });
+      }
 
-      const { fileId, uploadId } = await uploadInit(
-        {
-          name: item.file.name,
-          mimeType: item.file.type,
-          folderId: item.folderId,
-          totalSize: item.file.size,
-          totalChunks,
-          shareToken
-        },
-        id,
-      );
-
-      if (isInterrupted()) return;
-
-      updateItem(id, { fileId, uploadId, status: 'hashing' });
-
-      const chunks = await hashChunks(item.file, id);
-      if (isInterrupted()) return;
-
-      updateItem(id, { chunks, status: 'negotiating' });
+      updateItem(id, { status: 'negotiating' });
 
       const { missingChunks } = await uploadChunkCheck({
-        fileId,
-        uploadId,
-        chunks,
+        fileId: fileId!,
+        uploadId: uploadId!,
+        chunks: chunks!,
       });
 
       if (isInterrupted()) return;
@@ -105,7 +115,7 @@ export function useUploadManager(shareToken: string | undefined) {
       await uploadMissingChunks(id);
       if (isInterrupted()) return;
 
-      await uploadFinish({ uploadId });
+      await uploadFinish({ uploadId: uploadId! });
 
       updateItem(id, { status: 'uploaded', progress: 1 });
     } catch (err: unknown) {
@@ -144,12 +154,13 @@ export function useUploadManager(shareToken: string | undefined) {
     if (!item?.missingChunks || !item.chunks) return;
 
     const totalChunks = item.chunks.length;
-    const skipped = totalChunks - item.missingChunks.length;
-    let uploaded = 0;
 
     for (const index of item.missingChunks) {
       const current = getItem();
       if (current?.status !== 'uploading') break;
+
+      // Re-calculate progress based on how many missing chunks remain
+      const remainingMissing = current.missingChunks?.length ?? 0;
 
       const start = index * MAX_CHUNK_SIZE;
       const end = Math.min(start + MAX_CHUNK_SIZE, item.file.size);
@@ -158,36 +169,47 @@ export function useUploadManager(shareToken: string | undefined) {
       const controller = new AbortController();
       updateItem(id, { abortController: controller });
 
-      await uploadChunk(
-        blob,
-        {
-          'upload-id': item.uploadId!,
-          'file-id': item.fileId!,
-          'chunk-index': index,
-          'chunk-hash': item.chunks[index].hash,
-        },
-        controller.signal,
-      );
+      try {
+        await uploadChunk(
+          blob,
+          {
+            'upload-id': item.uploadId!,
+            'file-id': item.fileId!,
+            'chunk-index': index,
+            'chunk-hash': item.chunks[index].hash,
+          },
+          controller.signal,
+        );
 
-      uploaded++;
-
-      updateItem(id, {
-        progress: (skipped + uploaded) / totalChunks,
-        abortController: undefined, // prevent leaks
-      });
+        const nextItem = getItem();
+        if (nextItem) {
+          const nextMissing = (nextItem.missingChunks ?? []).filter(
+            (m) => m !== index,
+          );
+          updateItem(id, {
+            missingChunks: nextMissing,
+            progress: (totalChunks - nextMissing.length) / totalChunks,
+            abortController: undefined,
+          });
+        }
+      } catch (err) {
+        updateItem(id, { abortController: undefined });
+        throw err;
+      }
     }
   }
 
   async function hashChunks(file: File, id: string) {
+    const getItem = () =>
+      useUploadStore.getState().items.find((i) => i.id === id);
+
     const totalChunks = Math.ceil(file.size / MAX_CHUNK_SIZE);
-    const chunks = [];
+    const item = getItem();
+    const chunks = item?.chunks ? [...item.chunks] : [];
 
-    for (let i = 0; i < totalChunks; i++) {
-      const status = useUploadStore
-        .getState()
-        .items.find((item) => item.id === id)?.status;
-
-      if (status !== 'hashing') break;
+    for (let i = chunks.length; i < totalChunks; i++) {
+      const current = getItem();
+      if (current?.status !== 'hashing') break;
 
       const start = i * MAX_CHUNK_SIZE;
       const end = Math.min(start + MAX_CHUNK_SIZE, file.size);
@@ -200,6 +222,12 @@ export function useUploadManager(shareToken: string | undefined) {
         .join('');
 
       chunks.push({ index: i, size: end - start, hash });
+
+      // Update progress and chunks incrementally
+      updateItem(id, {
+        chunks: [...chunks],
+        progress: chunks.length / totalChunks,
+      });
     }
 
     return chunks;

@@ -11,11 +11,21 @@ import Preview from "./Preview";
 import Rename from "./Rename";
 
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@client/components/ui/context-menu";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@client/components/ui/dropdown-menu";
+import { BsThreeDotsVertical } from "react-icons/bs";
+import {
+  PenIcon,
+  CheckSquareIcon,
+  CopyIcon,
+  ScissorsIcon,
+  DownloadIcon,
+  Share2Icon,
+  Trash2Icon,
+} from "lucide-react";
 
 import { useSelect } from "../hooks/useSelect";
 import {
@@ -197,56 +207,69 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
         className={cx(
           "relative group",
           "flex flex-col items-center justify-start",
-          "gap-3 p-4 w-[120px] md:w-[140px]",
-          "rounded-2xl cursor-pointer select-none",
+          "w-[140px] md:w-[160px]",
+          "bg-muted/30 hover:bg-muted/50",
+          "rounded-2xl cursor-pointer select-none overflow-hidden",
           "transition-all duration-300 ease-out",
-          "hover:bg-muted/80 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1",
-          selected && "bg-primary/10 shadow-inner ring-1 ring-primary/20",
+          "border border-border/40 hover:border-border/80",
+          "hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1",
+          selected && "bg-primary/10 border-primary/30 shadow-md ring-1 ring-primary/20",
         )}
       >
-        <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-          {selected ? (
-            <IoCheckmarkCircle className="text-primary bg-background rounded-full" size={20} />
-          ) : (
-            <div className="w-5 h-5 rounded-full border-2 border-primary/20 bg-background/50 backdrop-blur-sm" />
-          )}
-        </div>
+        {/* Absolute Selection Checkmark */}
+        {selected && (
+          <div className="absolute top-2 right-2 z-20 animate-in fade-in zoom-in duration-200">
+            <IoCheckmarkCircle className="text-primary bg-background rounded-full drop-shadow-sm" size={20} />
+          </div>
+        )}
 
+        {/* Thumbnail/Icon Container */}
         <div className={cx(
-          "flex items-center justify-center h-[80px] w-full rounded-xl transition-all duration-300",
-          (folder || !(child as File).hasThumbnail) && "bg-muted/30 group-hover:bg-primary/5",
-          selected && "bg-primary/5"
+          "relative flex items-center justify-center h-[100px] md:h-[120px] w-full transition-all duration-300 overflow-hidden",
+          folder ? "bg-gradient-to-br from-yellow-500/10 to-orange-500/5 dark:from-yellow-500/20 dark:to-orange-500/10 group-hover:from-yellow-500/20 group-hover:to-orange-500/10 dark:group-hover:from-yellow-500/30 dark:group-hover:to-orange-500/20" :
+          child.hasThumbnail ? "bg-transparent" :
+          "bg-gradient-to-br from-muted/30 to-muted/10 group-hover:from-muted/50 group-hover:to-muted/20",
+          selected && "ring-1 ring-primary/30 ring-inset"
         )}>
           {folder ? (
-            <div className="relative">
-              <FaFolder size={56} className="text-yellow-400 drop-shadow-md" />
-              <div className="absolute inset-0 bg-gradient-to-tr from-yellow-500/20 to-transparent rounded-lg" />
+            <div className="relative group-hover:scale-110 transition-transform duration-500 ease-out">
+              <FaFolder size={64} className="text-yellow-400 drop-shadow-md" />
+              <div className="absolute inset-0 bg-gradient-to-tr from-white/20 dark:from-white/5 to-transparent mix-blend-overlay" />
             </div>
           ) : child.hasThumbnail ? (
-            <div className="relative group/thumb">
+            <div className="relative w-full h-full group-hover:scale-105 transition-transform duration-500 ease-out">
               <Image
                 unoptimized
-                width={80}
-                height={80}
+                fill
                 src={thumbnailUrl}
                 alt={child.name}
-                className="object-cover rounded-xl h-[80px] w-[80px] shadow-sm transition-transform group-hover:scale-105"
+                className="object-cover"
               />
-              <div className="absolute inset-0 ring-1 ring-inset ring-black/5 rounded-xl" />
+              <div className="absolute inset-0 ring-1 ring-inset ring-black/5 dark:ring-white/5" />
             </div>
           ) : (
-            <div className="p-4 rounded-2xl bg-muted/50 text-muted-foreground group-hover:text-primary transition-colors">
-              <FaFile size={32} />
+            <div className="text-muted-foreground/60 group-hover:text-primary/70 transition-colors duration-500 group-hover:scale-110">
+              <FaFile size={44} className="drop-shadow-sm" />
             </div>
           )}
         </div>
 
-        <p className={cx(
-          "text-sm md:text-base font-semibold text-center leading-tight line-clamp-2 break-words transition-colors px-1",
-          selected ? "text-primary" : "text-foreground/80 group-hover:text-foreground"
-        )}>
-          {child.name}
-        </p>
+        {/* Bottom Segment (Unified & Premium) */}
+        <div className="flex flex-row items-center justify-between w-full h-[46px] px-3 bg-muted/40 group-hover:bg-muted/60 transition-colors">
+          <div className="flex items-center flex-1 min-w-0 pr-2">
+            <p className={cx(
+              "text-[13px] md:text-sm font-medium truncate transition-colors w-full",
+              selected ? "text-primary font-semibold" : "text-foreground/80 group-hover:text-foreground"
+            )} title={child.name}>
+              {child.name}
+            </p>
+          </div>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <button className="flex items-center justify-center w-7 h-7 rounded-full hover:bg-background/80 dark:hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-all shrink-0 hover:shadow-sm">
+              <BsThreeDotsVertical size={14} />
+            </button>
+          </DropdownMenuTrigger>
+        </div>
       </div>
     );
 
@@ -260,7 +283,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
         onDoubleClick={doubleClickHandler}
         onContextMenu={(e) => e.stopPropagation()}
         className={cx(
-          "relative grid grid-cols-[40px_1fr] sm:grid-cols-[48px_1fr_100px_140px] items-center",
+          "relative grid grid-cols-[40px_1fr_32px] sm:grid-cols-[48px_1fr_100px_140px_32px] items-center",
           "px-3 py-2 sm:px-4 sm:py-3 gap-3 sm:gap-4 rounded-xl cursor-pointer select-none",
           "transition-all duration-200",
           "hover:bg-muted/80 hover:shadow-sm",
@@ -289,7 +312,7 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
 
         <div className="flex flex-col min-w-0">
           <p className={cx(
-            "truncate text-base font-bold tracking-tight",
+            "truncate text-base tracking-tight",
             selected ? "text-primary" : "text-foreground"
           )}>{child.name}</p>
           <span className="text-xs text-muted-foreground uppercase tracking-widest font-medium sm:hidden">
@@ -303,8 +326,16 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
           {modified}
         </span>
 
+        <div className="flex items-center justify-end">
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <button className="flex items-center justify-center p-1.5 rounded-md hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors shrink-0">
+              <BsThreeDotsVertical size={16} />
+            </button>
+          </DropdownMenuTrigger>
+        </div>
+
         {selected && (
-          <div className="absolute right-4 flex items-center h-full">
+          <div className="absolute right-10 sm:right-12 flex items-center h-full">
             <IoCheckmarkCircle size={20} className="text-primary bg-background rounded-full" />
           </div>
         )}
@@ -315,41 +346,46 @@ const FileSystemEntry: React.FC<FileSystemEntryProps> = memo(
 
     return (
       <>
-        <ContextMenu>
-          <ContextMenuTrigger asChild>
-            {isGrid ? gridView : listView}
-          </ContextMenuTrigger>
+        <DropdownMenu>
+          {isGrid ? gridView : listView}
 
-          <ContextMenuContent>
-            <ContextMenuItem
+          <DropdownMenuContent className="w-48">
+            <DropdownMenuItem
               onClick={() => setShowRename(true)}
               disabled={!canWrite}
             >
+              <PenIcon size={16} className="mr-2" />
               Rename
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => selectItem(child)}>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => selectItem(child)}>
+              <CheckSquareIcon size={16} className="mr-2" />
               Select
-            </ContextMenuItem>
-            <ContextMenuItem onClick={copyHandler} disabled={!canCopy}>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={copyHandler} disabled={!canCopy}>
+              <CopyIcon size={16} className="mr-2" />
               Copy
-            </ContextMenuItem>
-            <ContextMenuItem onClick={cutHandler} disabled={!canWrite}>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={cutHandler} disabled={!canWrite}>
+              <ScissorsIcon size={16} className="mr-2" />
               Cut
-            </ContextMenuItem>
-            <ContextMenuItem onClick={downloadHandler} disabled={!canRead}>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={downloadHandler} disabled={!canRead}>
+              <DownloadIcon size={16} className="mr-2" />
               Download
-            </ContextMenuItem>
-            <ContextMenuItem
+            </DropdownMenuItem>
+            <DropdownMenuItem
               onClick={() => setShowShare(true)}
               disabled={!canShare}
             >
+              <Share2Icon size={16} className="mr-2" />
               Share
-            </ContextMenuItem>
-            <ContextMenuItem onClick={deleteHandler} disabled={!canDelete}>
-              Delete
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={deleteHandler} disabled={!canDelete}>
+              <Trash2Icon size={16} className="mr-2 text-destructive" />
+              <span className="text-destructive">Delete</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Rename
           open={showRename}

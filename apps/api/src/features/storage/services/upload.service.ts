@@ -266,33 +266,34 @@ export async function resolveExistingChunks(
     .filter((c) => !blobByHash.has(c.hash))
     .map((c) => c.index);
 
+  // Pre-filter chunks that are already associated with this file to avoid transaction abortion
+  const existingFileChunks = await prisma.fileChunk.findMany({
+    where: {
+      fileId,
+      chunkIndex: { in: fileChunks.map((fc) => fc.chunkIndex) },
+    },
+    select: { chunkIndex: true },
+  });
+
+  const existingIndices = new Set(existingFileChunks.map((fc) => fc.chunkIndex));
+  const newFileChunks = fileChunks.filter(
+    (fc) => !existingIndices.has(fc.chunkIndex),
+  );
+
   // Link existing blobs to the new file in a single transaction
   await prisma.$transaction(async (tx) => {
-    if (fileChunks.length === 0) return;
+    if (newFileChunks.length === 0) return;
 
-    let insertedCount = 0;
     const blobDelta = new Map<string, number>();
 
-    for (const fc of fileChunks) {
-      try {
-        await tx.fileChunk.create({ data: fc });
-        insertedCount += 1;
-        blobDelta.set(fc.blobId, (blobDelta.get(fc.blobId) ?? 0) + 1);
-      } catch (e: unknown) {
-        const code =
-          e && typeof e === 'object' && 'code' in e
-            ? (e as { code: string }).code
-            : undefined;
-        if (code === 'P2002') continue;
-        throw e;
-      }
+    for (const fc of newFileChunks) {
+      await tx.fileChunk.create({ data: fc });
+      blobDelta.set(fc.blobId, (blobDelta.get(fc.blobId) ?? 0) + 1);
     }
-
-    if (insertedCount === 0) return;
 
     await tx.uploadSession.update({
       where: { id: uploadId },
-      data: { uploadedChunks: { increment: insertedCount } },
+      data: { uploadedChunks: { increment: newFileChunks.length } },
     });
 
     await Promise.all(

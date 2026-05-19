@@ -130,7 +130,7 @@ export default function UploadDialog({
                     </span>
 
                     <div className="flex gap-2">
-                      {item.status === "uploading" && (
+                      {["hashing", "uploading"].includes(item.status) && (
                         <button
                           type="button"
                           onClick={() => pauseUpload(item.id)}

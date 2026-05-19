@@ -18,16 +18,21 @@ const Explorer: React.FC<ExplorerProps> = ({ shareToken }) => {
   const navigate = useDriveStore((s) => s.navigate);
   const viewContext = useDriveStore((s) => s.viewContext);
   const router = useRouter();
-  
+
   const initialized = useRef(false);
 
   const hasSelection = selectedCount > 0;
 
   useEffect(() => {
     if (initialized.current) return;
-    
+
     if (shareToken) {
-      navigate("/", { viewContext: "link", shareToken: shareToken, ownerId: null, replace: true });
+      navigate("/", {
+        viewContext: "link",
+        shareToken: shareToken,
+        ownerId: null,
+        replace: true,
+      });
       initialized.current = true;
     } else if (viewContext === "link") {
       router.replace("/drive");
@@ -55,12 +60,6 @@ const Explorer: React.FC<ExplorerProps> = ({ shareToken }) => {
               <p className="text-sm font-medium">
                 {selectedCount} item{selectedCount > 1 && "s"} selected
               </p>
-            </div>
-
-            {/* Future bulk actions area */}
-            <div className="flex items-center gap-2">
-              {/* Example placeholder */}
-              {/* <Button size="sm" variant="outline">Delete</Button> */}
             </div>
           </>
         )}
