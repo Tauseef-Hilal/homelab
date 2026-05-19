@@ -16,7 +16,7 @@ import useAuthStore from "@client/stores/auth.store";
 
 const GroupChat: React.FC = () => {
   const [message, setMessage] = useState("");
-  const { sendMessage } = useMessaging();
+  const { sendMessage, messages: realTimeMessages } = useMessaging();
   const currentUserId = useAuthStore((s) => s.user?.id);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -30,9 +30,13 @@ const GroupChat: React.FC = () => {
   } = useGetBroadcastMessages();
 
   const historyMessages = data?.pages.flatMap((page) => page.messages) ?? [];
+  
   const allMessages = useMemo(() => {
-    return [...historyMessages].reverse();
-  }, [historyMessages]);
+    const history = [...historyMessages].reverse();
+    const historyIds = new Set(history.map((m) => m.id));
+    const uniqueRealTime = realTimeMessages.filter((m) => !historyIds.has(m.id));
+    return [...history, ...uniqueRealTime];
+  }, [historyMessages, realTimeMessages]);
 
   const groupedMessages = useMemo(() => {
     const groups: any[][] = [];
