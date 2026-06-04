@@ -1,7 +1,7 @@
 import { ConnectionOptions, Worker } from 'bullmq';
 import {
-  ThumbnailJobPayload,
-  ThumbnailJobResult,
+  GenerateThumbnailJobPayload,
+  GenerateThumbnailJobResult,
   queueNames,
 } from '@homelab/contracts/jobs';
 import { prisma } from '@homelab/db/prisma';
@@ -10,24 +10,24 @@ import { redis } from '@homelab/infra/redis';
 import { initializeStorageRuntime } from '@homelab/storage';
 import { updateJob } from '../../utils/db';
 import { getJobLogger } from '@workers/utils/logger';
-import { thumbnailProcessor } from './processor';
+import { computeProcessor } from './processor';
 
-async function startThumbnailWorker() {
+async function startComputeWorker() {
   await initializeStorageRuntime();
 
-  const thumbnailWorker = new Worker<ThumbnailJobPayload, ThumbnailJobResult>(
-    queueNames.thumbnailQueueName,
-    thumbnailProcessor,
+  const computeWorker = new Worker<GenerateThumbnailJobPayload, GenerateThumbnailJobResult>(
+    queueNames.computeQueueName,
+    computeProcessor,
     {
       connection: redis as unknown as ConnectionOptions,
       concurrency: 2,
     },
   );
 
-  thumbnailWorker.on('active', async (job) => {
+  computeWorker.on('active', async (job) => {
     await updateJob(job.id ?? '', { status: 'processing' });
 
-    const logger = getJobLogger('thumbnail-worker', job);
+    const logger = getJobLogger('compute-worker', job);
     logger.info(
       {
         userId: job.data.userId,
@@ -37,7 +37,7 @@ async function startThumbnailWorker() {
     );
   });
 
-  thumbnailWorker.on('completed', async (job) => {
+  computeWorker.on('completed', async (job) => {
     await updateJob(job.id ?? '', {
       status: 'completed',
       attempts: job.attemptsMade,
@@ -48,7 +48,7 @@ async function startThumbnailWorker() {
       data: { hasThumbnail: true },
     });
 
-    const logger = getJobLogger('thumbnail-worker', job);
+    const logger = getJobLogger('compute-worker', job);
     logger.info(
       {
         userId: job.data.userId,
@@ -58,14 +58,14 @@ async function startThumbnailWorker() {
     );
   });
 
-  thumbnailWorker.on('failed', async (job, err) => {
+  computeWorker.on('failed', async (job, err) => {
     await updateJob(job?.id ?? '', {
       status: 'failed',
       error: err.message,
       attempts: job?.attemptsMade ?? 0,
     });
 
-    const logger = getJobLogger('thumbnail-worker', job);
+    const logger = getJobLogger('compute-worker', job);
     logger.error(
       {
         userId: job?.data.userId,
@@ -77,7 +77,7 @@ async function startThumbnailWorker() {
   });
 }
 
-startThumbnailWorker().catch((error) => {
-  logger.error({ err: error }, 'Failed to start thumbnail worker');
+startComputeWorker().catch((error) => {
+  logger.error({ err: error }, 'Failed to start compute worker');
   process.exit(1);
 });

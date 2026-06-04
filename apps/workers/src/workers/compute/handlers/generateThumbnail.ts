@@ -9,15 +9,15 @@ import { Job } from 'bullmq';
 import sharp from 'sharp';
 import ffmpeg from 'fluent-ffmpeg';
 
-import { ThumbnailJobPayload } from '@homelab/contracts/jobs';
+import { GenerateThumbnailJobPayload } from '@homelab/contracts/jobs';
 import { getJobLogger } from '@workers/utils/logger';
 import { prisma } from '@homelab/db/prisma';
 import { CommonErrorCode, HttpError } from '@homelab/contracts/errors';
 import { env, getStorageProvider } from '@homelab/infra/config';
 
-export const generateThumbnail = async (job: Job<ThumbnailJobPayload>) => {
+export const generateThumbnail = async (job: Job<GenerateThumbnailJobPayload>) => {
   const { fileId } = job.data;
-  const logger = getJobLogger('thumbnail-worker', job);
+  const logger = getJobLogger('compute-worker', job);
 
   const file = await prisma.file.findUnique({
     where: { id: fileId },

@@ -62,13 +62,13 @@ services:
       - 8.8.4.4
 
   # ------------------------
-  # Thumbnail Worker
+  # Compute Worker
   # ------------------------
-  thumbnail-worker:
+  compute-worker:
     restart: unless-stopped
     build:
       context: ..
-      dockerfile: ./apps/workers/docker/Dockerfile.thumbnail.prod
+      dockerfile: ./apps/workers/docker/Dockerfile.compute.prod
       target: prod
     depends_on:
       migrate:
@@ -79,7 +79,7 @@ services:
       - ../.env.production
     volumes:
       - /opt/homelab/data:/app/data
-    command: pnpm --filter @homelab/workers run start:thumbnail
+    command: pnpm --filter @homelab/workers run start:compute
     dns:
       - 8.8.8.8
       - 8.8.4.4

@@ -15,7 +15,7 @@ import {
 } from '@homelab/storage';
 import { FilePermission, OWNER_PERMISSIONS } from '@homelab/storage/constants';
 import { UploadStatus, Visibility } from '@prisma/client';
-import { enqueueThumbnailJob } from '@server/lib/jobs/thumbnailQueue';
+import { enqueueComputeJob } from '@server/lib/jobs/computeQueue';
 import { randomUUID, createHash } from 'crypto';
 import {
   MAX_CONCURRENT_UPLOADS,
@@ -418,8 +418,8 @@ export async function finishUpload(
     data: { status: UploadStatus.completed },
   });
 
-  await enqueueThumbnailJob(
-    jobNames.thumbnailJobName,
+  await enqueueComputeJob(
+    jobNames.generateThumbnailJobName,
     {
       userId,
       fileId,

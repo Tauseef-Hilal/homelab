@@ -47,11 +47,11 @@ services:
       - 8.8.4.4
     command: pnpm --filter @homelab/api dev
 
-  thumbnail-worker:
+  compute-worker:
     restart: unless-stopped
     build:
       context: ..
-      dockerfile: ./apps/workers/docker/Dockerfile.thumbnail.dev
+      dockerfile: ./apps/workers/docker/Dockerfile.compute.dev
       target: dev
     depends_on:
       migrate:
@@ -68,7 +68,7 @@ services:
     dns:
       - 8.8.8.8
       - 8.8.4.4
-    command: pnpm --filter @homelab/workers dev:thumbnail
+    command: pnpm --filter @homelab/workers dev:compute
 
   io-workers:
     restart: unless-stopped

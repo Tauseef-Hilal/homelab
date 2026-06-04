@@ -104,4 +104,4 @@ COPY --from=build /app/packages/storage/node_modules ./packages/storage/node_mod
 COPY --from=build /app/node_modules ./node_modules/
 
 # Start worker
-CMD ["pnpm", "--filter", "@homelab/workers", "start:thumbnail"]
+CMD ["pnpm", "--filter", "@homelab/workers", "start:compute"]

@@ -1,13 +1,13 @@
 export const queueNames = {
-  thumbnailQueueName: 'thumbnail-queue',
+  computeQueueName: 'compute-queue',
   fileIOQueueName: 'file-io-queue',
 } as const;
 
 export const jobNames = {
-  thumbnailJobName: 'thumbnail',
-  copyJobName: 'copy',
-  moveJobName: 'move',
-  deleteJobName: 'delete',
-  zipJobName: 'zip',
-  uploadCleanupJobName: 'upload-cleanup',
+  generateThumbnailJobName: 'GENERATE_THUMBNAIL',
+  copyJobName: 'COPY_FILES',
+  moveJobName: 'MOVE_FILES',
+  deleteJobName: 'DELETE_FILES',
+  zipJobName: 'ZIP_FOLDER',
+  uploadCleanupJobName: 'CLEANUP_UPLOAD',
 };

@@ -20,7 +20,7 @@ export interface DeleteJobPayload extends JobPayload {
   shareToken: string | undefined;
 }
 
-export interface ThumbnailJobPayload extends JobPayload {
+export interface GenerateThumbnailJobPayload extends JobPayload {
   fileId: string;
 }
 

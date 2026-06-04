@@ -2,7 +2,7 @@ import { createBullBoard } from "@bull-board/api"
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter"
 import { ExpressAdapter } from "@bull-board/express"
 import { fileIOQueue } from "@server/lib/jobs/fileIOQueue"
-import { thumbnailQueue } from "@server/lib/jobs/thumbnailQueue"
+import { computeQueue } from "@server/lib/jobs/computeQueue"
 
 
 export function setupBullBoard() {
@@ -13,7 +13,7 @@ export function setupBullBoard() {
   createBullBoard({
     queues: [
       new BullMQAdapter(fileIOQueue, { readOnlyMode: true }),
-      new BullMQAdapter(thumbnailQueue, { readOnlyMode: true }),
+      new BullMQAdapter(computeQueue, { readOnlyMode: true }),
     ],
     serverAdapter
   })

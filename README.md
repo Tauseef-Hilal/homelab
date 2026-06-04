@@ -12,7 +12,7 @@
 ## 🚀 Key Engineering Highlights
 
 - **Content-Addressable Storage (CAS):** Built-in blob deduplication and chunked upload pipeline for maximum storage efficiency.
-- **Asynchronous Worker Tier:** Decoupled background processing using **BullMQ** for heavy I/O and media tasks (thumbnailing, zipping).
+- **Asynchronous Worker Tier:** Decoupled background processing using **BullMQ** for heavy I/O and media tasks (compute jobs, zipping).
 - **Security-First Auth:** JWT session management with refresh token rotation, family-based reuse detection, and a 30s race-condition grace period.
 - **Distributed Rate Limiting:** High-performance Token Bucket algorithm implemented via **Redis Lua scripts** for atomic, multi-node protection.
 - **Real-Time Mesh:** Bidirectional event-driven architecture powered by **Socket.io** for instant state synchronization.

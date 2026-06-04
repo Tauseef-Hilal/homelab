@@ -1,4 +1,4 @@
-export type ThumbnailJobResult = {
+export type GenerateThumbnailJobResult = {
   thumbnailPath: string;
   generatedAt: string;
 };

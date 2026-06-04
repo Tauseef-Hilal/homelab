@@ -46,4 +46,4 @@ RUN pnpm install --recursive
 RUN pnpm --filter @homelab/db generate
 
 # Start worker
-CMD ["pnpm", "--filter", "@homelab/workers", "dev:thumbnail"]
+CMD ["pnpm", "--filter", "@homelab/workers", "dev:compute"]

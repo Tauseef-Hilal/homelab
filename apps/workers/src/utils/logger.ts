@@ -3,7 +3,7 @@ import { JobPayload } from '@homelab/contracts/jobs';
 import { loggerWithContext } from '@homelab/infra/logging';
 
 export function getJobLogger(
-  service: 'io-worker' | 'thumbnail-worker',
+  service: 'io-worker' | 'compute-worker',
   job?: Job<JobPayload>,
 ) {
   return loggerWithContext({
